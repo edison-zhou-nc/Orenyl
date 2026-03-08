@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lore"
+version = "0.1.0"
+description = "Lore governed memory"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Lore Maintainers" }]
+requires-python = ">=3.12"
+keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "mcp==1.26.0",
+  "cryptography==46.0.3",
+  "argon2-cffi==25.1.0",
+  "PyJWT[crypto]==2.11.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/lore"
+Repository = "https://github.com/your-org/lore"
+Issues = "https://github.com/your-org/lore/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git", ".venv", ".tmp_pytest_local", "tests/.tmp", "tests/.pytest_tmp", "tests/pytest_tmp_*"]

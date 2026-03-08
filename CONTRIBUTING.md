@@ -1,0 +1,31 @@
+# Contributing
+
+## Development Setup
+
+1. Install Python 3.12+
+2. Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+python -m pip install -e .
+```
+
+## Test Requirements
+
+Run before opening a PR:
+
+```bash
+python -m pytest -q
+```
+
+## Code Style
+
+- Ruff + Black configuration lives in `pyproject.toml`.
+- Keep changes focused and include tests for behavioral changes.
+
+## Pull Requests
+
+- Explain the problem, approach, and validation.
+- Include any migration/config impact.
+- Keep PRs small and reviewable.
