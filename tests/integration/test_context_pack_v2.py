@@ -10,3 +10,8 @@ def test_context_pack_has_v2_shape():
     assert "event_count" in data
     assert "drill_down_available" in data
 
+
+def test_context_pack_facts_and_items_are_distinct_lists():
+    db = Database(":memory:")
+    pack = ContextPackBuilder(db).build(query="", limit=20)
+    assert pack.facts is not pack.items

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -241,15 +242,15 @@ class Database:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
             return self.get_active_events()
-        placeholders = ",".join("?" for _ in normalized)
+        domains_json = json.dumps(normalized)
         rows = self.conn.execute(
-            f"""SELECT DISTINCT e.*
+            """SELECT DISTINCT e.*
                 FROM events e
-                LEFT JOIN event_domains ed ON ed.event_id = e.id
+                JOIN event_domains ed ON ed.event_id = e.id
                 WHERE e.deleted_at IS NULL
-                  AND ed.domain IN ({placeholders})
+                  AND ed.domain IN (SELECT value FROM json_each(?))
                 ORDER BY e.ts""",
-            tuple(normalized),
+            (domains_json,),
         ).fetchall()
         result = []
         for row in rows:
@@ -270,17 +271,26 @@ class Database:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
             return self.get_all_events() if include_tombstoned else self.get_active_events()
-        placeholders = ",".join("?" for _ in normalized)
-        deleted_clause = "" if include_tombstoned else "AND e.deleted_at IS NULL"
-        rows = self.conn.execute(
-            f"""SELECT DISTINCT e.*
-                FROM events e
-                JOIN event_domains ed ON ed.event_id = e.id
-                WHERE ed.domain IN ({placeholders})
-                {deleted_clause}
-                ORDER BY e.ts""",
-            tuple(normalized),
-        ).fetchall()
+        domains_json = json.dumps(normalized)
+        if include_tombstoned:
+            rows = self.conn.execute(
+                """SELECT DISTINCT e.*
+                    FROM events e
+                    JOIN event_domains ed ON ed.event_id = e.id
+                    WHERE ed.domain IN (SELECT value FROM json_each(?))
+                    ORDER BY e.ts""",
+                (domains_json,),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                """SELECT DISTINCT e.*
+                    FROM events e
+                    JOIN event_domains ed ON ed.event_id = e.id
+                    WHERE ed.domain IN (SELECT value FROM json_each(?))
+                      AND e.deleted_at IS NULL
+                    ORDER BY e.ts""",
+                (domains_json,),
+            ).fetchall()
         result = []
         for row in rows:
             d = dict(row)
@@ -307,16 +317,24 @@ class Database:
                 ).fetchone()
             return int(row[0] or 0)
 
-        placeholders = ",".join("?" for _ in normalized)
-        deleted_clause = "" if include_tombstoned else "AND e.deleted_at IS NULL"
-        row = self.conn.execute(
-            f"""SELECT COUNT(DISTINCT e.id)
-                FROM events e
-                JOIN event_domains ed ON ed.event_id = e.id
-                WHERE ed.domain IN ({placeholders})
-                {deleted_clause}""",
-            tuple(normalized),
-        ).fetchone()
+        domains_json = json.dumps(normalized)
+        if include_tombstoned:
+            row = self.conn.execute(
+                """SELECT COUNT(DISTINCT e.id)
+                    FROM events e
+                    JOIN event_domains ed ON ed.event_id = e.id
+                    WHERE ed.domain IN (SELECT value FROM json_each(?))""",
+                (domains_json,),
+            ).fetchone()
+        else:
+            row = self.conn.execute(
+                """SELECT COUNT(DISTINCT e.id)
+                    FROM events e
+                    JOIN event_domains ed ON ed.event_id = e.id
+                    WHERE ed.domain IN (SELECT value FROM json_each(?))
+                      AND e.deleted_at IS NULL""",
+                (domains_json,),
+            ).fetchone()
         return int(row[0] or 0)
 
     def list_events_page(
@@ -331,28 +349,46 @@ class Database:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
 
         if not normalized:
-            deleted_clause = "" if include_tombstoned else "WHERE e.deleted_at IS NULL"
-            rows = self.conn.execute(
-                f"""SELECT e.*
-                    FROM events e
-                    {deleted_clause}
-                    ORDER BY e.ts
-                    LIMIT ? OFFSET ?""",
-                (safe_limit, safe_offset),
-            ).fetchall()
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                        FROM events e
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (safe_limit, safe_offset),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                        FROM events e
+                        WHERE e.deleted_at IS NULL
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (safe_limit, safe_offset),
+                ).fetchall()
         else:
-            placeholders = ",".join("?" for _ in normalized)
-            deleted_clause = "" if include_tombstoned else "AND e.deleted_at IS NULL"
-            rows = self.conn.execute(
-                f"""SELECT DISTINCT e.*
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN ({placeholders})
-                    {deleted_clause}
-                    ORDER BY e.ts
-                    LIMIT ? OFFSET ?""",
-                (*normalized, safe_limit, safe_offset),
-            ).fetchall()
+            domains_json = json.dumps(normalized)
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (domains_json, safe_limit, safe_offset),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND e.deleted_at IS NULL
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (domains_json, safe_limit, safe_offset),
+                ).fetchall()
 
         result = []
         for row in rows:
@@ -635,10 +671,10 @@ class Database:
     def get_parents_for_children(self, child_ids: list[str]) -> dict[str, list[dict]]:
         if not child_ids:
             return {}
-        placeholders = ",".join("?" for _ in child_ids)
+        child_ids_json = json.dumps(child_ids)
         rows = self.conn.execute(
-            f"SELECT * FROM edges WHERE child_id IN ({placeholders})",
-            tuple(child_ids),
+            "SELECT * FROM edges WHERE child_id IN (SELECT value FROM json_each(?))",
+            (child_ids_json,),
         ).fetchall()
         grouped: dict[str, list[dict]] = {child_id: [] for child_id in child_ids}
         for row in rows:
@@ -649,14 +685,17 @@ class Database:
     def get_events_by_ids(self, event_ids: list[str]) -> dict[str, dict]:
         if not event_ids:
             return {}
-        placeholders = ",".join("?" for _ in event_ids)
+        event_ids_json = json.dumps(event_ids)
         rows = self.conn.execute(
-            f"SELECT * FROM events WHERE id IN ({placeholders})",
-            tuple(event_ids),
+            "SELECT * FROM events WHERE id IN (SELECT value FROM json_each(?))",
+            (event_ids_json,),
         ).fetchall()
         domain_rows = self.conn.execute(
-            f"SELECT event_id, domain FROM event_domains WHERE event_id IN ({placeholders}) ORDER BY domain",
-            tuple(event_ids),
+            (
+                "SELECT event_id, domain FROM event_domains "
+                "WHERE event_id IN (SELECT value FROM json_each(?)) ORDER BY domain"
+            ),
+            (event_ids_json,),
         ).fetchall()
         domains_by_event: dict[str, list[str]] = {event_id: [] for event_id in event_ids}
         for row in domain_rows:
@@ -674,11 +713,11 @@ class Database:
     def get_downstream_facts(self, item_id: str) -> list[str]:
         """Recursively find all downstream fact IDs from a given item."""
         visited: set[str] = set()
-        queue = [item_id]
+        queue: deque[str] = deque([item_id])
         result: list[str] = []
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
             if current in visited:
                 continue
             visited.add(current)
@@ -717,10 +756,10 @@ class Database:
     def mark_facts_stale(self, fact_ids: list[str]) -> int:
         if not fact_ids:
             return 0
-        placeholders = ",".join("?" for _ in fact_ids)
+        fact_ids_json = json.dumps(fact_ids)
         cur = self.conn.execute(
-            f"UPDATE facts SET stale = 1 WHERE id IN ({placeholders})",
-            tuple(fact_ids),
+            "UPDATE facts SET stale = 1 WHERE id IN (SELECT value FROM json_each(?))",
+            (fact_ids_json,),
         )
         self._maybe_commit()
         return cur.rowcount

@@ -20,8 +20,10 @@ jobs:
           python -m pip install -r requirements-dev.lock
           python -m pip install --no-deps -e .
           python -m pip install build
-      - name: Ruff lint (correctness rules)
-        run: python -m ruff check . --select F,B
+      - name: Ruff lint (correctness + SQLi guardrails)
+        run: |
+          python -m ruff check . --select F,B
+          python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Run unit + integration tests
         run: python -m pytest tests/unit tests/integration -q
       - name: Build package artifacts

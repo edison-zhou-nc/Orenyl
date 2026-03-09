@@ -160,9 +160,9 @@ class ContextPackBuilder:
             event_count=event_count,
             latest_event=latest_event,
             drill_down_available=True,
-            facts=items,
+            facts=list(items),
             summary=summary,
-            items=items,
+            items=list(items),
             trace={
                 "query": query,
                 "included": trace.included,

@@ -26,6 +26,7 @@ def _meaningful_tokens(value: str) -> set[str]:
 
 
 def semantic_similarity(a: str, b: str) -> float:
+    """Jaccard similarity over stopword-filtered tokens."""
     ta = _meaningful_tokens(a)
     tb = _meaningful_tokens(b)
     if not ta or not tb:
@@ -68,16 +69,16 @@ def check_semantic_duplicate(
     threshold_ts = (
         datetime.now(timezone.utc) - timedelta(hours=window_hours)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    placeholders = ",".join("?" for _ in domains)
+    domains_json = json.dumps(domains)
     rows = db.conn.execute(
-        f"""SELECT DISTINCT e.*
+        """SELECT DISTINCT e.*
             FROM events e
             JOIN event_domains ed ON ed.event_id = e.id
             WHERE e.deleted_at IS NULL
               AND e.ts >= ?
-              AND ed.domain IN ({placeholders})
+              AND ed.domain IN (SELECT value FROM json_each(?))
             ORDER BY e.ts DESC""",
-        (threshold_ts, *domains),
+        (threshold_ts, domains_json),
     ).fetchall()
 
     for row in rows:

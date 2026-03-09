@@ -1,4 +1,50 @@
-def test_expired_event_is_deleted_by_ttl_sweep():
-    from lore.db import Database
+from lore import server
+from lore.db import Database
+from lore.lineage import LineageEngine
+from lore.models import Event
+
+
+def test_expired_event_is_soft_deleted_by_ttl_sweep(monkeypatch):
     db = Database(":memory:")
-    assert hasattr(db, "get_expired_events")
+    engine = LineageEngine(db)
+    event = Event(
+        id="event:test:ttl-soft",
+        type="note",
+        payload={"text": "expired"},
+        domains=["general"],
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    db.insert_event(event)
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "engine", engine)
+
+    out = server.run_ttl_sweep(delete_mode="soft")
+
+    assert out["count"] == 1
+    assert event.id in out["event_ids"]
+    stored = db.get_event(event.id)
+    assert stored is not None
+    assert stored["deleted_at"] is not None
+
+
+def test_expired_event_is_hard_deleted_by_ttl_sweep(monkeypatch):
+    db = Database(":memory:")
+    engine = LineageEngine(db)
+    event = Event(
+        id="event:test:ttl-hard",
+        type="note",
+        payload={"text": "expired"},
+        domains=["general"],
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    db.insert_event(event)
+
+    monkeypatch.setattr(server, "db", db)
+    monkeypatch.setattr(server, "engine", engine)
+
+    out = server.run_ttl_sweep(delete_mode="hard")
+
+    assert out["count"] == 1
+    assert event.id in out["event_ids"]
+    assert db.get_event(event.id) is None
