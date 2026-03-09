@@ -1,0 +1,4 @@
+{"step":"store_event","label":"start_metformin","args":{"type":"med_started","payload":{"name":"metformin"},"ts":"2026-01-01T09:00:00Z"}}
+{"step":"retrieve","label":"contains_metformin","assert_contains":["metformin"]}
+{"step":"delete_event_by_type","label":"delete_metformin","event_type":"med_started","payload_match":{"name":"metformin"},"reason":"user request"}
+{"step":"verify_no_resurface","label":"metformin_deleted","deleted_value":"metformin"}

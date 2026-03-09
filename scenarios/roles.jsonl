@@ -1,0 +1,4 @@
+{"step":"store_event","label":"assign_admin","args":{"type":"role_assigned","payload":{"user":"alice","role":"admin"},"ts":"2026-01-01T09:00:00Z"}}
+{"step":"retrieve","label":"role_admin","assert_contains":["admin"]}
+{"step":"store_event","label":"revoke_role","args":{"type":"role_revoked","payload":{"user":"alice"},"ts":"2026-01-01T10:00:00Z"}}
+{"step":"retrieve","label":"role_inactive","assert_value":{"key":"current_role","field":"active","expected":false}}
