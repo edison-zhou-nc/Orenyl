@@ -35,3 +35,12 @@ def test_build_token_verifier_rejects_non_integer_clock_skew(monkeypatch):
     monkeypatch.setenv("LORE_OIDC_CLOCK_SKEW_SECONDS", "not-an-int")
     with pytest.raises(RuntimeError, match="LORE_OIDC_CLOCK_SKEW_SECONDS must be an integer"):
         build_token_verifier_from_env()
+
+
+def test_build_token_verifier_rejects_excessive_clock_skew(monkeypatch):
+    monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    monkeypatch.setenv("LORE_OIDC_CLOCK_SKEW_SECONDS", "3600")
+    with pytest.raises(RuntimeError, match="LORE_OIDC_CLOCK_SKEW_SECONDS must be <= 300"):
+        build_token_verifier_from_env()

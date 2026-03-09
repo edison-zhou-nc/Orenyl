@@ -170,12 +170,23 @@ def extract_auth_token(arguments: dict) -> str:
     return token if isinstance(token, str) else ""
 
 
-def _parse_int_env(name: str, default: int) -> int:
+def _parse_int_env(
+    name: str,
+    default: int,
+    *,
+    min_value: int | None = None,
+    max_value: int | None = None,
+) -> int:
     raw = os.environ.get(name, str(default))
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError as exc:
         raise RuntimeError(f"{name} must be an integer") from exc
+    if min_value is not None and value < min_value:
+        raise RuntimeError(f"{name} must be >= {min_value}")
+    if max_value is not None and value > max_value:
+        raise RuntimeError(f"{name} must be <= {max_value}")
+    return value
 
 
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
@@ -198,7 +209,12 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
         jwks_url=jwks_url,
         allowed_algorithms=normalized_algorithms,
         jwks_cache_ttl_seconds=_parse_int_env("LORE_OIDC_JWKS_CACHE_TTL_SECONDS", 300),
-        clock_skew_seconds=_parse_int_env("LORE_OIDC_CLOCK_SKEW_SECONDS", 30),
+        clock_skew_seconds=_parse_int_env(
+            "LORE_OIDC_CLOCK_SKEW_SECONDS",
+            30,
+            min_value=0,
+            max_value=300,
+        ),
     )
 
 

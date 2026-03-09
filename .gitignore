@@ -22,6 +22,7 @@ env/
 *.db
 *.db-shm
 *.db-wal
+dist/
 
 # OS/editor noise
 .DS_Store
