@@ -1,5 +1,7 @@
 # Lore
 
+![Lore social preview](docs/assets/lore-social-preview.png)
+
 Compliance-grade MCP memory with deterministic deletion and auditable lineage.
 
 Lore gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification.
