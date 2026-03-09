@@ -32,6 +32,6 @@ def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
     }))
     data = json.loads(second[0].text)
 
+    assert data.get("stored") is False
     assert data.get("duplicate") is True
     assert data.get("reason") == "semantic_duplicate_within_24h"
-

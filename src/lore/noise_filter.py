@@ -13,6 +13,8 @@ SENSITIVE_PATTERNS = [
     re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
 ]
 
+# Heuristic phrase filters. These are intentionally conservative and can miss
+# semantic variants; they are a best-effort guardrail, not a classifier.
 REFUSAL_PATTERNS = [
     re.compile(r"\bi don't have enough information\b", re.I),
     re.compile(r"\bi cannot answer that\b", re.I),

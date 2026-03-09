@@ -20,6 +20,8 @@ jobs:
           python -m pip install -r requirements-dev.txt
           python -m pip install -e .
           python -m pip install build
+      - name: Ruff lint (correctness rules)
+        run: python -m ruff check . --select F,B
       - name: Run unit + integration tests
         run: python -m pytest tests/unit tests/integration -q
       - name: Build package artifacts

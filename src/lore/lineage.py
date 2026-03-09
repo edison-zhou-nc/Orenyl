@@ -9,7 +9,7 @@ import sqlite3
 from typing import Any
 
 from .db import Database
-from .models import Edge, Fact, Tombstone, DeleteProof, new_id, now_iso
+from .models import DeleteProof, Edge, Fact, Tombstone, now_iso
 from .rules import ALL_RULES, RULE_REGISTRY, get_rules_for_event_type
 
 

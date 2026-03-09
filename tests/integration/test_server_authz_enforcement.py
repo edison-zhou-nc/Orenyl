@@ -31,7 +31,8 @@ def _reset_server_state(monkeypatch):
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
     monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(fresh_db))
-    monkeypatch.setattr(server, "_token_verifier", StubVerifier())
+    verifier = StubVerifier()
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: verifier)
 
 
 def test_call_tool_denies_when_no_token(monkeypatch):

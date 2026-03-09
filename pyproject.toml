@@ -25,12 +25,8 @@ dependencies = [
   "cryptography==46.0.3",
   "argon2-cffi==25.1.0",
   "PyJWT[crypto]==2.11.0",
+  "httpx==0.28.1",
 ]
-
-[project.urls]
-Homepage = "https://github.com/your-org/lore"
-Repository = "https://github.com/your-org/lore"
-Issues = "https://github.com/your-org/lore/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

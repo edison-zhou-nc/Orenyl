@@ -8,6 +8,7 @@ import contextlib
 import json
 import logging
 import os
+import threading
 import uuid
 from typing import Any
 
@@ -18,6 +19,7 @@ from mcp.types import Tool, TextContent
 
 from . import audit
 from .auth import (
+    OIDCTokenVerifier,
     authorize_action,
     build_token_verifier_from_env,
     extract_auth_token,
@@ -25,6 +27,7 @@ from .auth import (
 from .db import Database
 from .content_hash import check_duplicate, compute_content_hash
 from .encryption import encrypt_content, generate_key
+from .noise_filter import should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
@@ -41,7 +44,24 @@ pack_builder = ContextPackBuilder(db)
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
 _DEFAULT_SALT_WARNING_EMITTED = False
-_token_verifier = build_token_verifier_from_env()
+_token_verifier: OIDCTokenVerifier | None = None
+_token_verifier_error: Exception | None = None
+_token_verifier_lock = threading.Lock()
+
+
+def _get_token_verifier() -> OIDCTokenVerifier:
+    global _token_verifier, _token_verifier_error
+    with _token_verifier_lock:
+        if _token_verifier is not None:
+            return _token_verifier
+        if _token_verifier_error is not None:
+            raise _token_verifier_error
+        try:
+            _token_verifier = build_token_verifier_from_env()
+        except Exception as exc:
+            _token_verifier_error = exc
+            raise
+        return _token_verifier
 
 
 def _resolve_request_id(args: dict[str, Any]) -> str:
@@ -52,8 +72,10 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _DEFAULT_SALT_WARNING_EMITTED
+    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error
     _DEFAULT_SALT_WARNING_EMITTED = False
+    _token_verifier = None
+    _token_verifier_error = None
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -220,12 +242,17 @@ async def list_tools() -> list[Tool]:
 
 @app.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    request_id = ""
     try:
         args = dict(arguments or {})
         request_id = _resolve_request_id(args)
         args["_request_id"] = request_id
         token = extract_auth_token(args)
-        access = await _token_verifier.verify_token(token)
+        try:
+            access = await _get_token_verifier().verify_token(token)
+        except Exception as exc:
+            logger.error("server_misconfigured tool=%s error=%s", name, exc)
+            raise PermissionError("server_misconfigured") from exc
         if access is None:
             audit.log_security_event(
                 name,
@@ -271,7 +298,15 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # Let MCP transport map authorization failures to protocol-level errors.
         raise
     except Exception as e:
-        return [TextContent(type="text", text=f"Error: {type(e).__name__}: {e}")]
+        error_payload: dict[str, Any] = {
+            "ok": False,
+            "error": {"type": type(e).__name__, "message": str(e)},
+        }
+        if name == "store_event":
+            error_payload["stored"] = False
+        if request_id:
+            error_payload["request_id"] = request_id
+        return [TextContent(type="text", text=json.dumps(error_payload, indent=2))]
 
 
 async def handle_store_event(args: dict) -> list[TextContent]:
@@ -281,10 +316,25 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         payload = dict(payload)
         payload.setdefault("text", content)
     content_basis = content or json.dumps(payload, sort_keys=True)
+    filter_target = content
+    if filter_target:
+        should_accept, reject_reason = should_store(filter_target)
+        if not should_accept:
+            logger.info(
+                "store_event_rejected request_id=%s reason=%s domains=%s",
+                args.get("_request_id", ""),
+                reject_reason,
+                args.get("domains", ["general"]),
+            )
+            return [TextContent(type="text", text=json.dumps({
+                "stored": False,
+                "reason": reject_reason,
+            }, indent=2))]
     content_hash = compute_content_hash(content_basis)
     domains = args.get("domains", ["general"])
     if check_duplicate(db, content_hash, domains, window_hours=24):
         return [TextContent(type="text", text=json.dumps({
+            "stored": False,
             "duplicate": True,
             "content_hash": content_hash,
             "reason": "duplicate_within_24h",
@@ -300,6 +350,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         )
         if is_dup:
             return [TextContent(type="text", text=json.dumps({
+                "stored": False,
                 "duplicate": True,
                 "content_hash": content_hash,
                 "reason": "semantic_duplicate_within_24h",
@@ -337,6 +388,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
 
     result = {
+        "stored": True,
         "event_id": event.id,
         "type": event.type,
         "payload": event.payload,
@@ -344,6 +396,13 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         "ts": event.ts,
         "derived_facts": derived_fact_ids,
     }
+    logger.info(
+        "store_event_success request_id=%s event_id=%s domains=%s sensitivity=%s",
+        args.get("_request_id", ""),
+        event.id,
+        event.domains,
+        sensitivity,
+    )
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
@@ -358,7 +417,14 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
         agent_id=args.get("agent_id", ""),
         session_id=args.get("session_id", ""),
     )
-    return [TextContent(type="text", text=pack.to_json())]
+    pack_json = pack.to_json()
+    logger.info(
+        "retrieve_context_pack request_id=%s domain=%s limit=%s",
+        args.get("_request_id", ""),
+        args.get("domain", "general"),
+        limit,
+    )
+    return [TextContent(type="text", text=pack_json)]
 
 
 async def handle_audit_trace(args: dict) -> list[TextContent]:
@@ -366,18 +432,54 @@ async def handle_audit_trace(args: dict) -> list[TextContent]:
         args["item_id"],
         include_source_events=args.get("include_source_events", False),
     )
+    logger.info(
+        "audit_trace request_id=%s item_id=%s include_source_events=%s",
+        args.get("_request_id", ""),
+        args["item_id"],
+        args.get("include_source_events", False),
+    )
     return [TextContent(type="text", text=json.dumps(trace, indent=2, default=str))]
 
 
 async def handle_delete_and_recompute(args: dict) -> list[TextContent]:
-    proof = engine.delete_and_recompute(
-        target_id=args["target_id"],
-        target_type=args["target_type"],
-        reason=args.get("reason", ""),
-        mode=args.get("mode", "soft"),
-        run_vacuum=args.get("run_vacuum", False),
-    )
-    return [TextContent(type="text", text=proof.to_json())]
+    request_id = str(args.get("_request_id", ""))
+    principal_id = str(args.get("_auth_client_id", ""))
+    target_id = args["target_id"]
+    target_type = args["target_type"]
+    mode = args.get("mode", "soft")
+    audit_result = "error"
+    audit_details = {
+        "target_id": target_id,
+        "target_type": target_type,
+        "mode": mode,
+    }
+    try:
+        proof = engine.delete_and_recompute(
+            target_id=target_id,
+            target_type=target_type,
+            reason=args.get("reason", ""),
+            mode=mode,
+            run_vacuum=args.get("run_vacuum", False),
+        )
+        proof_json = proof.to_json()
+        audit_result = "allow"
+        return [TextContent(type="text", text=proof_json)]
+    finally:
+        audit.log_security_event(
+            "delete_and_recompute",
+            audit_result,
+            principal_id=principal_id,
+            request_id=request_id,
+            details=audit_details,
+        )
+        logger.info(
+            "delete_and_recompute request_id=%s target_id=%s target_type=%s mode=%s result=%s",
+            request_id,
+            target_id,
+            target_type,
+            mode,
+            audit_result,
+        )
 
 
 async def handle_list_events(args: dict) -> list[TextContent]:
@@ -395,6 +497,14 @@ async def handle_list_events(args: dict) -> list[TextContent]:
         include_tombstoned=include_tombstoned,
         limit=limit,
         offset=offset,
+    )
+    logger.info(
+        "list_events request_id=%s domain=%s offset=%s limit=%s include_tombstoned=%s",
+        args.get("_request_id", ""),
+        domain,
+        offset,
+        limit,
+        include_tombstoned,
     )
     return [TextContent(type="text", text=json.dumps({
         "total_count": total_count,
@@ -459,6 +569,12 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
         "edges": edges,
         "summary": f"events={len(events)}, facts={len(facts)}, edges={len(edges)}",
     }
+    logger.info(
+        "export_domain request_id=%s domain=%s format=%s",
+        args.get("_request_id", ""),
+        domain,
+        fmt,
+    )
     if fmt == "markdown":
         lines = [f"# Domain Export: {domain}", "", "## Events"]
         for ev in events:
@@ -489,6 +605,12 @@ def run_ttl_sweep(delete_mode: str = "soft") -> dict[str, Any]:
     for event in expired:
         engine.delete_and_recompute(event["id"], "event", reason="ttl_expired", mode=delete_mode)
         processed.append(event["id"])
+    logger.info(
+        "ttl_sweep mode=%s scanned=%s deleted=%s",
+        delete_mode,
+        len(expired),
+        len(processed),
+    )
     return {"checked_at": now, "count": len(processed), "event_ids": processed, "mode": delete_mode}
 
 
@@ -535,6 +657,11 @@ async def run_stdio_server() -> None:
 
 
 def main():
+    try:
+        _get_token_verifier()
+    except Exception as exc:
+        logger.error("server_misconfigured error=%s", exc)
+        raise SystemExit(1) from exc
     mode = get_transport_mode()
     validate_transport_mode(mode)
     if mode == "stdio":

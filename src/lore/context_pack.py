@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 
 from .db import Database
-from .models import ContextPack, RecallTrace, now_iso
+from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
 
 

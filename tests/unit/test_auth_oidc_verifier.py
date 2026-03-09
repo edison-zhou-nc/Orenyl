@@ -2,6 +2,7 @@ import asyncio
 import json
 import time
 
+import httpx
 import jwt
 from jwt.algorithms import RSAAlgorithm
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -89,7 +90,9 @@ def test_verify_token_accepts_valid_rs256_token_with_jwks():
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
     )
-    verifier._fetch_jwks = lambda: {"keys": [jwk]}
+    async def _fake_fetch_jwks():
+        return {"keys": [jwk]}
+    verifier._fetch_jwks = _fake_fetch_jwks
     token = _make_rs256_token(private_key, kid=kid, scopes=["memory:read", "memory:delete"])
 
     access = asyncio.run(verifier.verify_token(token))
@@ -110,8 +113,39 @@ def test_verify_token_rejects_rs256_token_with_unknown_kid():
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
     )
-    verifier._fetch_jwks = lambda: {"keys": [jwk]}
+    async def _fake_fetch_jwks():
+        return {"keys": [jwk]}
+    verifier._fetch_jwks = _fake_fetch_jwks
     token = _make_rs256_token(private_key, kid="missing-kid")
 
     assert asyncio.run(verifier.verify_token(token)) is None
 
+
+def test_fetch_jwks_logs_warning_on_request_failure(monkeypatch, caplog):
+    class _FailingClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, _url):
+            raise httpx.ConnectError("connection failed")
+
+    verifier = OIDCTokenVerifier(
+        issuer="https://issuer.example",
+        audience="lore",
+        hs256_secret="",
+        jwks_url="https://issuer.example/.well-known/jwks.json",
+        allowed_algorithms=("RS256",),
+    )
+    monkeypatch.setattr(httpx, "AsyncClient", _FailingClient)
+    caplog.set_level("WARNING")
+
+    jwks = asyncio.run(verifier._fetch_jwks())
+
+    assert jwks == {}
+    assert "jwks_fetch_failed" in caplog.text

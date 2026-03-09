@@ -9,7 +9,11 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir . \
+    && adduser --disabled-password --gecos "" --uid 10001 lore \
+    && chown -R lore:lore /app
+
+USER lore
 
 EXPOSE 8000
 

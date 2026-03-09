@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import os
+import threading
 import time
 from typing import Iterable
-from urllib.request import urlopen
 
+import httpx
 import jwt
 from jwt.algorithms import RSAAlgorithm
 from jwt import InvalidTokenError
 from mcp.server.auth.provider import AccessToken
+
+logger = logging.getLogger(__name__)
 
 
 class OIDCTokenVerifier:
@@ -34,6 +39,17 @@ class OIDCTokenVerifier:
         self.clock_skew_seconds = clock_skew_seconds
         self._jwks_cache: dict | None = None
         self._jwks_cache_expires_at = 0
+        self._jwks_lock: asyncio.Lock | None = None
+        self._jwks_lock_loop: asyncio.AbstractEventLoop | None = None
+        self._jwks_lock_init_guard = threading.Lock()
+
+    def _get_jwks_lock(self) -> asyncio.Lock:
+        current_loop = asyncio.get_running_loop()
+        with self._jwks_lock_init_guard:
+            if self._jwks_lock is None or self._jwks_lock_loop is not current_loop:
+                self._jwks_lock = asyncio.Lock()
+                self._jwks_lock_loop = current_loop
+        return self._jwks_lock
 
     async def verify_token(self, token: str) -> AccessToken | None:
         if not token:
@@ -44,7 +60,7 @@ class OIDCTokenVerifier:
             algorithm = str(header.get("alg", "")).upper()
             if algorithm not in self.allowed_algorithms:
                 return None
-            key = self._resolve_signing_key(header, algorithm)
+            key = await self._resolve_signing_key(header, algorithm)
             if key is None:
                 return None
             claims = jwt.decode(
@@ -74,18 +90,18 @@ class OIDCTokenVerifier:
             expires_at=expires_at,
         )
 
-    def _resolve_signing_key(self, header: dict, algorithm: str):
+    async def _resolve_signing_key(self, header: dict, algorithm: str):
         if algorithm.startswith("HS"):
             return self.hs256_secret if self.hs256_secret else None
         if algorithm.startswith("RS"):
-            key = self._get_jwk_for_header(header)
+            key = await self._get_jwk_for_header(header)
             if key is None:
                 return None
             return RSAAlgorithm.from_jwk(json.dumps(key))
         return None
 
-    def _get_jwk_for_header(self, header: dict) -> dict | None:
-        jwks = self._get_jwks()
+    async def _get_jwk_for_header(self, header: dict) -> dict | None:
+        jwks = await self._get_jwks()
         keys = jwks.get("keys", [])
         if not isinstance(keys, list) or not keys:
             return None
@@ -99,25 +115,43 @@ class OIDCTokenVerifier:
             return keys[0]
         return None
 
-    def _get_jwks(self) -> dict:
+    async def _get_jwks(self) -> dict:
         now = int(time.time())
+        # Fast-path assumes a single event loop in normal server operation.
         if self._jwks_cache is not None and now < self._jwks_cache_expires_at:
             return self._jwks_cache
-        jwks = self._fetch_jwks()
-        if not isinstance(jwks, dict):
-            jwks = {}
-        self._jwks_cache = jwks
-        self._jwks_cache_expires_at = now + max(1, int(self.jwks_cache_ttl_seconds))
-        return jwks
+        async with self._get_jwks_lock():
+            now = int(time.time())
+            if self._jwks_cache is not None and now < self._jwks_cache_expires_at:
+                return self._jwks_cache
+            jwks = await self._fetch_jwks()
+            if not isinstance(jwks, dict):
+                jwks = {}
+            self._jwks_cache = jwks
+            self._jwks_cache_expires_at = now + max(1, int(self.jwks_cache_ttl_seconds))
+            return jwks
 
-    def _fetch_jwks(self) -> dict:
+    async def _fetch_jwks(self) -> dict:
         if not self.jwks_url:
             return {}
-        with urlopen(self.jwks_url, timeout=5) as response:
-            payload = response.read().decode("utf-8")
         try:
-            return json.loads(payload)
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(self.jwks_url)
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            status_code = getattr(getattr(exc, "response", None), "status_code", None)
+            logger.warning(
+                "jwks_fetch_failed url=%s status=%s error=%s",
+                self.jwks_url,
+                status_code,
+                exc,
+            )
+            return {}
+        # Parse errors are handled separately to keep fetch diagnostics explicit.
+        try:
+            return response.json()
         except json.JSONDecodeError:
+            logger.warning("jwks_parse_failed url=%s", self.jwks_url)
             return {}
 
 
@@ -138,19 +172,35 @@ def extract_auth_token(arguments: dict) -> str:
     return token if isinstance(token, str) else ""
 
 
+def _parse_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default))
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be an integer") from exc
+
+
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
+    jwks_url = os.environ.get("LORE_OIDC_JWKS_URL", "")
     allowed_algorithms_raw = os.environ.get("LORE_OIDC_ALLOWED_ALGS", "RS256")
     allowed_algorithms = tuple(
         alg.strip().upper() for alg in allowed_algorithms_raw.split(",") if alg.strip()
     )
+    normalized_algorithms = allowed_algorithms or ("RS256",)
+    issuer = os.environ.get("LORE_OIDC_ISSUER", "").strip()
+    if not issuer and (jwks_url or any(alg.startswith("RS") for alg in normalized_algorithms)):
+        raise RuntimeError("LORE_OIDC_ISSUER must be set when RS256/JWKS is enabled")
+    # Backward-compatible fallback for HS-only deployments without an issuer env var.
+    if not issuer:
+        issuer = "https://issuer.example"
     return OIDCTokenVerifier(
-        issuer=os.environ.get("LORE_OIDC_ISSUER", "https://issuer.example"),
+        issuer=issuer,
         audience=os.environ.get("LORE_OIDC_AUDIENCE", "lore"),
         hs256_secret=os.environ.get("LORE_OIDC_HS256_SECRET", ""),
-        jwks_url=os.environ.get("LORE_OIDC_JWKS_URL", ""),
-        allowed_algorithms=allowed_algorithms or ("RS256",),
-        jwks_cache_ttl_seconds=int(os.environ.get("LORE_OIDC_JWKS_CACHE_TTL_SECONDS", "300")),
-        clock_skew_seconds=int(os.environ.get("LORE_OIDC_CLOCK_SKEW_SECONDS", "30")),
+        jwks_url=jwks_url,
+        allowed_algorithms=normalized_algorithms,
+        jwks_cache_ttl_seconds=_parse_int_env("LORE_OIDC_JWKS_CACHE_TTL_SECONDS", 300),
+        clock_skew_seconds=_parse_int_env("LORE_OIDC_CLOCK_SKEW_SECONDS", 30),
     )
 
 

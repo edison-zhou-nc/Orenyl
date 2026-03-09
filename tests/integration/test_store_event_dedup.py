@@ -30,5 +30,5 @@ def test_store_event_rejects_duplicate_hash_within_24h(monkeypatch):
         "type": "note",
     }))
     data = json.loads(second[0].text)
+    assert data.get("stored") is False
     assert data.get("duplicate") is True
-

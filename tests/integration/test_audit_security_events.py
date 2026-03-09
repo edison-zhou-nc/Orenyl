@@ -58,3 +58,43 @@ def test_audit_events_persist_across_module_reload(monkeypatch, workspace_tmp_pa
                 db_path.unlink()
             except PermissionError:
                 pass
+
+
+def test_delete_audit_event_emitted_on_engine_failure(monkeypatch):
+    events = []
+
+    class _RaisingEngine:
+        def delete_and_recompute(self, *_args, **_kwargs):
+            raise RuntimeError("boom")
+
+    def _capture(action, result, principal_id="", request_id="", details=None):
+        events.append(
+            {
+                "action": action,
+                "result": result,
+                "principal_id": principal_id,
+                "request_id": request_id,
+                "details": details or {},
+            }
+        )
+
+    monkeypatch.setattr(server, "engine", _RaisingEngine())
+    monkeypatch.setattr(audit, "log_security_event", _capture)
+
+    with pytest.raises(RuntimeError, match="boom"):
+        asyncio.run(
+            server.handle_delete_and_recompute(
+                {
+                    "_request_id": "req-del-1",
+                    "_auth_client_id": "u1",
+                    "target_id": "event:x",
+                    "target_type": "event",
+                    "mode": "soft",
+                }
+            )
+        )
+
+    assert events
+    assert events[-1]["action"] == "delete_and_recompute"
+    assert events[-1]["result"] == "error"
+    assert events[-1]["request_id"] == "req-del-1"
