@@ -7,14 +7,13 @@ name = "lore"
 version = "0.1.0"
 description = "Lore governed memory"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
 keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Libraries",
@@ -30,6 +29,9 @@ dependencies = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+lore = ["schema.sql"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
