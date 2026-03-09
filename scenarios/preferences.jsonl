@@ -1,0 +1,4 @@
+{"step":"store_event","label":"set_vegan","args":{"type":"diet_preference","payload":{"value":"vegan"},"ts":"2026-01-02T09:00:00Z"}}
+{"step":"retrieve","label":"contains_vegan","assert_contains":["vegan"]}
+{"step":"store_event","label":"set_omnivore","args":{"type":"diet_preference","payload":{"value":"omnivore"},"ts":"2026-01-02T10:00:00Z"}}
+{"step":"retrieve","label":"contains_omnivore","assert_contains":["omnivore"],"assert_not_contains":["vegan"]}

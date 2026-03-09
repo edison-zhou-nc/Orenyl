@@ -1,0 +1,102 @@
+-- Lore Governed Memory Schema
+-- 5 tables. That's it.
+
+CREATE TABLE IF NOT EXISTS events (
+    id TEXT PRIMARY KEY,              -- "event:<type>:<uuid>"
+    type TEXT NOT NULL,               -- e.g. "med_started", "role_assigned", "diet_preference"
+    payload TEXT NOT NULL,            -- JSON blob
+    content_hash TEXT,
+    sensitivity TEXT NOT NULL DEFAULT 'medium',
+    consent_source TEXT NOT NULL DEFAULT 'implicit',
+    expires_at TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}',
+    agent_id TEXT,
+    session_id TEXT,
+    source TEXT DEFAULT 'user',       -- who/what created this
+    ts TEXT NOT NULL,                 -- ISO 8601 timestamp of when the event occurred
+    valid_from TEXT,                  -- optional: when this event becomes relevant
+    valid_to TEXT,                    -- optional: when this event stops being relevant
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    deleted_at TEXT                   -- soft delete (NULL = active)
+);
+
+CREATE TABLE IF NOT EXISTS facts (
+    id TEXT PRIMARY KEY,              -- "fact:<key>:v<version>"
+    key TEXT NOT NULL,                -- e.g. "active_medications", "current_role", "diet_preference"
+    value TEXT NOT NULL,              -- JSON blob
+    transform_config TEXT NOT NULL DEFAULT '{}',
+    stale INTEGER NOT NULL DEFAULT 0,
+    importance REAL NOT NULL DEFAULT 0.5,
+    version INTEGER NOT NULL DEFAULT 1,
+    rule_id TEXT NOT NULL,            -- which derivation rule produced this
+    valid_from TEXT NOT NULL,
+    valid_to TEXT,                    -- NULL = currently valid
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    invalidated_at TEXT,             -- set when downstream delete propagation hits this
+    invalidation_reason TEXT          -- why it was invalidated
+);
+
+CREATE TABLE IF NOT EXISTS edges (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id TEXT NOT NULL,          -- upstream item (event or fact)
+    parent_type TEXT NOT NULL,        -- "event" or "fact"
+    child_id TEXT NOT NULL,           -- downstream item (fact)
+    child_type TEXT NOT NULL DEFAULT 'fact',
+    relation TEXT NOT NULL DEFAULT 'derived_from',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS tombstones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_id TEXT NOT NULL,          -- what was deleted
+    target_type TEXT NOT NULL,        -- "event" or "fact"
+    reason TEXT,                      -- why it was deleted
+    deleted_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    cascade_invalidated TEXT          -- JSON array of downstream fact IDs that were invalidated
+);
+
+CREATE TABLE IF NOT EXISTS retrieval_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    query TEXT,                       -- what was asked
+    context_pack TEXT NOT NULL,       -- JSON: the full context pack returned
+    trace TEXT NOT NULL,              -- JSON: why each item was included
+    ts TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS event_domains (
+    event_id TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    PRIMARY KEY (event_id, domain)
+);
+
+CREATE TABLE IF NOT EXISTS domain_registry (
+    domain TEXT PRIMARY KEY,
+    display_name TEXT,
+    is_core INTEGER NOT NULL DEFAULT 0,
+    aliases TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS checkpoints (
+    id TEXT PRIMARY KEY,
+    domain TEXT NOT NULL,
+    snapshot TEXT NOT NULL,
+    event_count INTEGER NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+-- Indexes for performance
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
+CREATE INDEX IF NOT EXISTS idx_events_deleted ON events(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_facts_key ON facts(key);
+CREATE INDEX IF NOT EXISTS idx_facts_valid ON facts(invalidated_at);
+CREATE INDEX IF NOT EXISTS idx_edges_parent ON edges(parent_id);
+CREATE INDEX IF NOT EXISTS idx_edges_child ON edges(child_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique_relation
+ON edges(parent_id, parent_type, child_id, child_type, relation);
+CREATE INDEX IF NOT EXISTS idx_events_content_hash ON events(content_hash);
+CREATE INDEX IF NOT EXISTS idx_events_agent_id ON events(agent_id);
+CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);
+CREATE INDEX IF NOT EXISTS idx_event_domains_domain ON event_domains(domain);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(key, version);
