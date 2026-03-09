@@ -33,3 +33,11 @@ def should_store(content: str) -> tuple[bool, str]:
         if pattern.search(text):
             return False, "sensitive_credential_or_identifier"
     return True, "ok"
+
+
+def contains_sensitive_identifier(content: str) -> bool:
+    text = (content or "").strip()
+    for pattern in SENSITIVE_PATTERNS:
+        if pattern.search(text):
+            return True
+    return False

@@ -86,11 +86,15 @@ python -m lore.server
 | `LORE_ALLOW_INSECURE_DEV_SALT` | `0` | Dev-only fallback when salt is unset |
 | `LORE_TTL_DELETE_MODE` | `soft` | TTL cleanup deletion mode |
 | `LORE_TTL_SWEEP_INTERVAL_SECONDS` | `3600` | TTL sweep interval |
-| `LORE_OIDC_ISSUER` | `https://issuer.example` | OIDC token issuer |
+| `LORE_OIDC_ISSUER` | unset | OIDC token issuer (required when RS256/JWKS is enabled) |
 | `LORE_OIDC_AUDIENCE` | `lore` | OIDC audience |
-| `LORE_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms |
-| `LORE_OIDC_HS256_SECRET` | unset | HS256 verifier secret (if enabled) |
+| `LORE_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms; default requires issuer config |
+| `LORE_OIDC_HS256_SECRET` | unset | HS256 verifier secret (required when `HS256` is enabled) |
 | `LORE_OIDC_JWKS_URL` | unset | JWKS endpoint for RS256 verification |
+
+Notes:
+- With default `LORE_OIDC_ALLOWED_ALGS=RS256`, startup requires `LORE_OIDC_ISSUER` (and typically `LORE_OIDC_JWKS_URL`).
+- HS256-only deployments should explicitly set `LORE_OIDC_ALLOWED_ALGS=HS256`, `LORE_OIDC_HS256_SECRET`, and `LORE_OIDC_ISSUER`.
 
 ## Security Notes
 

@@ -27,7 +27,7 @@ from .auth import (
 from .db import Database
 from .content_hash import check_duplicate, compute_content_hash
 from .encryption import encrypt_content, generate_key
-from .noise_filter import should_store
+from .noise_filter import contains_sensitive_identifier, should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
@@ -73,9 +73,10 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 def _reset_runtime_state_for_tests() -> None:
     global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error
-    _DEFAULT_SALT_WARNING_EMITTED = False
-    _token_verifier = None
-    _token_verifier_error = None
+    with _token_verifier_lock:
+        _DEFAULT_SALT_WARNING_EMITTED = False
+        _token_verifier = None
+        _token_verifier_error = None
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -298,9 +299,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         # Let MCP transport map authorization failures to protocol-level errors.
         raise
     except Exception as e:
+        logger.exception("tool_handler_error tool=%s request_id=%s", name, request_id)
+        raw_error = str(e)
+        safe_error = raw_error if (isinstance(e, RuntimeError) and "LORE_" in raw_error) else "internal_error; see server logs"
         error_payload: dict[str, Any] = {
             "ok": False,
-            "error": {"type": type(e).__name__, "message": str(e)},
+            "error": {"type": type(e).__name__, "message": safe_error},
         }
         if name == "store_event":
             error_payload["stored"] = False
@@ -330,6 +334,11 @@ async def handle_store_event(args: dict) -> list[TextContent]:
                 "stored": False,
                 "reason": reject_reason,
             }, indent=2))]
+    elif contains_sensitive_identifier(content_basis):
+        return [TextContent(type="text", text=json.dumps({
+            "stored": False,
+            "reason": "sensitive_credential_or_identifier",
+        }, indent=2))]
     content_hash = compute_content_hash(content_basis)
     domains = args.get("domains", ["general"])
     if check_duplicate(db, content_hash, domains, window_hours=24):
@@ -391,7 +400,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         "stored": True,
         "event_id": event.id,
         "type": event.type,
-        "payload": event.payload,
+        "payload": {"_encrypted": True} if should_encrypt_payload else event.payload,
         "domains": event.domains,
         "ts": event.ts,
         "derived_facts": derived_fact_ids,
@@ -518,19 +527,30 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     fmt = args.get("format", "json")
     events = db.get_active_events_by_domains([domain]) if domain != "general" else db.get_active_events()
     facts = db.get_current_facts_by_domain(domain)
+    fact_ids = [fact["id"] for fact in facts]
+    parents_by_fact = db.get_parents_for_children(fact_ids)
+    parent_event_ids = sorted(
+        {
+            parent["parent_id"]
+            for parents in parents_by_fact.values()
+            for parent in parents
+            if parent.get("parent_type") == "event"
+        }
+    )
+    parent_events = db.get_events_by_ids(parent_event_ids)
     restricted = []
     for fact in facts:
-        parents = db.get_parents(fact["id"])
+        parents = parents_by_fact.get(fact["id"], [])
         for parent in parents:
             if parent["parent_type"] != "event":
                 continue
-            event = db.get_event(parent["parent_id"])
+            event = parent_events.get(parent["parent_id"])
             if event and event.get("sensitivity") == "restricted":
                 restricted.append(fact["id"])
                 break
 
-    auth_scopes = args.get("_auth_scopes")
-    if restricted and auth_scopes is not None:
+    auth_scopes = args.get("_auth_scopes") or []
+    if restricted:
         try:
             authorize_action(set(auth_scopes), "export_domain", restricted=True)
         except PermissionError as exc:
@@ -551,7 +571,7 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     event_ids = {ev["id"] for ev in events}
     edges = []
     for fact in facts:
-        for parent in db.get_parents(fact["id"]):
+        for parent in parents_by_fact.get(fact["id"], []):
             if parent.get("parent_type") != "event":
                 continue
             if domain != "general" and parent.get("parent_id") not in event_ids:
@@ -634,8 +654,166 @@ def validate_transport_mode(mode: str) -> None:
         raise PermissionError("stdio transport is dev-only; set LORE_ALLOW_STDIO_DEV=1")
 
 
+def _decode_tool_output(tool_output: list[TextContent]) -> Any:
+    if not tool_output:
+        return {}
+    text = tool_output[0].text
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+async def _invoke_tool(name: str, arguments: dict[str, Any]) -> Any:
+    return _decode_tool_output(await call_tool(name, arguments))
+
+
 def build_fastmcp_server() -> FastMCP:
-    return FastMCP("lore-governed-memory")
+    server = FastMCP("lore-governed-memory")
+
+    @server.tool(name="store_event", description="Store a memory event.")
+    async def _store_event(
+        domains: list[str] | None = None,
+        content: str = "",
+        type: str = "note",
+        payload: dict[str, Any] | None = None,
+        sensitivity: str = "high",
+        consent_source: str = "implicit",
+        expires_at: str = "",
+        metadata: dict[str, Any] | None = None,
+        source: str = "user",
+        ts: str = "",
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "domains": domains or ["general"],
+            "content": content,
+            "type": type,
+            "payload": payload or {},
+            "sensitivity": sensitivity,
+            "consent_source": consent_source,
+            "metadata": metadata or {},
+            "source": source,
+        }
+        if expires_at:
+            args["expires_at"] = expires_at
+        if ts:
+            args["ts"] = ts
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("store_event", args)
+
+    @server.tool(name="retrieve_context_pack", description="Retrieve memory context.")
+    async def _retrieve_context_pack(
+        domain: str = "general",
+        query: str = "",
+        include_summary: bool = True,
+        max_sensitivity: str = "high",
+        limit: int = 50,
+        agent_id: str = "",
+        session_id: str = "",
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "domain": domain,
+            "query": query,
+            "include_summary": include_summary,
+            "max_sensitivity": max_sensitivity,
+            "limit": limit,
+            "agent_id": agent_id,
+            "session_id": session_id,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("retrieve_context_pack", args)
+
+    @server.tool(name="delete_and_recompute", description="Delete memory and recompute lineage.")
+    async def _delete_and_recompute(
+        target_id: str,
+        target_type: str,
+        reason: str = "",
+        mode: str = "soft",
+        run_vacuum: bool = False,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "target_id": target_id,
+            "target_type": target_type,
+            "reason": reason,
+            "mode": mode,
+            "run_vacuum": run_vacuum,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("delete_and_recompute", args)
+
+    @server.tool(name="audit_trace", description="Get lineage trace for an item.")
+    async def _audit_trace(
+        item_id: str,
+        include_source_events: bool = False,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "item_id": item_id,
+            "include_source_events": include_source_events,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("audit_trace", args)
+
+    @server.tool(name="list_events", description="List events with pagination.")
+    async def _list_events(
+        domain: str = "general",
+        limit: int = 50,
+        offset: int = 0,
+        include_tombstoned: bool = False,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "domain": domain,
+            "limit": limit,
+            "offset": offset,
+            "include_tombstoned": include_tombstoned,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("list_events", args)
+
+    @server.tool(name="export_domain", description="Export domain events, facts, and lineage.")
+    async def _export_domain(
+        domain: str,
+        format: str = "json",
+        confirm_restricted: bool = False,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "domain": domain,
+            "format": format,
+            "confirm_restricted": confirm_restricted,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("export_domain", args)
+
+    return server
 
 
 async def run_stdio_server() -> None:

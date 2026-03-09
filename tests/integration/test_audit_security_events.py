@@ -1,5 +1,6 @@
 import asyncio
 import importlib
+import sqlite3
 import pytest
 
 from lore import audit
@@ -98,3 +99,25 @@ def test_delete_audit_event_emitted_on_engine_failure(monkeypatch):
     assert events[-1]["action"] == "delete_and_recompute"
     assert events[-1]["result"] == "error"
     assert events[-1]["request_id"] == "req-del-1"
+
+
+def test_audit_reset_for_tests_reopens_connection_for_new_path(monkeypatch, workspace_tmp_path):
+    db1 = workspace_tmp_path / "audit-one.sqlite3"
+    db2 = workspace_tmp_path / "audit-two.sqlite3"
+    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(db1))
+    audit._reset_for_tests()
+    audit.clear_events()
+    audit.log_security_event("list_events", "deny", request_id="req-one")
+
+    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(db2))
+    audit._reset_for_tests()
+    audit.clear_events()
+    audit.log_security_event("list_events", "deny", request_id="req-two")
+
+    with sqlite3.connect(db1) as conn1:
+        count1 = conn1.execute("SELECT COUNT(*) FROM security_audit_events").fetchone()[0]
+    with sqlite3.connect(db2) as conn2:
+        count2 = conn2.execute("SELECT COUNT(*) FROM security_audit_events").fetchone()[0]
+
+    assert count1 == 1
+    assert count2 == 1

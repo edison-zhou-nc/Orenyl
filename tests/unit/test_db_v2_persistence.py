@@ -187,3 +187,39 @@ def test_insert_edge_rejects_duplicate_lineage_edge():
 
     with pytest.raises(sqlite3.IntegrityError):
         db.insert_edge(edge)
+
+
+def test_batch_parent_and_event_fetch_helpers():
+    db = Database(":memory:")
+    event = Event(
+        id="event:test:batch",
+        type="note",
+        payload={"text": "hello"},
+        domains=["health"],
+        sensitivity="high",
+    )
+    db.insert_event(event)
+    fact = Fact(
+        id="fact:test:batch",
+        key="k",
+        value={"v": 1},
+        rule_id="Rule@batch",
+    )
+    db.insert_fact(fact)
+    db.insert_edge(
+        Edge(
+            parent_id=event.id,
+            parent_type="event",
+            child_id=fact.id,
+            child_type="fact",
+            relation="derived_from",
+        )
+    )
+
+    grouped = db.get_parents_for_children([fact.id])
+    assert fact.id in grouped
+    assert grouped[fact.id][0]["parent_id"] == event.id
+
+    events = db.get_events_by_ids([event.id])
+    assert event.id in events
+    assert events[event.id]["domains"] == ["health"]

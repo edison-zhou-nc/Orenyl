@@ -106,3 +106,11 @@ def clear_events() -> None:
         conn = _conn()
         conn.execute("DELETE FROM security_audit_events")
         conn.commit()
+
+
+def _reset_for_tests() -> None:
+    global _CONN
+    with _LOCK:
+        if _CONN is not None:
+            _CONN.close()
+            _CONN = None

@@ -27,15 +27,21 @@ def workspace_tmp_path():
 @pytest.fixture(autouse=True)
 def _reset_server_runtime_state():
     try:
+        from lore import audit
         from lore import server
     except Exception:
         yield
         return
     reset = getattr(server, "_reset_runtime_state_for_tests", None)
+    reset_audit = getattr(audit, "_reset_for_tests", None)
     if callable(reset):
         reset()
+    if callable(reset_audit):
+        reset_audit()
     try:
         yield
     finally:
         if callable(reset):
             reset()
+        if callable(reset_audit):
+            reset_audit()

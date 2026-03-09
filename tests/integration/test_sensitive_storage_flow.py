@@ -26,12 +26,14 @@ def test_high_sensitivity_payload_stored_encrypted_when_key_present(monkeypatch)
         "content": "started metformin",
         "sensitivity": "high",
     }))
-    event_id = json.loads(out[0].text)["event_id"]
+    response = json.loads(out[0].text)
+    event_id = response["event_id"]
     event = db.get_event(event_id)
 
     assert event is not None
     assert event["payload"].get("_encrypted") is True
     assert "ciphertext" in event["payload"]
+    assert response["payload"] == {"_encrypted": True}
 
 
 def test_restricted_not_returned_in_context_pack():
@@ -73,4 +75,3 @@ def test_encryption_enabled_skips_sensitive_fact_derivation(monkeypatch):
     # Sensitive encrypted events must not derive plaintext-bearing facts.
     facts = db.get_current_facts("active_medications")
     assert facts == []
-

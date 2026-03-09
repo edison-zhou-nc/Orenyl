@@ -15,10 +15,11 @@ SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 class Database:
     def __init__(self, db_path: str = ":memory:"):
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._in_transaction = False
         self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self._init_schema()
 
@@ -630,6 +631,45 @@ class Database:
             "SELECT * FROM edges WHERE child_id = ?", (child_id,)
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def get_parents_for_children(self, child_ids: list[str]) -> dict[str, list[dict]]:
+        if not child_ids:
+            return {}
+        placeholders = ",".join("?" for _ in child_ids)
+        rows = self.conn.execute(
+            f"SELECT * FROM edges WHERE child_id IN ({placeholders})",
+            tuple(child_ids),
+        ).fetchall()
+        grouped: dict[str, list[dict]] = {child_id: [] for child_id in child_ids}
+        for row in rows:
+            edge = dict(row)
+            grouped.setdefault(edge["child_id"], []).append(edge)
+        return grouped
+
+    def get_events_by_ids(self, event_ids: list[str]) -> dict[str, dict]:
+        if not event_ids:
+            return {}
+        placeholders = ",".join("?" for _ in event_ids)
+        rows = self.conn.execute(
+            f"SELECT * FROM events WHERE id IN ({placeholders})",
+            tuple(event_ids),
+        ).fetchall()
+        domain_rows = self.conn.execute(
+            f"SELECT event_id, domain FROM event_domains WHERE event_id IN ({placeholders}) ORDER BY domain",
+            tuple(event_ids),
+        ).fetchall()
+        domains_by_event: dict[str, list[str]] = {event_id: [] for event_id in event_ids}
+        for row in domain_rows:
+            domains_by_event.setdefault(row["event_id"], []).append(row["domain"])
+
+        events: dict[str, dict] = {}
+        for row in rows:
+            event = dict(row)
+            event["payload"] = json.loads(event["payload"])
+            event["metadata"] = json.loads(event["metadata"])
+            event["domains"] = domains_by_event.get(event["id"], [])
+            events[event["id"]] = event
+        return events
 
     def get_downstream_facts(self, item_id: str) -> list[str]:
         """Recursively find all downstream fact IDs from a given item."""

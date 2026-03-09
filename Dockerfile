@@ -6,10 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
+COPY requirements.lock ./
 COPY src ./src
 
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir . \
+    && pip install --no-cache-dir -r requirements.lock \
+    && pip install --no-cache-dir --no-deps . \
     && adduser --disabled-password --gecos "" --uid 10001 lore \
     && chown -R lore:lore /app
 

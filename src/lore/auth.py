@@ -80,8 +80,6 @@ class OIDCTokenVerifier:
         client_id = str(claims.get("sub", ""))
         if not client_id:
             return None
-        if expires_at is not None and expires_at < int(time.time()):
-            return None
 
         return AccessToken(
             token=token,

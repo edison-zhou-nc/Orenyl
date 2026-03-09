@@ -71,3 +71,33 @@ def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
     assert payload["error"]["type"] == "RuntimeError"
     assert "server_misconfigured" not in payload["error"]["message"]
     assert "LORE_ENCRYPTION_SALT is required" in payload["error"]["message"]
+
+
+def test_call_tool_sanitizes_non_config_internal_errors(monkeypatch):
+    class _AllowDeleteVerifier:
+        async def verify_token(self, token: str):
+            if token == "allow":
+                return AccessToken(token=token, client_id="u1", scopes=["memory:delete"])
+            return None
+
+    class _RaisingEngine:
+        def delete_and_recompute(self, *_args, **_kwargs):
+            raise RuntimeError("SELECT * FROM private_table")
+
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowDeleteVerifier())
+    monkeypatch.setattr(server, "engine", _RaisingEngine())
+    out = asyncio.run(
+        server.call_tool(
+            "delete_and_recompute",
+            {
+                "_auth_token": "allow",
+                "target_id": "event:test",
+                "target_type": "event",
+            },
+        )
+    )
+
+    payload = json.loads(out[0].text)
+    assert payload["ok"] is False
+    assert payload["error"]["type"] == "RuntimeError"
+    assert payload["error"]["message"] == "internal_error; see server logs"

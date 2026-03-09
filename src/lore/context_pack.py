@@ -86,14 +86,26 @@ class ContextPackBuilder:
             importance=importance_map,
         )
 
+        ranked_fact_ids = [ranked["id"] for ranked in ranking[:limit]]
+        parent_edges_by_fact = self.db.get_parents_for_children(ranked_fact_ids)
+        parent_event_ids = sorted(
+            {
+                edge["parent_id"]
+                for edges in parent_edges_by_fact.values()
+                for edge in edges
+                if edge.get("parent_type") == "event"
+            }
+        )
+        parent_events_by_id = self.db.get_events_by_ids(parent_event_ids)
+
         items = []
         for ranked in ranking[:limit]:
             fact = id_to_fact[ranked["id"]]
             # Build provenance from lineage edges
-            parents = self.db.get_parents(fact["id"])
+            parents = parent_edges_by_fact.get(fact["id"], [])
             derived_from = [p["parent_id"] for p in parents]
             parent_events = [
-                self.db.get_event(pid) for pid in derived_from
+                parent_events_by_id.get(pid) for pid in derived_from
             ]
             parent_levels = [
                 (e or {}).get("sensitivity", "medium").lower() for e in parent_events if e
