@@ -1,6 +1,6 @@
 # Lore
 
-![Lore social preview](docs/assets/lore-social-preview.png)
+![Lore social preview](docs/assets/lore_social_preview.png)
 
 Compliance-grade MCP memory with deterministic deletion and auditable lineage.
 
