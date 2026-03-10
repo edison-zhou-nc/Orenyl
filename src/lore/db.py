@@ -122,6 +122,14 @@ class Database:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN importance REAL NOT NULL DEFAULT 0.5"
                 )
+            if "confidence" not in fact_cols:
+                _safe_add_column(
+                    "ALTER TABLE facts ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0"
+                )
+            if "model_id" not in fact_cols:
+                _safe_add_column(
+                    "ALTER TABLE facts ADD COLUMN model_id TEXT NOT NULL DEFAULT 'deterministic'"
+                )
 
         self.conn.commit()
 
@@ -486,9 +494,9 @@ class Database:
         self.conn.execute(
             """INSERT INTO facts (
                    id, key, value, transform_config, stale, importance,
-                   version, rule_id, valid_from, valid_to, created_at
+                   version, rule_id, confidence, model_id, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 fact.id,
                 fact.key,
@@ -498,6 +506,8 @@ class Database:
                 fact.importance,
                 fact.version,
                 fact.rule_id,
+                fact.confidence,
+                fact.model_id,
                 fact.valid_from,
                 fact.valid_to,
                 fact.created_at,
