@@ -130,7 +130,7 @@ Run eval harness:
 python run_eval.py
 ```
 
-Run Phase 1 retrieval quality benchmark:
+Run Phase 1 synthetic retrieval regression benchmark:
 
 ```bash
 python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q

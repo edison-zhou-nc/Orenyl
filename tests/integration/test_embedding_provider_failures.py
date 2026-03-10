@@ -60,4 +60,4 @@ def test_context_pack_survives_vector_provider_failure(monkeypatch, caplog):
     monkeypatch.setattr(context_pack_module, "_embedding_provider", _FailingProvider())
     pack = ContextPackBuilder(db).build(domain="health", query="seed", limit=5)
     assert pack.items
-    assert "vector_ranking_fallback" in caplog.text
+    assert "embedding_pipeline_fallback" in caplog.text

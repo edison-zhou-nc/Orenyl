@@ -27,5 +27,7 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 
 - Corpus file: `scenarios/phase1_retrieval_corpus.json`
 - Harness: `run_phase1_precision_eval()` in `run_eval.py`
-- Top-5 precision: `1.00`
+- Metric: Top-3 key precision over synthetic corpus
+- Top-3 precision: `0.89`
 - Gate: `python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q`
+- Note: This is a synthetic regression signal, not a production relevance benchmark.

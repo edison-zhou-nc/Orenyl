@@ -17,12 +17,15 @@ def _float_env(name: str, default: float) -> float:
 
 def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
     default = _float_env("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", 0.92)
-    best = default
+    # For multi-domain events, choose the strictest configured threshold
+    # (highest cosine cutoff) so dedup behavior is deterministic and safe.
+    overrides: list[float] = []
     for domain in domains:
         key = f"LORE_SEMANTIC_DEDUP_THRESHOLD_{(domain or '').strip().upper()}"
         override = _float_env(key, -1.0)
         if override >= 0.0:
-            best = override
+            overrides.append(override)
+    best = max(overrides) if overrides else default
     return max(0.0, min(best, 1.0))
 
 

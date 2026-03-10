@@ -112,7 +112,7 @@ class ContextPackBuilder:
             vector_scored.sort(key=lambda row: (-row[0], row[1]))
             vector_order = [item_id for _, item_id in vector_scored]
         except Exception as exc:
-            logger.warning("vector_ranking_fallback domain=%s error=%s", domain, exc)
+            logger.warning("embedding_pipeline_fallback domain=%s error=%s", domain, exc)
             vector_order = None
         importance_map = {fact["id"]: float(fact.get("importance", 0.5)) for fact in facts}
         ranking = rank_items(
