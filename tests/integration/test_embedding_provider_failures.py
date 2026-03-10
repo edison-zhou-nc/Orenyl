@@ -38,7 +38,7 @@ def test_store_event_survives_embedding_provider_failure(monkeypatch):
     assert payload["event_id"]
 
 
-def test_context_pack_survives_vector_provider_failure(monkeypatch):
+def test_context_pack_survives_vector_provider_failure(monkeypatch, caplog):
     db = Database(":memory:")
     event = Event(
         id="event:test:vector-fail",
@@ -60,3 +60,4 @@ def test_context_pack_survives_vector_provider_failure(monkeypatch):
     monkeypatch.setattr(context_pack_module, "_embedding_provider", _FailingProvider())
     pack = ContextPackBuilder(db).build(domain="health", query="seed", limit=5)
     assert pack.items
+    assert "vector_ranking_fallback" in caplog.text

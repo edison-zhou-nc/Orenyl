@@ -20,7 +20,9 @@ def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
     best = default
     for domain in domains:
         key = f"LORE_SEMANTIC_DEDUP_THRESHOLD_{(domain or '').strip().upper()}"
-        best = max(best, _float_env(key, default))
+        override = _float_env(key, -1.0)
+        if override >= 0.0:
+            best = override
     return max(0.0, min(best, 1.0))
 
 
