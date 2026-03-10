@@ -25,12 +25,15 @@ from .auth import (
     extract_auth_token,
 )
 from .db import Database
+from .config import semantic_dedup_threshold_for_domains
 from .content_hash import check_duplicate, compute_content_hash
 from .encryption import encrypt_content, generate_key
+from .embedding_provider import build_embedding_provider_from_env
 from .noise_filter import contains_sensitive_identifier, should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
+from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder
 
 DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
@@ -40,6 +43,7 @@ MAX_LIST_EVENTS_LIMIT = int(os.environ.get("LORE_MAX_LIST_EVENTS_LIMIT", "200"))
 db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
+embedding_provider = None
 
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
@@ -64,6 +68,13 @@ def _get_token_verifier() -> OIDCTokenVerifier:
         return _token_verifier
 
 
+def _get_embedding_provider():
+    global embedding_provider
+    if embedding_provider is None:
+        embedding_provider = build_embedding_provider_from_env()
+    return embedding_provider
+
+
 def _resolve_request_id(args: dict[str, Any]) -> str:
     request_id = str(args.get("_request_id", "")).strip()
     if request_id:
@@ -72,11 +83,12 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error
+    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error, embedding_provider
     with _token_verifier_lock:
         _DEFAULT_SALT_WARNING_EMITTED = False
         _token_verifier = None
         _token_verifier_error = None
+        embedding_provider = None
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -350,12 +362,14 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         }, indent=2))]
     enable_semantic_dedup = os.environ.get("LORE_ENABLE_SEMANTIC_DEDUP", "0") == "1"
     if enable_semantic_dedup:
+        provider = _get_embedding_provider()
         is_dup, existing_event_id = check_semantic_duplicate(
             db,
+            provider,
             content_basis,
             domains,
             window_hours=24,
-            threshold=0.92,
+            threshold=semantic_dedup_threshold_for_domains(domains),
         )
         if is_dup:
             return [TextContent(type="text", text=json.dumps({
@@ -393,6 +407,16 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     )
 
     db.insert_event(event)
+    try:
+        provider = _get_embedding_provider()
+        event_embedding = provider.embed_text(content_basis)
+        db.upsert_event_embedding(
+            event.id,
+            event_embedding,
+            provider.provider_id,
+        )
+    except Exception as exc:
+        logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
     # Avoid deriving plaintext-bearing facts from sensitive encrypted events.
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
 
@@ -416,13 +440,18 @@ async def handle_store_event(args: dict) -> list[TextContent]:
 
 
 async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
+    domain = args.get("domain", "general")
+    query = args.get("query", "")
+    rewritten_query = rewrite_query(query)
+    if domain == "general" and rewritten_query:
+        domain = infer_domain(rewritten_query, fallback="general")
     limit = _clamp_positive_int(args.get("limit", 50), default=50, maximum=MAX_CONTEXT_PACK_LIMIT)
     pack = pack_builder.build(
-        domain=args.get("domain", "general"),
+        domain=domain,
         include_summary=args.get("include_summary", True),
         max_sensitivity=args.get("max_sensitivity", "high"),
         limit=limit,
-        query=args.get("query", ""),
+        query=rewritten_query,
         agent_id=args.get("agent_id", ""),
         session_id=args.get("session_id", ""),
     )
@@ -430,7 +459,7 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
     logger.info(
         "retrieve_context_pack request_id=%s domain=%s limit=%s",
         args.get("_request_id", ""),
-        args.get("domain", "general"),
+        domain,
         limit,
     )
     return [TextContent(type="text", text=pack_json)]

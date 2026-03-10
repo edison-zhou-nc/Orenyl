@@ -83,6 +83,13 @@ python -m lore.server
 | `LORE_MAX_CONTEXT_PACK_LIMIT` | `100` | Upper bound for context retrieval |
 | `LORE_MAX_LIST_EVENTS_LIMIT` | `200` | Upper bound for list_events |
 | `LORE_ENABLE_SEMANTIC_DEDUP` | `0` | Enable semantic duplicate suppression |
+| `LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT` | `0.92` | Default cosine threshold for semantic dedup |
+| `LORE_SEMANTIC_DEDUP_THRESHOLD_<DOMAIN>` | unset | Domain-specific dedup threshold override (example: `..._HEALTH`) |
+| `LORE_MIN_FACT_CONFIDENCE` | `0.7` | Minimum confidence required for facts in context packs |
+| `LORE_EMBEDDING_PROVIDER` | `hash-local` | Embedding provider (`hash-local` or `openai`) |
+| `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider |
+| `LORE_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
+| `LORE_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
 | `LORE_ENCRYPTION_PASSPHRASE` | unset | Enables encryption for high/restricted payloads |
 | `LORE_ENCRYPTION_SALT` | unset | Base64 salt for key derivation |
 | `LORE_ALLOW_INSECURE_DEV_SALT` | `0` | Dev-only fallback when salt is unset |
@@ -121,6 +128,12 @@ Run eval harness:
 
 ```bash
 python run_eval.py
+```
+
+Run Phase 1 synthetic retrieval regression benchmark:
+
+```bash
+python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q
 ```
 
 ## Contributing

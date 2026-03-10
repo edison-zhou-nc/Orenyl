@@ -13,10 +13,24 @@ def _reset_server(monkeypatch, db):
     monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(db))
 
 
+class _FakeProvider:
+    provider_id = "test-fake"
+
+    def embed_text(self, text: str) -> list[float]:
+        value = (text or "").lower()
+        if "metformin" in value:
+            return [1.0, 0.0]
+        if "medication" in value:
+            return [0.99, 0.01]
+        return [0.0, 1.0]
+
+
 def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
     monkeypatch.setenv("LORE_ENABLE_SEMANTIC_DEDUP", "1")
+    monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.95")
+    monkeypatch.setattr(server, "embedding_provider", _FakeProvider())
 
     first = asyncio.run(server.handle_store_event({
         "domains": ["health"],
@@ -27,7 +41,7 @@ def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
 
     second = asyncio.run(server.handle_store_event({
         "domains": ["health"],
-        "content": "Started metformin today",
+        "content": "Began taking the medication",
         "type": "note",
     }))
     data = json.loads(second[0].text)
