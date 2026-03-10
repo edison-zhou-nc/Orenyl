@@ -6,6 +6,7 @@ import json
 import math
 
 from .db import Database
+from .config import min_fact_confidence_threshold
 from .embedding_provider import build_embedding_provider_from_env
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
@@ -110,8 +111,11 @@ class ContextPackBuilder:
         parent_events_by_id = self.db.get_events_by_ids(parent_event_ids)
 
         items = []
+        min_confidence = min_fact_confidence_threshold()
         for ranked in ranking[:limit]:
             fact = id_to_fact[ranked["id"]]
+            if float(fact.get("confidence", 1.0)) < min_confidence:
+                continue
             # Build provenance from lineage edges
             parents = parent_edges_by_fact.get(fact["id"], [])
             derived_from = [p["parent_id"] for p in parents]
