@@ -27,6 +27,7 @@ from .auth import (
 from .db import Database
 from .content_hash import check_duplicate, compute_content_hash
 from .encryption import encrypt_content, generate_key
+from .embedding_provider import build_embedding_provider_from_env
 from .noise_filter import contains_sensitive_identifier, should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
@@ -40,6 +41,7 @@ MAX_LIST_EVENTS_LIMIT = int(os.environ.get("LORE_MAX_LIST_EVENTS_LIMIT", "200"))
 db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
+embedding_provider = build_embedding_provider_from_env()
 
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
