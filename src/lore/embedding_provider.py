@@ -6,7 +6,7 @@ import hashlib
 import math
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 import httpx
@@ -63,7 +63,7 @@ class OpenAIEmbeddingProvider:
     timeout_seconds: float = 30.0
     max_retries: int = 2
     backoff_seconds: float = 0.5
-    _client: httpx.Client | None = None
+    _client: httpx.Client | None = field(default=None, init=False, repr=False)
 
     def embed_text(self, text: str) -> list[float]:
         if not self.api_key:
@@ -86,13 +86,25 @@ class OpenAIEmbeddingProvider:
                 payload = response.json()
                 vector = payload["data"][0]["embedding"]
                 return [float(v) for v in vector]
-            except (httpx.HTTPStatusError, httpx.HTTPError) as exc:
+            except httpx.HTTPStatusError as exc:
+                last_error = exc
+                if not _is_retryable_status(exc.response.status_code):
+                    break
+                if attempt >= self.max_retries:
+                    break
+                time.sleep(self.backoff_seconds * (attempt + 1))
+                continue
+            except httpx.HTTPError as exc:
                 last_error = exc
                 if attempt >= self.max_retries:
                     break
                 time.sleep(self.backoff_seconds * (attempt + 1))
                 continue
         raise RuntimeError("embedding_provider_unavailable") from last_error
+
+
+def _is_retryable_status(status_code: int) -> bool:
+    return status_code == 429 or 500 <= status_code <= 599
 
 
 def build_embedding_provider_from_env() -> EmbeddingProvider:

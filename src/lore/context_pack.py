@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from .config import min_fact_confidence_threshold
 from .db import Database
@@ -12,6 +13,7 @@ from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
 
 _embedding_provider = None
+logger = logging.getLogger(__name__)
 
 
 def _get_embedding_provider():
@@ -109,7 +111,8 @@ class ContextPackBuilder:
                 vector_scored.append((similarity, fact["id"]))
             vector_scored.sort(key=lambda row: (-row[0], row[1]))
             vector_order = [item_id for _, item_id in vector_scored]
-        except Exception:
+        except Exception as exc:
+            logger.warning("vector_ranking_fallback domain=%s error=%s", domain, exc)
             vector_order = None
         importance_map = {fact["id"]: float(fact.get("importance", 0.5)) for fact in facts}
         ranking = rank_items(
