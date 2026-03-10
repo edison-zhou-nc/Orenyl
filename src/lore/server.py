@@ -33,6 +33,7 @@ from .noise_filter import contains_sensitive_identifier, should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
+from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder
 
 DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
@@ -426,13 +427,18 @@ async def handle_store_event(args: dict) -> list[TextContent]:
 
 
 async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
+    domain = args.get("domain", "general")
+    query = args.get("query", "")
+    rewritten_query = rewrite_query(query)
+    if domain == "general" and rewritten_query:
+        domain = infer_domain(rewritten_query, fallback="general")
     limit = _clamp_positive_int(args.get("limit", 50), default=50, maximum=MAX_CONTEXT_PACK_LIMIT)
     pack = pack_builder.build(
-        domain=args.get("domain", "general"),
+        domain=domain,
         include_summary=args.get("include_summary", True),
         max_sensitivity=args.get("max_sensitivity", "high"),
         limit=limit,
-        query=args.get("query", ""),
+        query=rewritten_query,
         agent_id=args.get("agent_id", ""),
         session_id=args.get("session_id", ""),
     )
@@ -440,7 +446,7 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
     logger.info(
         "retrieve_context_pack request_id=%s domain=%s limit=%s",
         args.get("_request_id", ""),
-        args.get("domain", "general"),
+        domain,
         limit,
     )
     return [TextContent(type="text", text=pack_json)]
