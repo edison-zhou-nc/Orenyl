@@ -3,10 +3,24 @@
 from __future__ import annotations
 
 import json
+import logging
 
+from .config import min_fact_confidence_threshold
 from .db import Database
+from .embeddings import cosine_similarity
+from .embedding_provider import build_embedding_provider_from_env
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
+
+_embedding_provider = None
+logger = logging.getLogger(__name__)
+
+
+def _get_embedding_provider():
+    global _embedding_provider
+    if _embedding_provider is None:
+        _embedding_provider = build_embedding_provider_from_env()
+    return _embedding_provider
 
 
 def should_retrieve(query: str) -> bool:
@@ -75,8 +89,31 @@ class ContextPackBuilder:
         keyword_scored.sort(key=lambda row: (-row[0], row[1]))
         keyword_order = [item_id for _, item_id in keyword_scored]
 
-        # Vector order is optional in v2.1; None means deterministic fallback path.
         vector_order = None
+        try:
+            provider = _get_embedding_provider()
+            query_vector = provider.embed_text(query or domain or "general")
+            stored_fact_embeddings = self.db.get_fact_embeddings([fact["id"] for fact in facts])
+            vector_scored: list[tuple[float, str]] = []
+            for fact in facts:
+                existing = stored_fact_embeddings.get(fact["id"])
+                if existing is not None:
+                    fact_vector = existing["vector"]
+                else:
+                    fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
+                    fact_vector = provider.embed_text(fact_text)
+                    self.db.upsert_fact_embedding(
+                        fact["id"],
+                        fact_vector,
+                        provider.provider_id,
+                    )
+                similarity = cosine_similarity(query_vector, fact_vector)
+                vector_scored.append((similarity, fact["id"]))
+            vector_scored.sort(key=lambda row: (-row[0], row[1]))
+            vector_order = [item_id for _, item_id in vector_scored]
+        except Exception as exc:
+            logger.warning("embedding_pipeline_fallback domain=%s error=%s", domain, exc)
+            vector_order = None
         importance_map = {fact["id"]: float(fact.get("importance", 0.5)) for fact in facts}
         ranking = rank_items(
             item_ids=[fact["id"] for fact in facts],
@@ -99,8 +136,11 @@ class ContextPackBuilder:
         parent_events_by_id = self.db.get_events_by_ids(parent_event_ids)
 
         items = []
+        min_confidence = min_fact_confidence_threshold()
         for ranked in ranking[:limit]:
             fact = id_to_fact[ranked["id"]]
+            if float(fact.get("confidence", 1.0)) < min_confidence:
+                continue
             # Build provenance from lineage edges
             parents = parent_edges_by_fact.get(fact["id"], [])
             derived_from = [p["parent_id"] for p in parents]

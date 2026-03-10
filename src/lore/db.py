@@ -9,6 +9,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any
 
+from .embeddings import decode_vector, encode_vector
 from .models import Event, Fact, Edge, Tombstone
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
@@ -121,6 +122,14 @@ class Database:
             if "importance" not in fact_cols:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN importance REAL NOT NULL DEFAULT 0.5"
+                )
+            if "confidence" not in fact_cols:
+                _safe_add_column(
+                    "ALTER TABLE facts ADD COLUMN confidence REAL NOT NULL DEFAULT 1.0"
+                )
+            if "model_id" not in fact_cols:
+                _safe_add_column(
+                    "ALTER TABLE facts ADD COLUMN model_id TEXT NOT NULL DEFAULT 'deterministic'"
                 )
 
         self.conn.commit()
@@ -486,9 +495,9 @@ class Database:
         self.conn.execute(
             """INSERT INTO facts (
                    id, key, value, transform_config, stale, importance,
-                   version, rule_id, valid_from, valid_to, created_at
+                   version, rule_id, confidence, model_id, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 fact.id,
                 fact.key,
@@ -498,6 +507,8 @@ class Database:
                 fact.importance,
                 fact.version,
                 fact.rule_id,
+                fact.confidence,
+                fact.model_id,
                 fact.valid_from,
                 fact.valid_to,
                 fact.created_at,
@@ -766,6 +777,60 @@ class Database:
 
     def run_vacuum(self) -> None:
         self.conn.execute("VACUUM")
+
+    # ── Embeddings ───────────────────────────────────────────────
+
+    def upsert_event_embedding(self, event_id: str, vector: list[float], model_id: str) -> None:
+        self.conn.execute(
+            """INSERT INTO event_embeddings (event_id, model_id, vector)
+               VALUES (?, ?, ?)
+               ON CONFLICT(event_id) DO UPDATE SET
+                 model_id = excluded.model_id,
+                 vector = excluded.vector,
+                 created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
+            (event_id, model_id, encode_vector(vector)),
+        )
+        self._maybe_commit()
+
+    def get_event_embedding(self, event_id: str) -> dict | None:
+        row = self.conn.execute(
+            "SELECT event_id, model_id, vector, created_at FROM event_embeddings WHERE event_id = ?",
+            (event_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        data = dict(row)
+        data["vector"] = decode_vector(data["vector"])
+        return data
+
+    def upsert_fact_embedding(self, fact_id: str, vector: list[float], model_id: str) -> None:
+        self.conn.execute(
+            """INSERT INTO fact_embeddings (fact_id, model_id, vector)
+               VALUES (?, ?, ?)
+               ON CONFLICT(fact_id) DO UPDATE SET
+                 model_id = excluded.model_id,
+                 vector = excluded.vector,
+                 created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
+            (fact_id, model_id, encode_vector(vector)),
+        )
+        self._maybe_commit()
+
+    def get_fact_embeddings(self, fact_ids: list[str]) -> dict[str, dict]:
+        if not fact_ids:
+            return {}
+        fact_ids_json = json.dumps(fact_ids)
+        rows = self.conn.execute(
+            """SELECT fact_id, model_id, vector, created_at
+               FROM fact_embeddings
+               WHERE fact_id IN (SELECT value FROM json_each(?))""",
+            (fact_ids_json,),
+        ).fetchall()
+        result: dict[str, dict] = {}
+        for row in rows:
+            data = dict(row)
+            data["vector"] = decode_vector(data["vector"])
+            result[data["fact_id"]] = data
+        return result
 
     # ── Tombstones ──────────────────────────────────────────
 

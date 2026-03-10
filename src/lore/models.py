@@ -55,6 +55,8 @@ class Fact:
     importance: float = 0.5
     version: int = 1
     rule_id: str = ""
+    confidence: float = 1.0
+    model_id: str = "deterministic"
     valid_from: str = ""
     valid_to: str | None = None
     created_at: str = ""

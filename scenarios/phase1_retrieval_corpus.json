@@ -1,0 +1,92 @@
+[
+  {
+    "domain": "health",
+    "query": "which pill am I still taking metformin",
+    "expected_key": "active_medications",
+    "events": [
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["health"]},
+      {"type": "role_assigned", "payload": {"user": "u1", "role": "admin"}, "domains": ["health"]},
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["health"]}
+    ]
+  },
+  {
+    "domain": "career",
+    "query": "do I currently have admin access",
+    "expected_key": "current_role",
+    "events": [
+      {"type": "role_assigned", "payload": {"user": "u2", "role": "admin"}, "domains": ["career"]},
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["career"]},
+      {"type": "diet_preference", "payload": {"value": "vegetarian"}, "domains": ["career"]}
+    ]
+  },
+  {
+    "domain": "preferences",
+    "query": "am I on a vegan plan",
+    "expected_key": "diet_preference",
+    "events": [
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["preferences"]},
+      {"type": "role_assigned", "payload": {"user": "u3", "role": "editor"}, "domains": ["preferences"]},
+      {"type": "med_started", "payload": {"name": "amlodipine"}, "domains": ["preferences"]}
+    ]
+  },
+  {
+    "domain": "health",
+    "query": "is amlodipine in my active meds",
+    "expected_key": "active_medications",
+    "events": [
+      {"type": "med_started", "payload": {"name": "amlodipine"}, "domains": ["health"]},
+      {"type": "role_assigned", "payload": {"user": "u4", "role": "viewer"}, "domains": ["health"]},
+      {"type": "diet_preference", "payload": {"value": "omnivore"}, "domains": ["health"]}
+    ]
+  },
+  {
+    "domain": "career",
+    "query": "what role was assigned to u5",
+    "expected_key": "current_role",
+    "events": [
+      {"type": "role_assigned", "payload": {"user": "u5", "role": "operator"}, "domains": ["career"]},
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["career"]},
+      {"type": "diet_preference", "payload": {"value": "pescatarian"}, "domains": ["career"]}
+    ]
+  },
+  {
+    "domain": "preferences",
+    "query": "did I choose pescatarian",
+    "expected_key": "diet_preference",
+    "events": [
+      {"type": "diet_preference", "payload": {"value": "pescatarian"}, "domains": ["preferences"]},
+      {"type": "role_assigned", "payload": {"user": "u6", "role": "member"}, "domains": ["preferences"]},
+      {"type": "med_started", "payload": {"name": "lisinopril"}, "domains": ["preferences"]}
+    ]
+  },
+  {
+    "domain": "health",
+    "query": "is lisinopril currently active",
+    "expected_key": "active_medications",
+    "events": [
+      {"type": "med_started", "payload": {"name": "lisinopril"}, "domains": ["health"]},
+      {"type": "role_assigned", "payload": {"user": "u7", "role": "contributor"}, "domains": ["health"]},
+      {"type": "diet_preference", "payload": {"value": "keto"}, "domains": ["health"]}
+    ]
+  },
+  {
+    "domain": "career",
+    "query": "which permission does u8 hold",
+    "expected_key": "current_role",
+    "events": [
+      {"type": "role_assigned", "payload": {"user": "u8", "role": "auditor"}, "domains": ["career"]},
+      {"type": "med_started", "payload": {"name": "aspirin"}, "domains": ["career"]},
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["career"]}
+    ]
+  },
+  {
+    "domain": "preferences",
+    "query": "is my preference keto",
+    "expected_key": "diet_preference",
+    "events": [
+      {"type": "diet_preference", "payload": {"value": "keto"}, "domains": ["preferences"]},
+      {"type": "role_assigned", "payload": {"user": "u9", "role": "moderator"}, "domains": ["preferences"]},
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["preferences"]}
+    ]
+  }
+]
