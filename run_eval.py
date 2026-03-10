@@ -15,6 +15,7 @@ import json
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 # Add src/ to path for local execution without editable install.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
@@ -243,6 +244,46 @@ def _value_contains(value, search: str) -> bool:
     elif isinstance(value, str):
         return search in value
     return str(search) in str(value)
+
+
+def run_phase1_precision_eval(corpus_path: str | Path | None = None) -> float:
+    """Compute top-5 key precision over the Phase 1 retrieval corpus."""
+    if corpus_path is None:
+        corpus_path = Path(__file__).parent / "scenarios" / "phase1_retrieval_corpus.json"
+    corpus_file = Path(corpus_path)
+    cases: list[dict[str, Any]] = json.loads(corpus_file.read_text(encoding="utf-8"))
+    if not cases:
+        return 0.0
+
+    hits = 0
+    for idx, case in enumerate(cases, start=1):
+        db = Database(":memory:")
+        engine = LineageEngine(db)
+        pack_builder = ContextPackBuilder(db)
+
+        for event_input in case.get("events", []):
+            event = Event(
+                id=new_id("event", f"bench{idx}"),
+                type=event_input["type"],
+                payload=event_input.get("payload", {}),
+                domains=event_input.get("domains", [case.get("domain", "general")]),
+                source="benchmark",
+                ts=event_input.get("ts", now_iso()),
+            )
+            db.insert_event(event)
+            engine.derive_facts_for_event(db.get_event(event.id))
+
+        pack = pack_builder.build(
+            domain=case.get("domain", "general"),
+            query=case.get("query", ""),
+            limit=5,
+        )
+        keys = [item.get("key", "") for item in pack.items[:5]]
+        if case.get("expected_key") in keys:
+            hits += 1
+        db.close()
+
+    return hits / len(cases)
 
 
 def print_scoreboard(cards: list[ScoreCard]):

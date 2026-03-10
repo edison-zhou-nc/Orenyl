@@ -22,3 +22,10 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 - Eval scenarios: 12/12 steps passed
 - Deletion compliance: 2/2
 - Resurface incidents: 0
+
+## Phase 1 Retrieval Quality (2026-03-10)
+
+- Corpus file: `scenarios/phase1_retrieval_corpus.json`
+- Harness: `run_phase1_precision_eval()` in `run_eval.py`
+- Top-5 precision: `1.00`
+- Gate: `python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q`
