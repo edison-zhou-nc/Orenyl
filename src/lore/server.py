@@ -395,6 +395,12 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     )
 
     db.insert_event(event)
+    event_embedding = embedding_provider.embed_text(content_basis)
+    db.upsert_event_embedding(
+        event.id,
+        event_embedding,
+        embedding_provider.provider_id,
+    )
     # Avoid deriving plaintext-bearing facts from sensitive encrypted events.
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
 
