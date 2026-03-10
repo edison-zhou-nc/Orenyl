@@ -21,3 +21,14 @@ def test_ranking_fallback_without_vector_order():
         importance={"a": 0.4, "b": 0.7},
     )
     assert {row["id"] for row in ranked} == {"a", "b"}
+
+
+def test_phase1_weights_make_vector_signal_dominant():
+    ranked = rank_items(
+        item_ids=["a", "b"],
+        keyword_order=["a", "b"],
+        vector_order=["b", "a"],
+        recency_order=None,
+        importance={"a": 0.5, "b": 0.5},
+    )
+    assert ranked[0]["id"] == "b"

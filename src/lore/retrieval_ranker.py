@@ -26,8 +26,8 @@ def rank_items(
     result = []
     for item_id in item_ids:
         score = 0.0
-        score += keyword_scores.get(item_id, 0.0) * 0.45
-        score += vector_scores.get(item_id, 0.0) * 0.25
+        score += keyword_scores.get(item_id, 0.0) * 0.30
+        score += vector_scores.get(item_id, 0.0) * 0.40
         score += recency_scores.get(item_id, 0.0) * 0.15
         score += float(importance.get(item_id, 0.5)) * 0.15
         result.append({"id": item_id, "score": score})
