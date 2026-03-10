@@ -9,13 +9,15 @@ import sqlite3
 from typing import Any
 
 from .db import Database
+from .extraction_runtime import NullExtractionRuntime
 from .models import DeleteProof, Edge, Fact, Tombstone, now_iso
 from .rules import ALL_RULES, RULE_REGISTRY, get_rules_for_event_type
 
 
 class LineageEngine:
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, extraction_runtime: Any | None = None):
         self.db = db
+        self.extraction_runtime = extraction_runtime or NullExtractionRuntime()
 
     def _resolve_rule_specs(self, event: dict | None) -> list[dict]:
         if not event:
@@ -74,7 +76,15 @@ class LineageEngine:
             all_events.extend(self.db.get_active_events(et))
         return all_events
 
-    def _insert_fact_with_retry(self, rule, value: Any, max_retries: int = 3) -> Fact:
+    def _insert_fact_with_retry(
+        self,
+        rule,
+        value: Any,
+        max_retries: int = 3,
+        confidence: float = 1.0,
+        model_id: str = "deterministic",
+        rule_id: str | None = None,
+    ) -> Fact:
         last_error: sqlite3.IntegrityError | None = None
         for _ in range(max_retries):
             try:
@@ -84,7 +94,9 @@ class LineageEngine:
                     key=rule.output_key,
                     value=value,
                     version=next_version,
-                    rule_id=rule.rule_id,
+                    rule_id=rule_id or rule.rule_id,
+                    confidence=confidence,
+                    model_id=model_id,
                 )
                 self.db.insert_fact(fact)
                 # Invalidate previous versions only after the replacement fact is persisted.
@@ -132,6 +144,28 @@ class LineageEngine:
                     ))
 
                 created_fact_ids.append(fact_id)
+
+            # Add extracted facts from the configured extraction runtime.
+            for extracted in self.extraction_runtime.extract_facts(event):
+                extraction_rule = type(
+                    "ExtractionFactRule",
+                    (),
+                    {"output_key": extracted.key, "rule_id": extracted.rule_id},
+                )()
+                fact = self._insert_fact_with_retry(
+                    extraction_rule,
+                    extracted.value,
+                    confidence=float(extracted.confidence),
+                    model_id=extracted.model_id,
+                    rule_id=extracted.rule_id,
+                )
+                self.db.insert_edge(Edge(
+                    parent_id=event["id"],
+                    parent_type="event",
+                    child_id=fact.id,
+                    child_type="fact",
+                ))
+                created_fact_ids.append(fact.id)
 
         return created_fact_ids
 
