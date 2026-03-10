@@ -25,6 +25,7 @@ from .auth import (
     extract_auth_token,
 )
 from .db import Database
+from .config import semantic_dedup_threshold_for_domains
 from .content_hash import check_duplicate, compute_content_hash
 from .encryption import encrypt_content, generate_key
 from .embedding_provider import build_embedding_provider_from_env
@@ -354,10 +355,11 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     if enable_semantic_dedup:
         is_dup, existing_event_id = check_semantic_duplicate(
             db,
+            embedding_provider,
             content_basis,
             domains,
             window_hours=24,
-            threshold=0.92,
+            threshold=semantic_dedup_threshold_for_domains(domains),
         )
         if is_dup:
             return [TextContent(type="text", text=json.dumps({

@@ -1,43 +1,11 @@
-"""Optional semantic deduplication helpers."""
+"""Embedding-based semantic deduplication helpers."""
 
 from __future__ import annotations
 
 import json
-import re
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
-
-
-_STOPWORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
-    "i", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to",
-    "today", "was", "were", "with", "you",
-}
-
-
-def _normalize_text(value: str) -> str:
-    return re.sub(r"\s+", " ", (value or "").strip().lower())
-
-
-def _meaningful_tokens(value: str) -> set[str]:
-    tokens = re.findall(r"[a-z0-9_]+", _normalize_text(value))
-    filtered = {tok for tok in tokens if tok not in _STOPWORDS and len(tok) > 1}
-    return filtered or set(tokens)
-
-
-def semantic_similarity(a: str, b: str) -> float:
-    """Jaccard similarity over stopword-filtered tokens."""
-    ta = _meaningful_tokens(a)
-    tb = _meaningful_tokens(b)
-    if not ta or not tb:
-        return 0.0
-    intersection = len(ta & tb)
-    denom = max(len(ta | tb), 1)
-    return intersection / denom
-
-
-def is_semantic_duplicate(a: str, b: str, threshold: float = 0.92) -> bool:
-    return semantic_similarity(a, b) >= threshold
 
 
 def _event_text(event_row: dict[str, Any]) -> str:
@@ -56,8 +24,28 @@ def _event_text(event_row: dict[str, Any]) -> str:
     return str(payload or "")
 
 
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    if not a or not b or len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    mag_a = math.sqrt(sum(x * x for x in a))
+    mag_b = math.sqrt(sum(y * y for y in b))
+    if mag_a <= 0.0 or mag_b <= 0.0:
+        return 0.0
+    return dot / (mag_a * mag_b)
+
+
+def is_semantic_duplicate_by_embedding(
+    candidate: list[float],
+    existing: list[float],
+    threshold: float = 0.92,
+) -> bool:
+    return cosine_similarity(candidate, existing) >= threshold
+
+
 def check_semantic_duplicate(
     db: Any,
+    provider: Any,
     content: str,
     domains: list[str],
     window_hours: int = 24,
@@ -66,6 +54,7 @@ def check_semantic_duplicate(
     if not content or not domains:
         return False, None
 
+    candidate_embedding = provider.embed_text(content)
     threshold_ts = (
         datetime.now(timezone.utc) - timedelta(hours=window_hours)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -83,7 +72,12 @@ def check_semantic_duplicate(
 
     for row in rows:
         event = dict(row)
-        candidate = _event_text(event)
-        if is_semantic_duplicate(content, candidate, threshold=threshold):
+        existing_text = _event_text(event)
+        existing_embedding = provider.embed_text(existing_text)
+        if is_semantic_duplicate_by_embedding(
+            candidate_embedding,
+            existing_embedding,
+            threshold=threshold,
+        ):
             return True, event.get("id")
     return False, None
