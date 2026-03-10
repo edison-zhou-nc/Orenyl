@@ -19,3 +19,15 @@ def test_domain_threshold_can_be_lower_than_default(monkeypatch):
     monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_HEALTH", "0.8")
     threshold = semantic_dedup_threshold_for_domains(["health"])
     assert threshold == 0.8
+
+
+def test_multi_domain_uses_strictest_threshold_independent_of_order(monkeypatch):
+    monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.9")
+    monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_HEALTH", "0.8")
+    monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_CAREER", "0.95")
+
+    first = semantic_dedup_threshold_for_domains(["health", "career"])
+    second = semantic_dedup_threshold_for_domains(["career", "health"])
+
+    assert first == 0.95
+    assert second == 0.95

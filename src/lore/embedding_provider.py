@@ -93,13 +93,11 @@ class OpenAIEmbeddingProvider:
                 if attempt >= self.max_retries:
                     break
                 time.sleep(self.backoff_seconds * (attempt + 1))
-                continue
             except httpx.HTTPError as exc:
                 last_error = exc
                 if attempt >= self.max_retries:
                     break
                 time.sleep(self.backoff_seconds * (attempt + 1))
-                continue
         raise RuntimeError("embedding_provider_unavailable") from last_error
 
 

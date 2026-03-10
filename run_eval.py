@@ -246,14 +246,21 @@ def _value_contains(value, search: str) -> bool:
     return str(search) in str(value)
 
 
-def run_phase1_precision_eval(corpus_path: str | Path | None = None) -> float:
-    """Compute top-5 key precision over the Phase 1 retrieval corpus."""
+def run_phase1_precision_eval(
+    corpus_path: str | Path | None = None,
+    top_k: int = 1,
+) -> float:
+    """Compute top-k key precision over the Phase 1 retrieval corpus."""
     if corpus_path is None:
         corpus_path = Path(__file__).parent / "scenarios" / "phase1_retrieval_corpus.json"
     corpus_file = Path(corpus_path)
     cases: list[dict[str, Any]] = json.loads(corpus_file.read_text(encoding="utf-8"))
     if not cases:
         return 0.0
+
+    # Ensure benchmark runs are isolated from process-wide provider caches.
+    from lore import context_pack as context_pack_module
+    context_pack_module._embedding_provider = None
 
     hits = 0
     for idx, case in enumerate(cases, start=1):
@@ -278,7 +285,8 @@ def run_phase1_precision_eval(corpus_path: str | Path | None = None) -> float:
             query=case.get("query", ""),
             limit=5,
         )
-        keys = [item.get("key", "") for item in pack.items[:5]]
+        safe_top_k = max(1, int(top_k))
+        keys = [item.get("key", "") for item in pack.items[:safe_top_k]]
         if case.get("expected_key") in keys:
             hits += 1
         db.close()
