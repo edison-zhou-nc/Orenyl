@@ -1,0 +1,26 @@
+[
+  {
+    "domain": "health",
+    "query": "what meds am I on",
+    "expected_key": "active_medications",
+    "events": [
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["health"]}
+    ]
+  },
+  {
+    "domain": "career",
+    "query": "what is my role",
+    "expected_key": "current_role",
+    "events": [
+      {"type": "role_assigned", "payload": {"user": "u1", "role": "admin"}, "domains": ["career"]}
+    ]
+  },
+  {
+    "domain": "preferences",
+    "query": "what diet do I prefer",
+    "expected_key": "diet_preference",
+    "events": [
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["preferences"]}
+    ]
+  }
+]
