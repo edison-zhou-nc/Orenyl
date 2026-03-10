@@ -7,8 +7,8 @@ import re
 
 _DOMAIN_KEYWORDS = {
     "health": {"med", "meds", "medication", "medications", "dose", "prescription"},
-    "career": {"role", "promotion", "job", "manager", "work"},
-    "preferences": {"prefer", "preference", "diet", "like", "dislike"},
+    "career": {"role", "promotion", "job", "manager"},
+    "preferences": {"prefer", "preference", "diet", "dislike"},
 }
 
 _REWRITE_MAP = {
@@ -25,8 +25,14 @@ def rewrite_query(query: str) -> str:
 
 
 def infer_domain(query: str, fallback: str = "general") -> str:
-    lowered = (query or "").lower()
+    tokens = set(re.findall(r"[a-z0-9_]+", (query or "").lower()))
+    if not tokens:
+        return fallback
+    best_domain = fallback
+    best_score = 0
     for domain, keywords in _DOMAIN_KEYWORDS.items():
-        if any(keyword in lowered for keyword in keywords):
-            return domain
-    return fallback
+        score = len(tokens & keywords)
+        if score > best_score:
+            best_score = score
+            best_domain = domain
+    return best_domain

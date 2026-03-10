@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import os
+import time
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -60,23 +61,38 @@ class OpenAIEmbeddingProvider:
     dim: int = 1536
     provider_id: str = "openai"
     timeout_seconds: float = 30.0
+    max_retries: int = 2
+    backoff_seconds: float = 0.5
+    _client: httpx.Client | None = None
 
     def embed_text(self, text: str) -> list[float]:
         if not self.api_key:
             raise RuntimeError("missing_openai_api_key")
-        with httpx.Client(timeout=self.timeout_seconds) as client:
-            response = client.post(
-                "https://api.openai.com/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={"model": self.model, "input": text or ""},
-            )
-            response.raise_for_status()
-            payload = response.json()
-            vector = payload["data"][0]["embedding"]
-            return [float(v) for v in vector]
+        if self._client is None:
+            self._client = httpx.Client(timeout=self.timeout_seconds)
+
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self._client.post(
+                    "https://api.openai.com/v1/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"model": self.model, "input": text or ""},
+                )
+                response.raise_for_status()
+                payload = response.json()
+                vector = payload["data"][0]["embedding"]
+                return [float(v) for v in vector]
+            except (httpx.HTTPStatusError, httpx.HTTPError) as exc:
+                last_error = exc
+                if attempt >= self.max_retries:
+                    break
+                time.sleep(self.backoff_seconds * (attempt + 1))
+                continue
+        raise RuntimeError("embedding_provider_unavailable") from last_error
 
 
 def build_embedding_provider_from_env() -> EmbeddingProvider:
