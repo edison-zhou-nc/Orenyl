@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from .embeddings import cosine_similarity
 
 def _event_text(event_row: dict[str, Any]) -> str:
     payload = event_row.get("payload")
@@ -22,17 +22,6 @@ def _event_text(event_row: dict[str, Any]) -> str:
             return str(payload.get("value"))
         return json.dumps(payload, sort_keys=True)
     return str(payload or "")
-
-
-def cosine_similarity(a: list[float], b: list[float]) -> float:
-    if not a or not b or len(a) != len(b):
-        return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
-    mag_a = math.sqrt(sum(x * x for x in a))
-    mag_b = math.sqrt(sum(y * y for y in b))
-    if mag_a <= 0.0 or mag_b <= 0.0:
-        return 0.0
-    return dot / (mag_a * mag_b)
 
 
 def is_semantic_duplicate_by_embedding(
@@ -54,7 +43,10 @@ def check_semantic_duplicate(
     if not content or not domains:
         return False, None
 
-    candidate_embedding = provider.embed_text(content)
+    try:
+        candidate_embedding = provider.embed_text(content)
+    except Exception:
+        return False, None
     threshold_ts = (
         datetime.now(timezone.utc) - timedelta(hours=window_hours)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -72,8 +64,20 @@ def check_semantic_duplicate(
 
     for row in rows:
         event = dict(row)
-        existing_text = _event_text(event)
-        existing_embedding = provider.embed_text(existing_text)
+        existing = db.get_event_embedding(event.get("id", ""))
+        if existing is not None:
+            existing_embedding = existing["vector"]
+        else:
+            existing_text = _event_text(event)
+            try:
+                existing_embedding = provider.embed_text(existing_text)
+                db.upsert_event_embedding(
+                    event["id"],
+                    existing_embedding,
+                    provider.provider_id,
+                )
+            except Exception:
+                continue
         if is_semantic_duplicate_by_embedding(
             candidate_embedding,
             existing_embedding,

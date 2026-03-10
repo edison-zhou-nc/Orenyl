@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import json
-import math
 
-from .db import Database
 from .config import min_fact_confidence_threshold
+from .db import Database
+from .embeddings import cosine_similarity
 from .embedding_provider import build_embedding_provider_from_env
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
 
-_EMBEDDING_PROVIDER = build_embedding_provider_from_env()
+_embedding_provider = None
+
+
+def _get_embedding_provider():
+    global _embedding_provider
+    if _embedding_provider is None:
+        _embedding_provider = build_embedding_provider_from_env()
+    return _embedding_provider
 
 
 def should_retrieve(query: str) -> bool:
@@ -80,15 +87,30 @@ class ContextPackBuilder:
         keyword_scored.sort(key=lambda row: (-row[0], row[1]))
         keyword_order = [item_id for _, item_id in keyword_scored]
 
-        query_vector = _EMBEDDING_PROVIDER.embed_text(query or domain or "general")
-        vector_scored: list[tuple[float, str]] = []
-        for fact in facts:
-            fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
-            fact_vector = _EMBEDDING_PROVIDER.embed_text(fact_text)
-            similarity = self._cosine_similarity(query_vector, fact_vector)
-            vector_scored.append((similarity, fact["id"]))
-        vector_scored.sort(key=lambda row: (-row[0], row[1]))
-        vector_order = [item_id for _, item_id in vector_scored]
+        vector_order = None
+        try:
+            provider = _get_embedding_provider()
+            query_vector = provider.embed_text(query or domain or "general")
+            stored_fact_embeddings = self.db.get_fact_embeddings([fact["id"] for fact in facts])
+            vector_scored: list[tuple[float, str]] = []
+            for fact in facts:
+                existing = stored_fact_embeddings.get(fact["id"])
+                if existing is not None:
+                    fact_vector = existing["vector"]
+                else:
+                    fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
+                    fact_vector = provider.embed_text(fact_text)
+                    self.db.upsert_fact_embedding(
+                        fact["id"],
+                        fact_vector,
+                        provider.provider_id,
+                    )
+                similarity = cosine_similarity(query_vector, fact_vector)
+                vector_scored.append((similarity, fact["id"]))
+            vector_scored.sort(key=lambda row: (-row[0], row[1]))
+            vector_order = [item_id for _, item_id in vector_scored]
+        except Exception:
+            vector_order = None
         importance_map = {fact["id"]: float(fact.get("importance", 0.5)) for fact in facts}
         ranking = rank_items(
             item_ids=[fact["id"] for fact in facts],
@@ -195,16 +217,3 @@ class ContextPackBuilder:
         )
 
         return pack
-
-    @staticmethod
-    def _cosine_similarity(a: list[float], b: list[float]) -> float:
-        if not a or not b:
-            return 0.0
-        if len(a) != len(b):
-            return 0.0
-        dot = sum(x * y for x, y in zip(a, b))
-        mag_a = math.sqrt(sum(x * x for x in a))
-        mag_b = math.sqrt(sum(y * y for y in b))
-        if mag_a <= 0.0 or mag_b <= 0.0:
-            return 0.0
-        return dot / (mag_a * mag_b)

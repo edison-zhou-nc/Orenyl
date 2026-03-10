@@ -43,7 +43,7 @@ MAX_LIST_EVENTS_LIMIT = int(os.environ.get("LORE_MAX_LIST_EVENTS_LIMIT", "200"))
 db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
-embedding_provider = build_embedding_provider_from_env()
+embedding_provider = None
 
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
@@ -68,6 +68,13 @@ def _get_token_verifier() -> OIDCTokenVerifier:
         return _token_verifier
 
 
+def _get_embedding_provider():
+    global embedding_provider
+    if embedding_provider is None:
+        embedding_provider = build_embedding_provider_from_env()
+    return embedding_provider
+
+
 def _resolve_request_id(args: dict[str, Any]) -> str:
     request_id = str(args.get("_request_id", "")).strip()
     if request_id:
@@ -76,11 +83,12 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error
+    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error, embedding_provider
     with _token_verifier_lock:
         _DEFAULT_SALT_WARNING_EMITTED = False
         _token_verifier = None
         _token_verifier_error = None
+        embedding_provider = None
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -354,9 +362,10 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         }, indent=2))]
     enable_semantic_dedup = os.environ.get("LORE_ENABLE_SEMANTIC_DEDUP", "0") == "1"
     if enable_semantic_dedup:
+        provider = _get_embedding_provider()
         is_dup, existing_event_id = check_semantic_duplicate(
             db,
-            embedding_provider,
+            provider,
             content_basis,
             domains,
             window_hours=24,
@@ -398,12 +407,16 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     )
 
     db.insert_event(event)
-    event_embedding = embedding_provider.embed_text(content_basis)
-    db.upsert_event_embedding(
-        event.id,
-        event_embedding,
-        embedding_provider.provider_id,
-    )
+    try:
+        provider = _get_embedding_provider()
+        event_embedding = provider.embed_text(content_basis)
+        db.upsert_event_embedding(
+            event.id,
+            event_embedding,
+            provider.provider_id,
+        )
+    except Exception as exc:
+        logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
     # Avoid deriving plaintext-bearing facts from sensitive encrypted events.
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
 

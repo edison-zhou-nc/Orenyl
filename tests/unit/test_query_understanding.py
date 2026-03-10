@@ -8,3 +8,7 @@ def test_infer_domain_maps_medication_query_to_health():
 def test_rewrite_query_expands_common_abbreviation():
     rewritten = rewrite_query("what meds am I on")
     assert "medications" in rewritten
+
+
+def test_infer_domain_avoids_substring_false_positive():
+    assert infer_domain("I like workouts", fallback="general") == "general"
