@@ -624,7 +624,6 @@ class Database:
         agent_id: str = "",
         session_id: str = "",
     ) -> list[dict]:
-        scoped = bool(agent_id or session_id)
         if domain and domain != "general":
             rows = self.conn.execute(
                 """SELECT DISTINCT f.*
