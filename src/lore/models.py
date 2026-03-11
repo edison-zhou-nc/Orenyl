@@ -55,6 +55,7 @@ class Fact:
     importance: float = 0.5
     version: int = 1
     rule_id: str = ""
+    rule_version: str = ""
     confidence: float = 1.0
     model_id: str = "deterministic"
     valid_from: str = ""
@@ -68,6 +69,11 @@ class Fact:
             self.valid_from = now_iso()
         if not self.created_at:
             self.created_at = now_iso()
+        if not self.rule_version:
+            if "@" in self.rule_id:
+                self.rule_version = self.rule_id.split("@", 1)[1]
+            else:
+                self.rule_version = "v1"
 
 
 @dataclass

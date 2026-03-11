@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
-from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -102,6 +101,12 @@ class Database:
                 _safe_add_column(
                     "ALTER TABLE events ADD COLUMN metadata TEXT NOT NULL DEFAULT '{}'"
                 )
+            if "retention_tier" not in event_cols:
+                _safe_add_column(
+                    "ALTER TABLE events ADD COLUMN retention_tier TEXT NOT NULL DEFAULT 'hot'"
+                )
+            if "archived_at" not in event_cols:
+                _safe_add_column("ALTER TABLE events ADD COLUMN archived_at TEXT")
             if "agent_id" not in event_cols:
                 _safe_add_column("ALTER TABLE events ADD COLUMN agent_id TEXT")
             if "session_id" not in event_cols:
@@ -131,11 +136,22 @@ class Database:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN model_id TEXT NOT NULL DEFAULT 'deterministic'"
                 )
+            if "rule_version" not in fact_cols:
+                _safe_add_column(
+                    "ALTER TABLE facts ADD COLUMN rule_version TEXT NOT NULL DEFAULT 'v1'"
+                )
 
         self.conn.commit()
 
     def close(self):
         self.conn.close()
+
+    def ping(self) -> bool:
+        try:
+            self.conn.execute("SELECT 1").fetchone()
+            return True
+        except Exception:
+            return False
 
     # ── Events ──────────────────────────────────────────────
 
@@ -143,9 +159,9 @@ class Database:
         self.conn.execute(
             """INSERT INTO events (
                    id, type, payload, content_hash, sensitivity, consent_source, expires_at, metadata,
-                   agent_id, session_id, source, ts, valid_from, valid_to, created_at
+                   retention_tier, archived_at, agent_id, session_id, source, ts, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event.id,
                 event.type,
@@ -155,6 +171,8 @@ class Database:
                 event.consent_source,
                 event.expires_at,
                 json.dumps(event.metadata),
+                event.metadata.get("retention_tier", "hot"),
+                event.metadata.get("archived_at"),
                 event.metadata.get("agent_id"),
                 event.metadata.get("session_id"),
                 event.source,
@@ -223,6 +241,52 @@ class Database:
             ]
             result.append(d)
         return result
+
+    def get_recent_events_in_domains(self, domains: list[str], since_ts: str) -> list[dict]:
+        if not domains:
+            return []
+        domains_json = json.dumps(domains)
+        rows = self.conn.execute(
+            """SELECT DISTINCT e.*
+               FROM events e
+               JOIN event_domains ed ON ed.event_id = e.id
+               WHERE e.deleted_at IS NULL
+                 AND e.ts >= ?
+                 AND ed.domain IN (SELECT value FROM json_each(?))
+               ORDER BY e.ts DESC""",
+            (since_ts, domains_json),
+        ).fetchall()
+        result: list[dict] = []
+        for row in rows:
+            data = dict(row)
+            data["payload"] = json.loads(data["payload"])
+            data["metadata"] = json.loads(data["metadata"])
+            data["domains"] = [
+                r[0]
+                for r in self.conn.execute(
+                    "SELECT domain FROM event_domains WHERE event_id = ? ORDER BY domain",
+                    (data["id"],),
+                ).fetchall()
+            ]
+            result.append(data)
+        return result
+
+    def get_facts_by_ids(self, fact_ids: list[str]) -> list[dict]:
+        if not fact_ids:
+            return []
+        fact_ids_json = json.dumps(fact_ids)
+        rows = self.conn.execute(
+            "SELECT * FROM facts WHERE id IN (SELECT value FROM json_each(?))",
+            (fact_ids_json,),
+        ).fetchall()
+        out: list[dict] = []
+        for row in rows:
+            data = dict(row)
+            data["value"] = json.loads(data["value"])
+            data["transform_config"] = json.loads(data["transform_config"])
+            data["stale"] = bool(data["stale"])
+            out.append(data)
+        return out
 
     def get_all_events(self, event_type: str | None = None) -> list[dict]:
         if event_type:
@@ -489,15 +553,23 @@ class Database:
         self._maybe_commit()
         return cur.rowcount > 0
 
+    def update_event_retention(self, event_id: str, tier: str, archived_at: str | None) -> bool:
+        cur = self.conn.execute(
+            "UPDATE events SET retention_tier = ?, archived_at = ? WHERE id = ?",
+            (tier, archived_at, event_id),
+        )
+        self._maybe_commit()
+        return cur.rowcount > 0
+
     # ── Facts ───────────────────────────────────────────────
 
     def insert_fact(self, fact: Fact) -> str:
         self.conn.execute(
             """INSERT INTO facts (
                    id, key, value, transform_config, stale, importance,
-                   version, rule_id, confidence, model_id, valid_from, valid_to, created_at
+                   version, rule_id, rule_version, confidence, model_id, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 fact.id,
                 fact.key,
@@ -507,6 +579,7 @@ class Database:
                 fact.importance,
                 fact.version,
                 fact.rule_id,
+                fact.rule_version,
                 fact.confidence,
                 fact.model_id,
                 fact.valid_from,
@@ -551,9 +624,6 @@ class Database:
         agent_id: str = "",
         session_id: str = "",
     ) -> list[dict]:
-        scoped = bool(agent_id or session_id)
-        if (not domain or domain == "general") and not scoped:
-            return self.get_current_facts()
         if domain and domain != "general":
             rows = self.conn.execute(
                 """SELECT DISTINCT f.*
@@ -563,9 +633,11 @@ class Database:
                          SELECT 1
                          FROM edges e
                          JOIN event_domains ed ON ed.event_id = e.parent_id
+                         JOIN events ev ON ev.id = e.parent_id
                          WHERE e.child_id = f.id
                            AND e.parent_type = 'event'
                            AND ed.domain = ?
+                           AND ev.archived_at IS NULL
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -589,8 +661,10 @@ class Database:
                      AND EXISTS (
                          SELECT 1
                          FROM edges e
+                         JOIN events ev ON ev.id = e.parent_id
                          WHERE e.child_id = f.id
                            AND e.parent_type = 'event'
+                           AND ev.archived_at IS NULL
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -657,6 +731,53 @@ class Database:
             result.append(d)
         return result
 
+    def list_current_facts_by_rule_family(self, rule_family: str, version: str) -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT * FROM facts
+               WHERE invalidated_at IS NULL
+                 AND rule_id = ?
+                 AND rule_version = ?""",
+            (rule_family, version),
+        ).fetchall()
+        result: list[dict] = []
+        for row in rows:
+            data = dict(row)
+            data["value"] = json.loads(data["value"])
+            data["transform_config"] = json.loads(data["transform_config"])
+            data["stale"] = bool(data["stale"])
+            result.append(data)
+        return result
+
+    def update_fact_rule_version(self, fact_id: str, to_version: str) -> bool:
+        cur = self.conn.execute(
+            "UPDATE facts SET rule_version = ? WHERE id = ?",
+            (to_version, fact_id),
+        )
+        self._maybe_commit()
+        return cur.rowcount > 0
+
+    def register_rule_version(self, rule_family: str, version: str, active: bool) -> None:
+        self.conn.execute(
+            """INSERT OR REPLACE INTO rule_registry (rule_family, version, active, created_at)
+               VALUES (?, ?, ?, (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')))""",
+            (rule_family, version, 1 if active else 0),
+        )
+        self._maybe_commit()
+
+    def set_rule_version_active(self, rule_family: str, version: str, active: bool) -> None:
+        self.conn.execute(
+            "UPDATE rule_registry SET active = ? WHERE rule_family = ? AND version = ?",
+            (1 if active else 0, rule_family, version),
+        )
+        self._maybe_commit()
+
+    def get_active_rule_versions(self, rule_family: str) -> list[str]:
+        rows = self.conn.execute(
+            "SELECT version FROM rule_registry WHERE rule_family = ? AND active = 1",
+            (rule_family,),
+        ).fetchall()
+        return [str(row["version"]) for row in rows]
+
     # ── Edges ───────────────────────────────────────────────
 
     def insert_edge(self, edge: Edge):
@@ -722,25 +843,21 @@ class Database:
         return events
 
     def get_downstream_facts(self, item_id: str) -> list[str]:
-        """Recursively find all downstream fact IDs from a given item."""
-        visited: set[str] = set()
-        queue: deque[str] = deque([item_id])
-        result: list[str] = []
-
-        while queue:
-            current = queue.popleft()
-            if current in visited:
-                continue
-            visited.add(current)
-
-            children = self.get_children(current)
-            for child in children:
-                child_id = child["child_id"]
-                if child_id not in visited:
-                    result.append(child_id)
-                    queue.append(child_id)
-
-        return result
+        """Recursively find downstream facts using a single SQL CTE."""
+        rows = self.conn.execute(
+            """
+            WITH RECURSIVE graph(child_id) AS (
+                SELECT child_id FROM edges WHERE parent_id = ?
+                UNION
+                SELECT e.child_id
+                FROM edges e
+                JOIN graph g ON e.parent_id = g.child_id
+            )
+            SELECT DISTINCT child_id FROM graph ORDER BY child_id
+            """,
+            (item_id,),
+        ).fetchall()
+        return [str(row["child_id"]) for row in rows]
 
     def delete_edges_for_item(self, item_id: str) -> int:
         cur = self.conn.execute(

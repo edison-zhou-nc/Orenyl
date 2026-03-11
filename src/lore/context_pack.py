@@ -35,6 +35,30 @@ def should_retrieve(query: str) -> bool:
     return q not in {"hey"}
 
 
+def backfill_missing_fact_embeddings(db: Database, fact_ids: list[str]) -> int:
+    if not fact_ids:
+        return 0
+    provider = _get_embedding_provider()
+    facts = db.get_facts_by_ids(fact_ids)
+    existing = db.get_fact_embeddings([fact["id"] for fact in facts])
+    created = 0
+    for fact in facts:
+        if fact["id"] in existing:
+            continue
+        fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
+        try:
+            fact_vector = provider.embed_text(fact_text)
+            db.upsert_fact_embedding(
+                fact["id"],
+                fact_vector,
+                provider.provider_id,
+            )
+            created += 1
+        except Exception as exc:
+            logger.warning("fact_embedding_backfill_failed fact_id=%s error=%s", fact["id"], exc)
+    return created
+
+
 class ContextPackBuilder:
     def __init__(self, db: Database):
         self.db = db
@@ -98,15 +122,27 @@ class ContextPackBuilder:
             for fact in facts:
                 existing = stored_fact_embeddings.get(fact["id"])
                 if existing is not None:
+                    if str(existing.get("model_id", "")) != str(provider.provider_id):
+                        logger.warning(
+                            "context_pack_embedding_model_mismatch fact_id=%s stored_model=%s provider=%s",
+                            fact["id"],
+                            existing.get("model_id"),
+                            provider.provider_id,
+                        )
+                        existing = None
+                    elif len(existing["vector"]) != len(query_vector):
+                        logger.warning(
+                            "context_pack_embedding_dim_mismatch fact_id=%s stored_dim=%s query_dim=%s",
+                            fact["id"],
+                            len(existing["vector"]),
+                            len(query_vector),
+                        )
+                        existing = None
+                if existing is not None:
                     fact_vector = existing["vector"]
                 else:
                     fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
                     fact_vector = provider.embed_text(fact_text)
-                    self.db.upsert_fact_embedding(
-                        fact["id"],
-                        fact_vector,
-                        provider.provider_id,
-                    )
                 similarity = cosine_similarity(query_vector, fact_vector)
                 vector_scored.append((similarity, fact["id"]))
             vector_scored.sort(key=lambda row: (-row[0], row[1]))
