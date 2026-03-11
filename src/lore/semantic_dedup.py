@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .embeddings import cosine_similarity
+
+logger = logging.getLogger(__name__)
 
 def _event_text(event_row: dict[str, Any]) -> str:
     payload = event_row.get("payload")
@@ -50,24 +53,32 @@ def check_semantic_duplicate(
     threshold_ts = (
         datetime.now(timezone.utc) - timedelta(hours=window_hours)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    domains_json = json.dumps(domains)
-    rows = db.conn.execute(
-        """SELECT DISTINCT e.*
-            FROM events e
-            JOIN event_domains ed ON ed.event_id = e.id
-            WHERE e.deleted_at IS NULL
-              AND e.ts >= ?
-              AND ed.domain IN (SELECT value FROM json_each(?))
-            ORDER BY e.ts DESC""",
-        (threshold_ts, domains_json),
-    ).fetchall()
+    rows = db.get_recent_events_in_domains(domains, threshold_ts)
 
-    for row in rows:
-        event = dict(row)
+    for event in rows:
         existing = db.get_event_embedding(event.get("id", ""))
+        existing_embedding: list[float] | None = None
         if existing is not None:
             existing_embedding = existing["vector"]
-        else:
+            existing_model = str(existing.get("model_id", ""))
+            if existing_model != str(provider.provider_id):
+                logger.warning(
+                    "semantic_dedup_embedding_model_mismatch event_id=%s stored_model=%s provider=%s",
+                    event.get("id"),
+                    existing_model,
+                    provider.provider_id,
+                )
+                existing_embedding = None
+            elif len(existing_embedding) != len(candidate_embedding):
+                logger.warning(
+                    "semantic_dedup_embedding_dim_mismatch event_id=%s stored_dim=%s candidate_dim=%s",
+                    event.get("id"),
+                    len(existing_embedding),
+                    len(candidate_embedding),
+                )
+                existing_embedding = None
+
+        if existing_embedding is None:
             existing_text = _event_text(event)
             try:
                 existing_embedding = provider.embed_text(existing_text)

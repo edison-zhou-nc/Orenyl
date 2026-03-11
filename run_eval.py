@@ -268,14 +268,15 @@ def run_phase1_precision_eval(
         engine = LineageEngine(db)
         pack_builder = ContextPackBuilder(db)
 
-        for event_input in case.get("events", []):
+        for event_pos, event_input in enumerate(case.get("events", []), start=1):
+            default_ts = f"2026-01-01T00:00:{event_pos:02d}Z"
             event = Event(
-                id=new_id("event", f"bench{idx}"),
+                id=f"event:bench{idx}:{event_pos}",
                 type=event_input["type"],
                 payload=event_input.get("payload", {}),
                 domains=event_input.get("domains", [case.get("domain", "general")]),
                 source="benchmark",
-                ts=event_input.get("ts", now_iso()),
+                ts=event_input.get("ts", default_ts),
             )
             db.insert_event(event)
             engine.derive_facts_for_event(db.get_event(event.id))

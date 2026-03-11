@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS events (
     consent_source TEXT NOT NULL DEFAULT 'implicit',
     expires_at TEXT,
     metadata TEXT NOT NULL DEFAULT '{}',
+    retention_tier TEXT NOT NULL DEFAULT 'hot',
+    archived_at TEXT,
     agent_id TEXT,
     session_id TEXT,
     source TEXT DEFAULT 'user',       -- who/what created this
@@ -29,6 +31,7 @@ CREATE TABLE IF NOT EXISTS facts (
     importance REAL NOT NULL DEFAULT 0.5,
     version INTEGER NOT NULL DEFAULT 1,
     rule_id TEXT NOT NULL,            -- which derivation rule produced this
+    rule_version TEXT NOT NULL DEFAULT 'v1',
     confidence REAL NOT NULL DEFAULT 1.0,
     model_id TEXT NOT NULL DEFAULT 'deterministic',
     valid_from TEXT NOT NULL,
@@ -88,6 +91,14 @@ CREATE TABLE IF NOT EXISTS checkpoints (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS rule_registry (
+    rule_family TEXT NOT NULL,
+    version TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    PRIMARY KEY (rule_family, version)
+);
+
 CREATE TABLE IF NOT EXISTS event_embeddings (
     event_id TEXT PRIMARY KEY,
     model_id TEXT NOT NULL,
@@ -120,3 +131,4 @@ CREATE INDEX IF NOT EXISTS idx_event_domains_domain ON event_domains(domain);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(key, version);
 CREATE INDEX IF NOT EXISTS idx_event_embeddings_model_id ON event_embeddings(model_id);
 CREATE INDEX IF NOT EXISTS idx_fact_embeddings_model_id ON fact_embeddings(model_id);
+CREATE INDEX IF NOT EXISTS idx_rule_registry_active ON rule_registry(rule_family, active);

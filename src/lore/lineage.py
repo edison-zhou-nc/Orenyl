@@ -78,7 +78,8 @@ class LineageEngine:
 
     def _insert_fact_with_retry(
         self,
-        rule,
+        output_key: str,
+        default_rule_id: str,
         value: Any,
         max_retries: int = 3,
         confidence: float = 1.0,
@@ -88,19 +89,19 @@ class LineageEngine:
         last_error: sqlite3.IntegrityError | None = None
         for _ in range(max_retries):
             try:
-                next_version = self.db.get_latest_version(rule.output_key) + 1
+                next_version = self.db.get_latest_version(output_key) + 1
                 fact = Fact(
-                    id=f"fact:{rule.output_key}:v{next_version}",
-                    key=rule.output_key,
+                    id=f"fact:{output_key}:v{next_version}",
+                    key=output_key,
                     value=value,
                     version=next_version,
-                    rule_id=rule_id or rule.rule_id,
+                    rule_id=rule_id or default_rule_id,
                     confidence=confidence,
                     model_id=model_id,
                 )
                 self.db.insert_fact(fact)
                 # Invalidate previous versions only after the replacement fact is persisted.
-                all_versions = self.db.get_facts_by_key(rule.output_key)
+                all_versions = self.db.get_facts_by_key(output_key)
                 for old_fact in all_versions:
                     if old_fact.get("invalidated_at") is not None:
                         continue
@@ -117,7 +118,7 @@ class LineageEngine:
                 continue
 
         raise RuntimeError(
-            f"fact_version_conflict:{rule.output_key}:retries_exhausted"
+            f"fact_version_conflict:{output_key}:retries_exhausted"
         ) from last_error
 
     def derive_facts_for_event(self, event: dict) -> list[str]:
@@ -131,7 +132,11 @@ class LineageEngine:
                 # Run deterministic derivation
                 value = rule.derive(all_events)
 
-                fact = self._insert_fact_with_retry(rule, value)
+                fact = self._insert_fact_with_retry(
+                    output_key=rule.output_key,
+                    default_rule_id=rule.rule_id,
+                    value=value,
+                )
                 fact_id = fact.id
 
                 # Create lineage edges from all contributing events
@@ -147,14 +152,10 @@ class LineageEngine:
 
             # Add extracted facts from the configured extraction runtime.
             for extracted in self.extraction_runtime.extract_facts(event):
-                extraction_rule = type(
-                    "ExtractionFactRule",
-                    (),
-                    {"output_key": extracted.key, "rule_id": extracted.rule_id},
-                )()
                 fact = self._insert_fact_with_retry(
-                    extraction_rule,
-                    extracted.value,
+                    output_key=extracted.key,
+                    default_rule_id=extracted.rule_id,
+                    value=extracted.value,
                     confidence=float(extracted.confidence),
                     model_id=extracted.model_id,
                     rule_id=extracted.rule_id,
@@ -311,7 +312,11 @@ class LineageEngine:
 
                 # Re-derive
                 value = rule.derive(all_events)
-                fact = self._insert_fact_with_retry(rule, value)
+                fact = self._insert_fact_with_retry(
+                    output_key=rule.output_key,
+                    default_rule_id=rule.rule_id,
+                    value=value,
+                )
                 fact_id = fact.id
 
                 # Create lineage edges from remaining events
