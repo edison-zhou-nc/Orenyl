@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import os
 import time
@@ -10,6 +11,8 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingProvider(Protocol):
@@ -110,6 +113,10 @@ def build_embedding_provider_from_env() -> EmbeddingProvider:
     if provider_name == "openai":
         api_key = os.environ.get("LORE_OPENAI_API_KEY", "")
         model = os.environ.get("LORE_EMBEDDING_MODEL", "text-embedding-3-small")
+        if os.environ.get("LORE_EMBEDDING_DIM", "").strip():
+            logger.warning(
+                "LORE_EMBEDDING_DIM is ignored when LORE_EMBEDDING_PROVIDER=openai; provider dimensions are model-defined"
+            )
         return OpenAIEmbeddingProvider(api_key=api_key, model=model)
 
     dim = int(os.environ.get("LORE_EMBEDDING_DIM", "128"))

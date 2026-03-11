@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import base64
 import contextlib
+import hashlib
 import json
 import logging
 import os
 import threading
+import time
 import uuid
 from typing import Any
 
@@ -27,14 +29,15 @@ from .auth import (
 from .db import Database
 from .config import semantic_dedup_threshold_for_domains
 from .content_hash import check_duplicate, compute_content_hash
-from .encryption import encrypt_content, generate_key
+from .encryption import encrypt_content, resolve_runtime_keyring
 from .embedding_provider import build_embedding_provider_from_env
 from .noise_filter import contains_sensitive_identifier, should_store
 from .semantic_dedup import check_semantic_duplicate
 from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
 from .query_understanding import infer_domain, rewrite_query
-from .context_pack import ContextPackBuilder
+from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
+from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
 
 DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get("LORE_MAX_CONTEXT_PACK_LIMIT", "100"))
@@ -83,12 +86,13 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _DEFAULT_SALT_WARNING_EMITTED, _token_verifier, _token_verifier_error, embedding_provider
+    global _token_verifier, _token_verifier_error, embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
     with _token_verifier_lock:
-        _DEFAULT_SALT_WARNING_EMITTED = False
         _token_verifier = None
         _token_verifier_error = None
         embedding_provider = None
+        _DEFAULT_SALT_WARNING_EMITTED = False
+    reset_metrics_for_tests()
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -111,28 +115,54 @@ def _clamp_non_negative_int(value: Any, default: int) -> int:
     return max(0, parsed)
 
 
-def _runtime_encryption_material() -> tuple[bytes, bytes] | None:
-    global _DEFAULT_SALT_WARNING_EMITTED
-    passphrase = os.environ.get("LORE_ENCRYPTION_PASSPHRASE", "")
-    if not passphrase:
+def _encode_cursor(created_at: str, item_id: str) -> str:
+    raw = json.dumps({"created_at": created_at, "id": item_id}, separators=(",", ":"))
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii")
+
+
+def _decode_cursor(cursor: str) -> tuple[str, str]:
+    try:
+        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
+        payload = json.loads(raw)
+        return str(payload["created_at"]), str(payload["id"])
+    except Exception as exc:
+        raise ValueError("invalid_cursor") from exc
+
+
+def _build_export_items(events: list[dict], facts: list[dict]) -> list[dict]:
+    items: list[dict] = []
+    for ev in events:
+        items.append({
+            "id": ev["id"],
+            "kind": "event",
+            "created_at": ev.get("created_at", ""),
+            "ts": ev.get("ts", ""),
+            "domain_hint": ev.get("domains", []),
+            "data": ev,
+        })
+    for fact in facts:
+        items.append({
+            "id": fact["id"],
+            "kind": "fact",
+            "created_at": fact.get("created_at", ""),
+            "key": fact.get("key", ""),
+            "data": fact,
+        })
+    items.sort(key=lambda item: (item.get("created_at", ""), item["id"]))
+    return items
+
+
+def _runtime_encryption_material() -> tuple[bytes, bytes, str] | None:
+    has_legacy = bool(os.environ.get("LORE_ENCRYPTION_PASSPHRASE", "").strip())
+    has_versioned = any(
+        key.startswith("LORE_ENCRYPTION_PASSPHRASE_")
+        for key in os.environ
+    )
+    if not has_legacy and not has_versioned:
         return None
-    salt_b64 = os.environ.get("LORE_ENCRYPTION_SALT", "")
-    if salt_b64:
-        salt = base64.b64decode(salt_b64)
-    else:
-        allow_insecure_dev_salt = os.environ.get("LORE_ALLOW_INSECURE_DEV_SALT", "0") == "1"
-        if not allow_insecure_dev_salt:
-            raise RuntimeError(
-                "LORE_ENCRYPTION_SALT is required when LORE_ENCRYPTION_PASSPHRASE is set"
-            )
-        salt = b"lore-default-salt!"
-        if not _DEFAULT_SALT_WARNING_EMITTED:
-            logger.warning(
-                "LORE_ENCRYPTION_SALT not set; using static fallback salt because "
-                "LORE_ALLOW_INSECURE_DEV_SALT=1"
-            )
-            _DEFAULT_SALT_WARNING_EMITTED = True
-    return generate_key(passphrase, salt), salt
+    keyring = resolve_runtime_keyring()
+    selected = keyring.keys[keyring.active_version]
+    return selected.key, selected.salt, keyring.active_version
 
 
 @app.list_tools()
@@ -326,6 +356,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 
 async def handle_store_event(args: dict) -> list[TextContent]:
+    started = time.perf_counter()
     payload = args.get("payload", {})
     content = args.get("content", "")
     if content and isinstance(payload, dict):
@@ -385,11 +416,16 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     should_encrypt_payload = sensitivity in {"high", "restricted"} and encryption_material is not None
     event_payload = plain_payload
     if should_encrypt_payload:
-        runtime_key, runtime_salt = encryption_material
+        runtime_key, runtime_salt, key_version = encryption_material
         plaintext = content or json.dumps(plain_payload, sort_keys=True)
         event_payload = {
             "_encrypted": True,
-            "ciphertext": encrypt_content(plaintext, runtime_key, salt=runtime_salt),
+            "ciphertext": encrypt_content(
+                plaintext,
+                runtime_key,
+                salt=runtime_salt,
+                key_version=key_version,
+            ),
         }
 
     event = Event(
@@ -419,6 +455,11 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
     # Avoid deriving plaintext-bearing facts from sensitive encrypted events.
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
+    if derived_fact_ids:
+        try:
+            backfill_missing_fact_embeddings(db, derived_fact_ids)
+        except Exception as exc:
+            logger.warning("fact_embedding_backfill_failed event_id=%s error=%s", event.id, exc)
 
     result = {
         "stored": True,
@@ -436,10 +477,13 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         event.domains,
         sensitivity,
     )
+    observe_latency("store_event_latency_ms", (time.perf_counter() - started) * 1000.0)
+    inc_tool_call("store_event", "ok")
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
 async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
+    started = time.perf_counter()
     domain = args.get("domain", "general")
     query = args.get("query", "")
     rewritten_query = rewrite_query(query)
@@ -462,7 +506,23 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
         domain,
         limit,
     )
+    observe_latency("context_pack_latency_ms", (time.perf_counter() - started) * 1000.0)
+    inc_tool_call("retrieve_context_pack", "ok")
     return [TextContent(type="text", text=pack_json)]
+
+
+async def handle_metrics(args: dict) -> list[TextContent]:
+    return [TextContent(type="text", text=render_prometheus())]
+
+
+async def handle_health(args: dict) -> list[TextContent]:
+    db_ok = db.ping()
+    payload = {
+        "status": "ok" if db_ok else "degraded",
+        "db_connected": db_ok,
+        "transport": get_transport_mode(),
+    }
+    return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 
 
 async def handle_audit_trace(args: dict) -> list[TextContent]:
@@ -554,6 +614,10 @@ async def handle_list_events(args: dict) -> list[TextContent]:
 async def handle_export_domain(args: dict) -> list[TextContent]:
     domain = args.get("domain", "general")
     fmt = args.get("format", "json")
+    page_size = _clamp_non_negative_int(args.get("page_size", 0), default=0)
+    stream_mode = bool(args.get("stream", False))
+    include_hashes = bool(args.get("include_hashes", False))
+    cursor = str(args.get("cursor", "")).strip()
     events = db.get_active_events_by_domains([domain]) if domain != "general" else db.get_active_events()
     facts = db.get_current_facts_by_domain(domain)
     fact_ids = [fact["id"] for fact in facts]
@@ -624,6 +688,44 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
         domain,
         fmt,
     )
+    if page_size > 0 or cursor or stream_mode:
+        items = _build_export_items(events, facts)
+        if cursor:
+            cursor_key = _decode_cursor(cursor)
+            items = [item for item in items if (item["created_at"], item["id"]) > cursor_key]
+        window = items[:page_size] if page_size > 0 else items
+        has_more = page_size > 0 and len(items) > len(window)
+        next_cursor = ""
+        if has_more and window:
+            tail = window[-1]
+            next_cursor = _encode_cursor(tail["created_at"], tail["id"])
+        page_payload = {
+            "domain": domain,
+            "items": window,
+            "count": len(window),
+            "has_more": has_more,
+            "next_cursor": next_cursor,
+        }
+        if stream_mode:
+            lines = [json.dumps({"kind": "record", "item": item}, separators=(",", ":")) for item in window]
+            if include_hashes:
+                canonical = "\n".join(
+                    json.dumps(item, sort_keys=True, separators=(",", ":"))
+                    for item in window
+                )
+                lines.append(json.dumps({
+                    "kind": "chunk_hash",
+                    "sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+                }, separators=(",", ":")))
+            lines.append(json.dumps({
+                "kind": "page_info",
+                "count": len(window),
+                "has_more": has_more,
+                "next_cursor": next_cursor,
+            }, separators=(",", ":")))
+            return [TextContent(type="text", text="\n".join(lines))]
+        return [TextContent(type="text", text=json.dumps(page_payload, indent=2, default=str))]
+
     if fmt == "markdown":
         lines = [f"# Domain Export: {domain}", "", "## Events"]
         for ev in events:

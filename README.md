@@ -87,7 +87,7 @@ python -m lore.server
 | `LORE_SEMANTIC_DEDUP_THRESHOLD_<DOMAIN>` | unset | Domain-specific dedup threshold override (example: `..._HEALTH`) |
 | `LORE_MIN_FACT_CONFIDENCE` | `0.7` | Minimum confidence required for facts in context packs |
 | `LORE_EMBEDDING_PROVIDER` | `hash-local` | Embedding provider (`hash-local` or `openai`) |
-| `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider |
+| `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider only (ignored for `openai`) |
 | `LORE_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
 | `LORE_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
 | `LORE_ENCRYPTION_PASSPHRASE` | unset | Enables encryption for high/restricted payloads |

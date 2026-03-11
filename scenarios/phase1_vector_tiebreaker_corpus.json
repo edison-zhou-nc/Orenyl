@@ -1,0 +1,35 @@
+[
+  {
+    "_description": "Domain values are intentionally aligned with expected key semantics for vector tie-break testing.",
+    "domain": "health",
+    "query": "pharma status",
+    "expected_key": "active_medications",
+    "events": [
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["health"]},
+      {"type": "role_assigned", "payload": {"user": "u1", "role": "admin"}, "domains": ["health"]},
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["health"]}
+    ]
+  },
+  {
+    "_description": "Domain values are intentionally aligned with expected key semantics for vector tie-break testing.",
+    "domain": "career",
+    "query": "permission state",
+    "expected_key": "current_role",
+    "events": [
+      {"type": "role_assigned", "payload": {"user": "u2", "role": "admin"}, "domains": ["career"]},
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["career"]},
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["career"]}
+    ]
+  },
+  {
+    "_description": "Domain values are intentionally aligned with expected key semantics for vector tie-break testing.",
+    "domain": "preferences",
+    "query": "meal style",
+    "expected_key": "diet_preference",
+    "events": [
+      {"type": "diet_preference", "payload": {"value": "vegan"}, "domains": ["preferences"]},
+      {"type": "role_assigned", "payload": {"user": "u3", "role": "admin"}, "domains": ["preferences"]},
+      {"type": "med_started", "payload": {"name": "metformin"}, "domains": ["preferences"]}
+    ]
+  }
+]
