@@ -38,6 +38,11 @@ from .lineage import LineageEngine
 from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
+from .policy import (
+    PolicyEngine,
+    agent_permissions_enabled,
+    policy_shadow_mode_enabled,
+)
 from .tenant import (
     reset_current_tenant_context,
     resolve_tenant_context,
@@ -330,6 +335,26 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         )
         args["_auth_tenant_id"] = tenant_context.tenant_id
         tenant_token = set_current_tenant_context(tenant_context)
+        if agent_permissions_enabled():
+            policy = PolicyEngine(db, shadow_mode=policy_shadow_mode_enabled())
+            principal_agent = access.client_id
+            if name == "retrieve_context_pack":
+                domain = str(args.get("domain", "general") or "general")
+                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                    raise PermissionError("forbidden:policy_denied")
+            elif name in {"list_events", "export_domain", "audit_trace"}:
+                domain = str(args.get("domain", "general") or "general")
+                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                    raise PermissionError("forbidden:policy_denied")
+            elif name == "store_event":
+                domains = args.get("domains", ["general"]) or ["general"]
+                for domain in domains:
+                    if not policy.enforce_write_domain(
+                        tenant_context.tenant_id,
+                        principal_agent,
+                        str(domain or "general"),
+                    ):
+                        raise PermissionError("forbidden:policy_denied")
         audit.log_security_event(
             name,
             "allow",

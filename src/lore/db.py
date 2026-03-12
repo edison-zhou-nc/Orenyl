@@ -982,6 +982,28 @@ class Database:
         ).fetchall()
         return [str(row["version"]) for row in rows]
 
+    def has_agent_permission(
+        self,
+        tenant_id: str,
+        agent_id: str,
+        domain: str,
+        action: str,
+        at_ts: str,
+    ) -> bool:
+        row = self.conn.execute(
+            """SELECT 1
+               FROM agent_permissions
+               WHERE tenant_id = ?
+                 AND agent_id = ?
+                 AND action = ?
+                 AND effect = 'allow'
+                 AND (domain = ? OR domain = '*')
+                 AND (expires_at IS NULL OR expires_at > ?)
+               LIMIT 1""",
+            (tenant_id, agent_id, action, domain, at_ts),
+        ).fetchone()
+        return row is not None
+
     # ── Edges ───────────────────────────────────────────────
 
     def insert_edge(self, edge: Edge):
