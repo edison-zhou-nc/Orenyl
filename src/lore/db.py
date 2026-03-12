@@ -269,15 +269,23 @@ class Database:
             return None
         return self.get_event(row["id"])
 
-    def get_active_events(self, event_type: str | None = None) -> list[dict]:
+    def get_active_events(self, event_type: str | None = None, tenant_id: str = "") -> list[dict]:
         if event_type:
             rows = self.conn.execute(
-                "SELECT * FROM events WHERE deleted_at IS NULL AND type = ? ORDER BY ts",
-                (event_type,),
+                """SELECT * FROM events
+                   WHERE deleted_at IS NULL
+                     AND type = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (event_type, tenant_id, tenant_id),
             ).fetchall()
         else:
             rows = self.conn.execute(
-                "SELECT * FROM events WHERE deleted_at IS NULL ORDER BY ts"
+                """SELECT * FROM events
+                   WHERE deleted_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (tenant_id, tenant_id),
             ).fetchall()
         result = []
         for row in rows:
@@ -294,7 +302,12 @@ class Database:
             result.append(d)
         return result
 
-    def get_recent_events_in_domains(self, domains: list[str], since_ts: str) -> list[dict]:
+    def get_recent_events_in_domains(
+        self,
+        domains: list[str],
+        since_ts: str,
+        tenant_id: str = "",
+    ) -> list[dict]:
         if not domains:
             return []
         domains_json = json.dumps(domains)
@@ -304,9 +317,10 @@ class Database:
                JOIN event_domains ed ON ed.event_id = e.id
                WHERE e.deleted_at IS NULL
                  AND e.ts >= ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                  AND ed.domain IN (SELECT value FROM json_each(?))
                ORDER BY e.ts DESC""",
-            (since_ts, domains_json),
+            (since_ts, tenant_id, tenant_id, domains_json),
         ).fetchall()
         result: list[dict] = []
         for row in rows:
@@ -323,13 +337,15 @@ class Database:
             result.append(data)
         return result
 
-    def get_facts_by_ids(self, fact_ids: list[str]) -> list[dict]:
+    def get_facts_by_ids(self, fact_ids: list[str], tenant_id: str = "") -> list[dict]:
         if not fact_ids:
             return []
         fact_ids_json = json.dumps(fact_ids)
         rows = self.conn.execute(
-            "SELECT * FROM facts WHERE id IN (SELECT value FROM json_each(?))",
-            (fact_ids_json,),
+            """SELECT * FROM facts
+               WHERE id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_ids_json, tenant_id, tenant_id),
         ).fetchall()
         out: list[dict] = []
         for row in rows:
@@ -363,19 +379,20 @@ class Database:
             result.append(d)
         return result
 
-    def get_active_events_by_domains(self, domains: list[str]) -> list[dict]:
+    def get_active_events_by_domains(self, domains: list[str], tenant_id: str = "") -> list[dict]:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
-            return self.get_active_events()
+            return self.get_active_events(tenant_id=tenant_id)
         domains_json = json.dumps(normalized)
         rows = self.conn.execute(
             """SELECT DISTINCT e.*
                 FROM events e
                 JOIN event_domains ed ON ed.event_id = e.id
                 WHERE e.deleted_at IS NULL
+                  AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                   AND ed.domain IN (SELECT value FROM json_each(?))
                 ORDER BY e.ts""",
-            (domains_json,),
+            (tenant_id, tenant_id, domains_json),
         ).fetchall()
         result = []
         for row in rows:
@@ -400,30 +417,46 @@ class Database:
     ) -> list[dict]:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
-            rows = self.get_all_events() if include_tombstoned else self.get_active_events()
-            if tenant_id:
-                return [row for row in rows if (row.get("tenant_id") or "default") == tenant_id]
-            return rows
-        domains_json = json.dumps(normalized)
-        if include_tombstoned:
-            rows = self.conn.execute(
-                """SELECT DISTINCT e.*
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                    ORDER BY e.ts""",
-                (domains_json,),
-            ).fetchall()
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                       FROM events e
+                       WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                       ORDER BY e.ts""",
+                    (tenant_id, tenant_id),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                       FROM events e
+                       WHERE e.deleted_at IS NULL
+                         AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                       ORDER BY e.ts""",
+                    (tenant_id, tenant_id),
+                ).fetchall()
         else:
-            rows = self.conn.execute(
-                """SELECT DISTINCT e.*
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                      AND e.deleted_at IS NULL
-                    ORDER BY e.ts""",
-                (domains_json,),
-            ).fetchall()
+            domains_json = json.dumps(normalized)
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts""",
+                    (domains_json, tenant_id, tenant_id),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts""",
+                    (domains_json, tenant_id, tenant_id),
+                ).fetchall()
         result = []
         for row in rows:
             d = dict(row)
@@ -436,8 +469,6 @@ class Database:
                     (d["id"],),
                 ).fetchall()
             ]
-            if tenant_id and (d.get("tenant_id") or "default") != tenant_id:
-                continue
             result.append(d)
         return result
 
@@ -447,13 +478,46 @@ class Database:
         include_tombstoned: bool = False,
         tenant_id: str = "",
     ) -> int:
-        return len(
-            self.get_events_by_domains(
-                domains=domains,
-                include_tombstoned=include_tombstoned,
-                tenant_id=tenant_id,
-            )
-        )
+        normalized = [d.strip().lower() for d in domains if d and d.strip()]
+        if not normalized:
+            if include_tombstoned:
+                row = self.conn.execute(
+                    """SELECT COUNT(*)
+                       FROM events
+                       WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                    (tenant_id, tenant_id),
+                ).fetchone()
+            else:
+                row = self.conn.execute(
+                    """SELECT COUNT(*)
+                       FROM events
+                       WHERE deleted_at IS NULL
+                         AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                    (tenant_id, tenant_id),
+                ).fetchone()
+            return int(row[0] or 0)
+
+        domains_json = json.dumps(normalized)
+        if include_tombstoned:
+            row = self.conn.execute(
+                """SELECT COUNT(DISTINCT e.id)
+                   FROM events e
+                   JOIN event_domains ed ON ed.event_id = e.id
+                   WHERE ed.domain IN (SELECT value FROM json_each(?))
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domains_json, tenant_id, tenant_id),
+            ).fetchone()
+        else:
+            row = self.conn.execute(
+                """SELECT COUNT(DISTINCT e.id)
+                   FROM events e
+                   JOIN event_domains ed ON ed.event_id = e.id
+                   WHERE ed.domain IN (SELECT value FROM json_each(?))
+                     AND e.deleted_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domains_json, tenant_id, tenant_id),
+            ).fetchone()
+        return int(row[0] or 0)
 
     def list_events_page(
         self,
@@ -465,12 +529,68 @@ class Database:
     ) -> list[dict]:
         safe_limit = max(1, int(limit))
         safe_offset = max(0, int(offset))
-        all_rows = self.get_events_by_domains(
-            domains=domains,
-            include_tombstoned=include_tombstoned,
-            tenant_id=tenant_id,
-        )
-        return all_rows[safe_offset:safe_offset + safe_limit]
+        normalized = [d.strip().lower() for d in domains if d and d.strip()]
+
+        if not normalized:
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                        FROM events e
+                        WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (tenant_id, tenant_id, safe_limit, safe_offset),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                        FROM events e
+                        WHERE e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (tenant_id, tenant_id, safe_limit, safe_offset),
+                ).fetchall()
+        else:
+            domains_json = json.dumps(normalized)
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (domains_json, tenant_id, tenant_id, safe_limit, safe_offset),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts
+                        LIMIT ? OFFSET ?""",
+                    (domains_json, tenant_id, tenant_id, safe_limit, safe_offset),
+                ).fetchall()
+
+        result = []
+        for row in rows:
+            d = dict(row)
+            d["payload"] = json.loads(d["payload"])
+            d["metadata"] = json.loads(d["metadata"])
+            d["domains"] = [
+                r[0]
+                for r in self.conn.execute(
+                    "SELECT domain FROM event_domains WHERE event_id = ? ORDER BY domain",
+                    (d["id"],),
+                ).fetchall()
+            ]
+            result.append(d)
+        return result
 
     def get_event_count(self, domain: str = "general") -> int:
         if domain and domain != "general":
@@ -624,6 +744,7 @@ class Database:
                 """SELECT DISTINCT f.*
                    FROM facts f
                    WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
                      AND EXISTS (
                          SELECT 1
                          FROM edges e
@@ -633,6 +754,7 @@ class Database:
                            AND e.parent_type = 'event'
                            AND ed.domain = ?
                            AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -640,19 +762,28 @@ class Database:
                          JOIN events ev2 ON ev2.id = e2.parent_id
                          WHERE e2.child_id = f.id
                            AND e2.parent_type = 'event'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
                            AND (
                                (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.agent_id, '') <> ?)
                                OR (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.session_id, '') <> ?)
                            )
                      )
                    ORDER BY f.key, f.version DESC""",
-                (domain, agent_id, agent_id, session_id, session_id),
+                (
+                    tenant_id, tenant_id,
+                    domain,
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    agent_id, agent_id,
+                    session_id, session_id,
+                ),
             ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT DISTINCT f.*
                    FROM facts f
                    WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
                      AND EXISTS (
                          SELECT 1
                          FROM edges e
@@ -660,6 +791,7 @@ class Database:
                          WHERE e.child_id = f.id
                            AND e.parent_type = 'event'
                            AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -667,13 +799,20 @@ class Database:
                          JOIN events ev2 ON ev2.id = e2.parent_id
                          WHERE e2.child_id = f.id
                            AND e2.parent_type = 'event'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
                            AND (
                                (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.agent_id, '') <> ?)
                                OR (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.session_id, '') <> ?)
                            )
                      )
                    ORDER BY f.key, f.version DESC""",
-                (agent_id, agent_id, session_id, session_id),
+                (
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    agent_id, agent_id,
+                    session_id, session_id,
+                ),
             ).fetchall()
         result = []
         seen_keys: set[str] = set()
@@ -682,8 +821,6 @@ class Database:
             d["value"] = json.loads(d["value"])
             d["transform_config"] = json.loads(d["transform_config"])
             d["stale"] = bool(d["stale"])
-            if tenant_id and (d.get("tenant_id") or "default") != tenant_id:
-                continue
             if d["key"] not in seen_keys:
                 seen_keys.add(d["key"])
                 result.append(d)
@@ -859,24 +996,35 @@ class Database:
         ).fetchall()
         return [str(row["child_id"]) for row in rows]
 
-    def delete_edges_for_item(self, item_id: str) -> int:
+    def delete_edges_for_item(self, item_id: str, tenant_id: str = "") -> int:
         cur = self.conn.execute(
-            "DELETE FROM edges WHERE parent_id = ? OR child_id = ?",
-            (item_id, item_id),
+            """DELETE FROM edges
+               WHERE (parent_id = ? OR child_id = ?)
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (item_id, item_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount
 
-    def hard_delete_facts_by_source(self, event_id: str) -> int:
+    def hard_delete_facts_by_source(self, event_id: str, tenant_id: str = "") -> int:
         rows = self.conn.execute(
-            "SELECT child_id FROM edges WHERE parent_id = ? AND parent_type = 'event'",
-            (event_id,),
+            """SELECT child_id
+               FROM edges
+               WHERE parent_id = ?
+                 AND parent_type = 'event'
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
         ).fetchall()
         fact_ids = [row[0] for row in rows]
         deleted = 0
         for fact_id in fact_ids:
-            self.delete_edges_for_item(fact_id)
-            cur = self.conn.execute("DELETE FROM facts WHERE id = ?", (fact_id,))
+            self.delete_edges_for_item(fact_id, tenant_id=tenant_id)
+            cur = self.conn.execute(
+                """DELETE FROM facts
+                   WHERE id = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                (fact_id, tenant_id, tenant_id),
+            )
             deleted += cur.rowcount
         self._maybe_commit()
         return deleted
