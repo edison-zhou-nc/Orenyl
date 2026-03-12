@@ -325,7 +325,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         args["_auth_scopes"] = list(access.scopes)
         args["_auth_client_id"] = access.client_id
         tenant_context = resolve_tenant_context(
-            claims={"sub": access.client_id, "tenant_id": args.get("tenant_id", "")},
+            claims={"sub": access.client_id, "tenant_id": access.client_id},
             args=args,
         )
         args["_auth_tenant_id"] = tenant_context.tenant_id
@@ -452,7 +452,10 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         sensitivity=sensitivity,
         consent_source=args.get("consent_source", "implicit"),
         expires_at=args.get("expires_at"),
-        metadata=args.get("metadata", {}),
+        metadata={
+            **(args.get("metadata", {}) or {}),
+            "tenant_id": args.get("_auth_tenant_id", "default"),
+        },
         source=args.get("source", "user"),
         ts=args.get("ts", now_iso()),
     )
@@ -511,6 +514,7 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
         max_sensitivity=args.get("max_sensitivity", "high"),
         limit=limit,
         query=rewritten_query,
+        tenant_id=args.get("_auth_tenant_id", ""),
         agent_id=args.get("agent_id", ""),
         session_id=args.get("session_id", ""),
     )
@@ -604,12 +608,14 @@ async def handle_list_events(args: dict) -> list[TextContent]:
     total_count = db.count_events_by_domains(
         domain_filter,
         include_tombstoned=include_tombstoned,
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     window = db.list_events_page(
         domains=domain_filter,
         include_tombstoned=include_tombstoned,
         limit=limit,
         offset=offset,
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     logger.info(
         "list_events request_id=%s domain=%s offset=%s limit=%s include_tombstoned=%s",
@@ -633,8 +639,13 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     stream_mode = bool(args.get("stream", False))
     include_hashes = bool(args.get("include_hashes", False))
     cursor = str(args.get("cursor", "")).strip()
-    events = db.get_active_events_by_domains([domain]) if domain != "general" else db.get_active_events()
-    facts = db.get_current_facts_by_domain(domain)
+    tenant_id = args.get("_auth_tenant_id", "")
+    events = (
+        db.get_active_events_by_domains([domain], tenant_id=tenant_id)
+        if domain != "general"
+        else db.get_active_events(tenant_id=tenant_id)
+    )
+    facts = db.get_current_facts_by_domain(domain, tenant_id=tenant_id)
     fact_ids = [fact["id"] for fact in facts]
     parents_by_fact = db.get_parents_for_children(fact_ids)
     parent_event_ids = sorted(

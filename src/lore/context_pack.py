@@ -70,6 +70,7 @@ class ContextPackBuilder:
         max_sensitivity: str = "high",
         limit: int = 50,
         query: str = "",
+        tenant_id: str = "",
         agent_id: str = "",
         session_id: str = "",
     ) -> ContextPack:
@@ -88,6 +89,7 @@ class ContextPackBuilder:
 
         facts = self.db.get_current_facts_by_domain(
             domain,
+            tenant_id=tenant_id,
             agent_id=agent_id,
             session_id=session_id,
         )

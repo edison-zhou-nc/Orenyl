@@ -50,11 +50,12 @@ def resolve_tenant_context(
         or ""
     ).strip()
     tenant_arg = str(arg_data.get("tenant_id", "")).strip()
-    tenant_id = tenant_claim or tenant_arg
-    if multi_tenant_enabled() and not tenant_id:
-        raise PermissionError("tenant_scope_violation")
-    if not tenant_id:
+    if not multi_tenant_enabled():
         tenant_id = "default"
+    else:
+        tenant_id = tenant_claim or tenant_arg
+        if not tenant_id:
+            raise PermissionError("tenant_scope_violation")
 
     return TenantContext(
         tenant_id=tenant_id,
