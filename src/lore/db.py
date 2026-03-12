@@ -111,8 +111,12 @@ class Database:
                 _safe_add_column("ALTER TABLE events ADD COLUMN agent_id TEXT")
             if "session_id" not in event_cols:
                 _safe_add_column("ALTER TABLE events ADD COLUMN session_id TEXT")
+            if "tenant_id" not in event_cols:
+                _safe_add_column("ALTER TABLE events ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE events SET tenant_id = 'default' WHERE tenant_id IS NULL")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_agent_id ON events(agent_id)")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id)")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_tenant_id ON events(tenant_id)")
 
         if "facts" in tables:
             fact_cols = {
@@ -140,6 +144,54 @@ class Database:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN rule_version TEXT NOT NULL DEFAULT 'v1'"
                 )
+            if "tenant_id" not in fact_cols:
+                _safe_add_column("ALTER TABLE facts ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE facts SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_facts_tenant_id ON facts(tenant_id)")
+
+        if "edges" in tables:
+            edge_cols = {row[1] for row in self.conn.execute("PRAGMA table_info(edges)").fetchall()}
+            if "tenant_id" not in edge_cols:
+                _safe_add_column("ALTER TABLE edges ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE edges SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_edges_tenant_id ON edges(tenant_id)")
+
+        if "tombstones" in tables:
+            tombstone_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(tombstones)").fetchall()
+            }
+            if "tenant_id" not in tombstone_cols:
+                _safe_add_column("ALTER TABLE tombstones ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE tombstones SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tombstones_tenant_id ON tombstones(tenant_id)"
+            )
+
+        if "event_embeddings" in tables:
+            event_embedding_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(event_embeddings)").fetchall()
+            }
+            if "tenant_id" not in event_embedding_cols:
+                _safe_add_column("ALTER TABLE event_embeddings ADD COLUMN tenant_id TEXT")
+            self.conn.execute(
+                "UPDATE event_embeddings SET tenant_id = 'default' WHERE tenant_id IS NULL"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_event_embeddings_tenant_id ON event_embeddings(tenant_id)"
+            )
+
+        if "fact_embeddings" in tables:
+            fact_embedding_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(fact_embeddings)").fetchall()
+            }
+            if "tenant_id" not in fact_embedding_cols:
+                _safe_add_column("ALTER TABLE fact_embeddings ADD COLUMN tenant_id TEXT")
+            self.conn.execute(
+                "UPDATE fact_embeddings SET tenant_id = 'default' WHERE tenant_id IS NULL"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_fact_embeddings_tenant_id ON fact_embeddings(tenant_id)"
+            )
 
         self.conn.commit()
 
