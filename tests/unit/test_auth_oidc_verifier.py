@@ -77,6 +77,33 @@ def test_verify_token_accepts_valid_token():
     assert set(access.scopes) == {"memory:read", "memory:delete"}
 
 
+def test_verify_token_extracts_tenant_into_resource():
+    verifier = OIDCTokenVerifier(
+        issuer="https://issuer.example",
+        audience="lore",
+        hs256_secret=_TEST_SECRET,
+    )
+    now = int(time.time())
+    token = jwt.encode(
+        {
+            "sub": "user-1",
+            "iss": "https://issuer.example",
+            "aud": "lore",
+            "iat": now,
+            "exp": now + 300,
+            "scope": "memory:read",
+            "tenant_id": "tenant-42",
+        },
+        _TEST_SECRET,
+        algorithm="HS256",
+    )
+
+    access = asyncio.run(verifier.verify_token(token))
+
+    assert access is not None
+    assert access.resource == "tenant-42"
+
+
 def test_verify_token_accepts_valid_rs256_token_with_jwks():
     private_key, public_key = _make_rsa_keypair()
     kid = "kid-1"

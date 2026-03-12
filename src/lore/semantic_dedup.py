@@ -42,6 +42,7 @@ def check_semantic_duplicate(
     domains: list[str],
     window_hours: int = 24,
     threshold: float = 0.92,
+    tenant_id: str = "",
 ) -> tuple[bool, str | None]:
     if not content or not domains:
         return False, None
@@ -53,10 +54,10 @@ def check_semantic_duplicate(
     threshold_ts = (
         datetime.now(timezone.utc) - timedelta(hours=window_hours)
     ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    rows = db.get_recent_events_in_domains(domains, threshold_ts)
+    rows = db.get_recent_events_in_domains(domains, threshold_ts, tenant_id=tenant_id)
 
     for event in rows:
-        existing = db.get_event_embedding(event.get("id", ""))
+        existing = db.get_event_embedding(event.get("id", ""), tenant_id=tenant_id)
         existing_embedding: list[float] | None = None
         if existing is not None:
             existing_embedding = existing["vector"]
@@ -86,6 +87,7 @@ def check_semantic_duplicate(
                     event["id"],
                     existing_embedding,
                     provider.provider_id,
+                    tenant_id=event.get("tenant_id", tenant_id or "default"),
                 )
             except Exception:
                 continue

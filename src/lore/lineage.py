@@ -55,25 +55,25 @@ class LineageEngine:
 
         return list(specs.values())
 
-    def _collect_events_for_rule(self, spec: dict) -> list[dict]:
+    def _collect_events_for_rule(self, spec: dict, tenant_id: str = "") -> list[dict]:
         rule = spec["rule"]
         source = spec["source"]
         domains = spec["domains"]
 
         if source == "domain":
-            return self.db.get_active_events_by_domains(domains)
+            return self.db.get_active_events_by_domains(domains, tenant_id=tenant_id)
         if source == "hybrid":
             by_id: dict[str, dict] = {}
-            for event in self.db.get_active_events_by_domains(domains):
+            for event in self.db.get_active_events_by_domains(domains, tenant_id=tenant_id):
                 by_id[event["id"]] = event
             for et in rule.relevant_event_types():
-                for event in self.db.get_active_events(et):
+                for event in self.db.get_active_events(et, tenant_id=tenant_id):
                     by_id[event["id"]] = event
             return [by_id[k] for k in sorted(by_id.keys())]
 
         all_events: list[dict] = []
         for et in rule.relevant_event_types():
-            all_events.extend(self.db.get_active_events(et))
+            all_events.extend(self.db.get_active_events(et, tenant_id=tenant_id))
         return all_events
 
     def _insert_fact_with_retry(
@@ -85,11 +85,12 @@ class LineageEngine:
         confidence: float = 1.0,
         model_id: str = "deterministic",
         rule_id: str | None = None,
+        tenant_id: str = "default",
     ) -> Fact:
         last_error: sqlite3.IntegrityError | None = None
         for _ in range(max_retries):
             try:
-                next_version = self.db.get_latest_version(output_key) + 1
+                next_version = self.db.get_latest_version(output_key, tenant_id=tenant_id) + 1
                 fact = Fact(
                     id=f"fact:{output_key}:v{next_version}",
                     key=output_key,
@@ -98,10 +99,11 @@ class LineageEngine:
                     rule_id=rule_id or default_rule_id,
                     confidence=confidence,
                     model_id=model_id,
+                    tenant_id=tenant_id,
                 )
                 self.db.insert_fact(fact)
                 # Invalidate previous versions only after the replacement fact is persisted.
-                all_versions = self.db.get_facts_by_key(output_key)
+                all_versions = self.db.get_facts_by_key(output_key, tenant_id=tenant_id)
                 for old_fact in all_versions:
                     if old_fact.get("invalidated_at") is not None:
                         continue
@@ -111,6 +113,7 @@ class LineageEngine:
                         old_fact["id"],
                         reason=f"superseded_by_v{next_version}",
                         invalidated_at=now_iso(),
+                        tenant_id=tenant_id,
                     )
                 return fact
             except sqlite3.IntegrityError as exc:
@@ -124,10 +127,11 @@ class LineageEngine:
     def derive_facts_for_event(self, event: dict) -> list[str]:
         """After storing an event, derive/update all relevant facts."""
         created_fact_ids: list[str] = []
+        tenant_id = str(event.get("tenant_id") or "default")
         with self.db.transaction():
             for spec in self._resolve_rule_specs(event):
                 rule = spec["rule"]
-                all_events = self._collect_events_for_rule(spec)
+                all_events = self._collect_events_for_rule(spec, tenant_id=tenant_id)
 
                 # Run deterministic derivation
                 value = rule.derive(all_events)
@@ -136,12 +140,14 @@ class LineageEngine:
                     output_key=rule.output_key,
                     default_rule_id=rule.rule_id,
                     value=value,
+                    tenant_id=tenant_id,
                 )
                 fact_id = fact.id
 
                 # Create lineage edges from all contributing events
                 for ev in all_events:
                     self.db.insert_edge(Edge(
+                        tenant_id=tenant_id,
                         parent_id=ev["id"],
                         parent_type="event",
                         child_id=fact_id,
@@ -159,8 +165,10 @@ class LineageEngine:
                     confidence=float(extracted.confidence),
                     model_id=extracted.model_id,
                     rule_id=extracted.rule_id,
+                    tenant_id=tenant_id,
                 )
                 self.db.insert_edge(Edge(
+                    tenant_id=tenant_id,
                     parent_id=event["id"],
                     parent_type="event",
                     child_id=fact.id,
@@ -177,6 +185,7 @@ class LineageEngine:
         reason: str = "",
         mode: str = "soft",
         run_vacuum: bool = False,
+        tenant_id: str = "",
     ) -> DeleteProof:
         """The killer feature.
 
@@ -202,7 +211,7 @@ class LineageEngine:
         # Step 1: Tombstone or hard-delete the target
         with self.db.transaction():
             if target_type == "event":
-                event_data = self.db.get_event(target_id)
+                event_data = self.db.get_event(target_id, tenant_id=tenant_id)
                 if event_data is None:
                     skip_count = 1
                     proof.checks = {
@@ -220,9 +229,10 @@ class LineageEngine:
 
                 if mode == "hard":
                     # Record audit evidence before physical erasure.
-                    downstream_ids = self.db.get_downstream_facts(target_id)
+                    downstream_ids = self.db.get_downstream_facts(target_id, tenant_id=tenant_id)
                     self.db.insert_tombstone(
                         Tombstone(
+                            tenant_id=tenant_id or "default",
                             target_id=target_id,
                             target_type=target_type,
                             reason=reason,
@@ -233,11 +243,11 @@ class LineageEngine:
                     tombstone_recorded = True
 
                 if mode == "hard":
-                    self.db.hard_delete_facts_by_source(target_id)
-                    self.db.delete_edges_for_item(target_id)
-                    success = self.db.hard_delete_event(target_id)
+                    self.db.hard_delete_facts_by_source(target_id, tenant_id=tenant_id)
+                    self.db.delete_edges_for_item(target_id, tenant_id=tenant_id)
+                    success = self.db.hard_delete_event(target_id, tenant_id=tenant_id)
                 else:
-                    success = self.db.soft_delete_event(target_id, ts)
+                    success = self.db.soft_delete_event(target_id, ts, tenant_id=tenant_id)
                 if not success:
                     proof.checks = {"error": "Event not found or already deleted"}
                     proof.post_delete_check = dict(proof.checks)
@@ -245,7 +255,12 @@ class LineageEngine:
                 proof.tombstoned.append(target_id)
 
             elif target_type == "fact":
-                success = self.db.invalidate_fact(target_id, reason=reason, invalidated_at=ts)
+                success = self.db.invalidate_fact(
+                    target_id,
+                    reason=reason,
+                    invalidated_at=ts,
+                    tenant_id=tenant_id,
+                )
                 if not success:
                     proof.checks = {"error": "Fact not found or already invalidated"}
                     proof.post_delete_check = dict(proof.checks)
@@ -254,7 +269,7 @@ class LineageEngine:
 
             # Step 2: Find all downstream facts
             if not downstream_ids:
-                downstream_ids = self.db.get_downstream_facts(target_id)
+                downstream_ids = self.db.get_downstream_facts(target_id, tenant_id=tenant_id)
 
             # Step 3: Invalidate downstream facts
             stale_marked_count = self.db.mark_facts_stale(downstream_ids)
@@ -263,6 +278,7 @@ class LineageEngine:
                     fact_id,
                     reason=f"cascade_from:{target_id}",
                     invalidated_at=ts,
+                    tenant_id=tenant_id,
                 )
                 if was_invalidated:
                     proof.invalidated_facts.append(fact_id)
@@ -270,6 +286,7 @@ class LineageEngine:
             # Record tombstone with cascade info for non-hard-delete paths.
             if not tombstone_recorded:
                 tombstone = Tombstone(
+                    tenant_id=tenant_id or "default",
                     target_id=target_id,
                     target_type=target_type,
                     reason=reason,
@@ -286,11 +303,11 @@ class LineageEngine:
                     rules_to_rerun[spec["rule"].output_key] = spec
             else:
                 # If a fact was deleted, find what rule produced it
-                fact_data = self.db.get_fact(target_id)
+                fact_data = self.db.get_fact(target_id, tenant_id=tenant_id)
                 if fact_data:
                     parent_events = [
-                        self.db.get_event(parent["parent_id"])
-                        for parent in self.db.get_parents(target_id)
+                        self.db.get_event(parent["parent_id"], tenant_id=tenant_id)
+                        for parent in self.db.get_parents(target_id, tenant_id=tenant_id)
                         if parent["parent_type"] == "event"
                     ]
                     for parent_event in parent_events:
@@ -308,7 +325,7 @@ class LineageEngine:
 
             for spec in rules_to_rerun.values():
                 rule = spec["rule"]
-                all_events = self._collect_events_for_rule(spec)
+                all_events = self._collect_events_for_rule(spec, tenant_id=tenant_id)
 
                 # Re-derive
                 value = rule.derive(all_events)
@@ -316,12 +333,14 @@ class LineageEngine:
                     output_key=rule.output_key,
                     default_rule_id=rule.rule_id,
                     value=value,
+                    tenant_id=tenant_id or "default",
                 )
                 fact_id = fact.id
 
                 # Create lineage edges from remaining events
                 for ev in all_events:
                     self.db.insert_edge(Edge(
+                        tenant_id=tenant_id or "default",
                         parent_id=ev["id"],
                         parent_type="event",
                         child_id=fact_id,
@@ -338,15 +357,23 @@ class LineageEngine:
 
             # Step 5: Post-delete retrieval check
             # Verify deleted content cannot resurface.
-            current_facts = self.db.get_current_facts()
+            current_facts = [
+                fact
+                for fact in self.db.get_current_facts()
+                if not tenant_id or (fact.get("tenant_id") or "default") == tenant_id
+            ]
             resurfaced = []
             for f in current_facts:
-                parents = self.db.get_parents(f["id"])
+                parents = self.db.get_parents(f["id"], tenant_id=tenant_id)
                 for p in parents:
                     if p["parent_id"] == target_id:
                         resurfaced.append(f["id"])
 
-            target_event = self.db.get_event(target_id) if target_type == "event" else None
+            target_event = (
+                self.db.get_event(target_id, tenant_id=tenant_id)
+                if target_type == "event"
+                else None
+            )
             if target_type == "fact" and not domain_scoped:
                 domain_scoped = any(spec.get("source") in {"domain", "hybrid"} for spec in rules_to_rerun.values())
             proof.checks = {
@@ -365,11 +392,16 @@ class LineageEngine:
 
         return proof
 
-    def get_audit_trace(self, item_id: str, include_source_events: bool = False) -> dict:
+    def get_audit_trace(
+        self,
+        item_id: str,
+        include_source_events: bool = False,
+        tenant_id: str = "",
+    ) -> dict:
         """Full lineage trace for any item."""
         # Determine item type
-        event = self.db.get_event(item_id)
-        fact = self.db.get_fact(item_id)
+        event = self.db.get_event(item_id, tenant_id=tenant_id)
+        fact = self.db.get_fact(item_id, tenant_id=tenant_id)
 
         trace: dict = {
             "item_id": item_id,
@@ -377,13 +409,19 @@ class LineageEngine:
             "item_data": event or fact,
             "upstream": [],
             "downstream": [],
-            "tombstones": self.db.get_tombstones(item_id),
+            "tombstones": self.db.get_tombstones(item_id, tenant_id=tenant_id),
         }
 
         # Upstream (parents)
-        parents = self.db.get_parents(item_id)
+        parents = self.db.get_parents(item_id, tenant_id=tenant_id)
         for p in parents:
-            parent_data = self.db.get_event(p["parent_id"]) or self.db.get_fact(p["parent_id"])
+            parent_data = self.db.get_event(
+                p["parent_id"],
+                tenant_id=tenant_id,
+            ) or self.db.get_fact(
+                p["parent_id"],
+                tenant_id=tenant_id,
+            )
             if p["parent_type"] == "event" and not include_source_events:
                 parent_data = None
             trace["upstream"].append({
@@ -394,9 +432,9 @@ class LineageEngine:
             })
 
         # Downstream (children)
-        children = self.db.get_children(item_id)
+        children = self.db.get_children(item_id, tenant_id=tenant_id)
         for c in children:
-            child_data = self.db.get_fact(c["child_id"])
+            child_data = self.db.get_fact(c["child_id"], tenant_id=tenant_id)
             trace["downstream"].append({
                 "id": c["child_id"],
                 "type": c["child_type"],

@@ -32,6 +32,7 @@ class Event:
     expires_at: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     source: str = "user"
+    tenant_id: str = "default"
     ts: str = ""
     valid_from: str | None = None
     valid_to: str | None = None
@@ -58,6 +59,7 @@ class Fact:
     rule_version: str = ""
     confidence: float = 1.0
     model_id: str = "deterministic"
+    tenant_id: str = "default"
     valid_from: str = ""
     valid_to: str | None = None
     created_at: str = ""
@@ -81,6 +83,7 @@ class Edge:
     parent_id: str
     parent_type: str  # "event" or "fact"
     child_id: str
+    tenant_id: str = "default"
     child_type: str = "fact"
     relation: str = "derived_from"
 
@@ -89,6 +92,7 @@ class Edge:
 class Tombstone:
     target_id: str
     target_type: str
+    tenant_id: str = "default"
     reason: str = ""
     deleted_at: str = ""
     cascade_invalidated: list[str] = field(default_factory=list)
