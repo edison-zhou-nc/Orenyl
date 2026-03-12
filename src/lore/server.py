@@ -38,6 +38,11 @@ from .lineage import LineageEngine
 from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
+from .tenant import (
+    reset_current_tenant_context,
+    resolve_tenant_context,
+    set_current_tenant_context,
+)
 
 DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get("LORE_MAX_CONTEXT_PACK_LIMIT", "100"))
@@ -286,6 +291,7 @@ async def list_tools() -> list[Tool]:
 @app.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     request_id = ""
+    tenant_token = None
     try:
         args = dict(arguments or {})
         request_id = _resolve_request_id(args)
@@ -318,6 +324,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         args["_auth_scopes"] = list(access.scopes)
         args["_auth_client_id"] = access.client_id
+        tenant_context = resolve_tenant_context(
+            claims={"sub": access.client_id, "tenant_id": args.get("tenant_id", "")},
+            args=args,
+        )
+        args["_auth_tenant_id"] = tenant_context.tenant_id
+        tenant_token = set_current_tenant_context(tenant_context)
         audit.log_security_event(
             name,
             "allow",
@@ -353,6 +365,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if request_id:
             error_payload["request_id"] = request_id
         return [TextContent(type="text", text=json.dumps(error_payload, indent=2))]
+    finally:
+        if tenant_token is not None:
+            reset_current_tenant_context(tenant_token)
 
 
 async def handle_store_event(args: dict) -> list[TextContent]:
