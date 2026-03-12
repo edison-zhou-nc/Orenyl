@@ -35,12 +35,12 @@ def should_retrieve(query: str) -> bool:
     return q not in {"hey"}
 
 
-def backfill_missing_fact_embeddings(db: Database, fact_ids: list[str]) -> int:
+def backfill_missing_fact_embeddings(db: Database, fact_ids: list[str], tenant_id: str = "") -> int:
     if not fact_ids:
         return 0
     provider = _get_embedding_provider()
-    facts = db.get_facts_by_ids(fact_ids)
-    existing = db.get_fact_embeddings([fact["id"] for fact in facts])
+    facts = db.get_facts_by_ids(fact_ids, tenant_id=tenant_id)
+    existing = db.get_fact_embeddings([fact["id"] for fact in facts], tenant_id=tenant_id)
     created = 0
     for fact in facts:
         if fact["id"] in existing:
@@ -52,6 +52,7 @@ def backfill_missing_fact_embeddings(db: Database, fact_ids: list[str]) -> int:
                 fact["id"],
                 fact_vector,
                 provider.provider_id,
+                tenant_id=fact.get("tenant_id", tenant_id or "default"),
             )
             created += 1
         except Exception as exc:
@@ -78,8 +79,8 @@ class ContextPackBuilder:
         if not should_retrieve(query):
             return ContextPack(
                 domain=domain,
-                event_count=self.db.get_event_count(domain),
-                latest_event=self.db.get_latest_event_ts(domain),
+                event_count=self.db.get_event_count(domain, tenant_id=tenant_id),
+                latest_event=self.db.get_latest_event_ts(domain, tenant_id=tenant_id),
                 drill_down_available=False,
                 facts=[],
                 summary="" if include_summary else "",
@@ -119,7 +120,10 @@ class ContextPackBuilder:
         try:
             provider = _get_embedding_provider()
             query_vector = provider.embed_text(query or domain or "general")
-            stored_fact_embeddings = self.db.get_fact_embeddings([fact["id"] for fact in facts])
+            stored_fact_embeddings = self.db.get_fact_embeddings(
+                [fact["id"] for fact in facts],
+                tenant_id=tenant_id,
+            )
             vector_scored: list[tuple[float, str]] = []
             for fact in facts:
                 existing = stored_fact_embeddings.get(fact["id"])
@@ -162,7 +166,10 @@ class ContextPackBuilder:
         )
 
         ranked_fact_ids = [ranked["id"] for ranked in ranking[:limit]]
-        parent_edges_by_fact = self.db.get_parents_for_children(ranked_fact_ids)
+        parent_edges_by_fact = self.db.get_parents_for_children(
+            ranked_fact_ids,
+            tenant_id=tenant_id,
+        )
         parent_event_ids = sorted(
             {
                 edge["parent_id"]
@@ -171,7 +178,7 @@ class ContextPackBuilder:
                 if edge.get("parent_type") == "event"
             }
         )
-        parent_events_by_id = self.db.get_events_by_ids(parent_event_ids)
+        parent_events_by_id = self.db.get_events_by_ids(parent_event_ids, tenant_id=tenant_id)
 
         items = []
         min_confidence = min_fact_confidence_threshold()
@@ -229,8 +236,8 @@ class ContextPackBuilder:
                 lineage=derived_from,
             )
 
-        event_count = self.db.get_event_count(domain)
-        latest_event = self.db.get_latest_event_ts(domain)
+        event_count = self.db.get_event_count(domain, tenant_id=tenant_id)
+        latest_event = self.db.get_latest_event_ts(domain, tenant_id=tenant_id)
         summary = f"{len(items)} fact(s) from domain '{domain}'" if include_summary else ""
 
         pack = ContextPack(

@@ -325,7 +325,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         args["_auth_scopes"] = list(access.scopes)
         args["_auth_client_id"] = access.client_id
         tenant_context = resolve_tenant_context(
-            claims={"sub": access.client_id, "tenant_id": access.client_id},
+            claims={"sub": access.client_id, "tenant_id": access.resource or ""},
             args=args,
         )
         args["_auth_tenant_id"] = tenant_context.tenant_id
@@ -399,7 +399,8 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         }, indent=2))]
     content_hash = compute_content_hash(content_basis)
     domains = args.get("domains", ["general"])
-    if check_duplicate(db, content_hash, domains, window_hours=24):
+    tenant_id = args.get("_auth_tenant_id", "")
+    if check_duplicate(db, content_hash, domains, window_hours=24, tenant_id=tenant_id):
         return [TextContent(type="text", text=json.dumps({
             "stored": False,
             "duplicate": True,
@@ -416,6 +417,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             domains,
             window_hours=24,
             threshold=semantic_dedup_threshold_for_domains(domains),
+            tenant_id=tenant_id,
         )
         if is_dup:
             return [TextContent(type="text", text=json.dumps({
@@ -457,6 +459,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             "tenant_id": args.get("_auth_tenant_id", "default"),
         },
         source=args.get("source", "user"),
+        tenant_id=args.get("_auth_tenant_id", "default"),
         ts=args.get("ts", now_iso()),
     )
 
@@ -468,6 +471,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             event.id,
             event_embedding,
             provider.provider_id,
+            tenant_id=tenant_id or "default",
         )
     except Exception as exc:
         logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
@@ -475,7 +479,11 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
     if derived_fact_ids:
         try:
-            backfill_missing_fact_embeddings(db, derived_fact_ids)
+            backfill_missing_fact_embeddings(
+                db,
+                derived_fact_ids,
+                tenant_id=args.get("_auth_tenant_id", ""),
+            )
         except Exception as exc:
             logger.warning("fact_embedding_backfill_failed event_id=%s error=%s", event.id, exc)
 
@@ -548,6 +556,7 @@ async def handle_audit_trace(args: dict) -> list[TextContent]:
     trace = engine.get_audit_trace(
         args["item_id"],
         include_source_events=args.get("include_source_events", False),
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     logger.info(
         "audit_trace request_id=%s item_id=%s include_source_events=%s",
@@ -577,6 +586,7 @@ async def handle_delete_and_recompute(args: dict) -> list[TextContent]:
             reason=args.get("reason", ""),
             mode=mode,
             run_vacuum=args.get("run_vacuum", False),
+            tenant_id=args.get("_auth_tenant_id", ""),
         )
         proof_json = proof.to_json()
         audit_result = "allow"
@@ -647,7 +657,7 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     )
     facts = db.get_current_facts_by_domain(domain, tenant_id=tenant_id)
     fact_ids = [fact["id"] for fact in facts]
-    parents_by_fact = db.get_parents_for_children(fact_ids)
+    parents_by_fact = db.get_parents_for_children(fact_ids, tenant_id=tenant_id)
     parent_event_ids = sorted(
         {
             parent["parent_id"]
@@ -656,7 +666,7 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
             if parent.get("parent_type") == "event"
         }
     )
-    parent_events = db.get_events_by_ids(parent_event_ids)
+    parent_events = db.get_events_by_ids(parent_event_ids, tenant_id=tenant_id)
     restricted = []
     for fact in facts:
         parents = parents_by_fact.get(fact["id"], [])

@@ -78,6 +78,7 @@ class OIDCTokenVerifier:
         scopes = _extract_scopes(claims)
         expires_at = int(claims["exp"]) if "exp" in claims else None
         client_id = str(claims.get("sub", ""))
+        tenant_id = _extract_tenant_id(claims)
         if not client_id:
             return None
 
@@ -86,6 +87,7 @@ class OIDCTokenVerifier:
             client_id=client_id,
             scopes=scopes,
             expires_at=expires_at,
+            resource=tenant_id or None,
         )
 
     async def _resolve_signing_key(self, header: dict, algorithm: str):
@@ -163,6 +165,14 @@ def _extract_scopes(claims: dict) -> list[str]:
         return [str(s) for s in scp if s]
 
     return []
+
+
+def _extract_tenant_id(claims: dict) -> str:
+    for key in ("tenant_id", "tenant", "tid", "organization_id", "org_id"):
+        value = claims.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
 
 
 def extract_auth_token(arguments: dict) -> str:
