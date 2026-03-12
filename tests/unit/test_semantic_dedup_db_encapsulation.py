@@ -12,7 +12,7 @@ class _Db:
     def __init__(self):
         self.conn = None
 
-    def get_recent_events_in_domains(self, domains, since_ts):
+    def get_recent_events_in_domains(self, domains, since_ts, tenant_id=""):
         return []
 
 

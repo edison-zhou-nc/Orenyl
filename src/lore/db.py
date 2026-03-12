@@ -750,20 +750,24 @@ class Database:
         self._maybe_commit()
         return fact.id
 
-    def get_current_facts(self, key: str | None = None) -> list[dict]:
+    def get_current_facts(self, key: str | None = None, tenant_id: str = "") -> list[dict]:
         """Get all valid, non-invalidated facts (optionally filtered by key)."""
         if key:
             rows = self.conn.execute(
                 """SELECT * FROM facts
-                   WHERE invalidated_at IS NULL AND key = ?
+                   WHERE invalidated_at IS NULL
+                     AND key = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
                    ORDER BY version DESC""",
-                (key,),
+                (key, tenant_id, tenant_id),
             ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT * FROM facts
                    WHERE invalidated_at IS NULL
-                   ORDER BY key, version DESC"""
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY key, version DESC""",
+                (tenant_id, tenant_id),
             ).fetchall()
         result = []
         seen_keys: set[str] = set()

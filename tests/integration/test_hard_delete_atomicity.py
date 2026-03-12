@@ -16,7 +16,7 @@ def test_hard_delete_rolls_back_on_failure(monkeypatch):
 
     original = db.hard_delete_event
 
-    def boom(event_id: str):
+    def boom(event_id: str, tenant_id: str = ""):
         raise RuntimeError("simulated_failure")
 
     monkeypatch.setattr(db, "hard_delete_event", boom)
@@ -31,4 +31,3 @@ def test_hard_delete_rolls_back_on_failure(monkeypatch):
     facts_after = db.get_current_facts("diet_preference")
     assert len(facts_after) == 1
     assert facts_after[0]["value"].get("value") == "vegan"
-

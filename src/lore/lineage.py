@@ -357,11 +357,7 @@ class LineageEngine:
 
             # Step 5: Post-delete retrieval check
             # Verify deleted content cannot resurface.
-            current_facts = [
-                fact
-                for fact in self.db.get_current_facts()
-                if not tenant_id or (fact.get("tenant_id") or "default") == tenant_id
-            ]
+            current_facts = self.db.get_current_facts(tenant_id=tenant_id)
             resurfaced = []
             for f in current_facts:
                 parents = self.db.get_parents(f["id"], tenant_id=tenant_id)
@@ -375,9 +371,14 @@ class LineageEngine:
                 else None
             )
             if target_type == "fact" and not domain_scoped:
-                domain_scoped = any(spec.get("source") in {"domain", "hybrid"} for spec in rules_to_rerun.values())
+                domain_scoped = any(
+                    spec.get("source") in {"domain", "hybrid"}
+                    for spec in rules_to_rerun.values()
+                )
             proof.checks = {
-                "target_in_active_events": bool(target_event and target_event.get("deleted_at") is None),
+                "target_in_active_events": bool(
+                    target_event and target_event.get("deleted_at") is None
+                ),
                 "resurfaced_references": resurfaced,
                 "deletion_verified": len(resurfaced) == 0,
                 "skip_count": skip_count,
