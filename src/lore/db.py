@@ -392,10 +392,18 @@ class Database:
             result.append(d)
         return result
 
-    def get_events_by_domains(self, domains: list[str], include_tombstoned: bool = False) -> list[dict]:
+    def get_events_by_domains(
+        self,
+        domains: list[str],
+        include_tombstoned: bool = False,
+        tenant_id: str = "",
+    ) -> list[dict]:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
-            return self.get_all_events() if include_tombstoned else self.get_active_events()
+            rows = self.get_all_events() if include_tombstoned else self.get_active_events()
+            if tenant_id:
+                return [row for row in rows if (row.get("tenant_id") or "default") == tenant_id]
+            return rows
         domains_json = json.dumps(normalized)
         if include_tombstoned:
             rows = self.conn.execute(
@@ -428,39 +436,24 @@ class Database:
                     (d["id"],),
                 ).fetchall()
             ]
+            if tenant_id and (d.get("tenant_id") or "default") != tenant_id:
+                continue
             result.append(d)
         return result
 
-    def count_events_by_domains(self, domains: list[str], include_tombstoned: bool = False) -> int:
-        normalized = [d.strip().lower() for d in domains if d and d.strip()]
-        if not normalized:
-            if include_tombstoned:
-                row = self.conn.execute("SELECT COUNT(*) FROM events").fetchone()
-            else:
-                row = self.conn.execute(
-                    "SELECT COUNT(*) FROM events WHERE deleted_at IS NULL"
-                ).fetchone()
-            return int(row[0] or 0)
-
-        domains_json = json.dumps(normalized)
-        if include_tombstoned:
-            row = self.conn.execute(
-                """SELECT COUNT(DISTINCT e.id)
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))""",
-                (domains_json,),
-            ).fetchone()
-        else:
-            row = self.conn.execute(
-                """SELECT COUNT(DISTINCT e.id)
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                      AND e.deleted_at IS NULL""",
-                (domains_json,),
-            ).fetchone()
-        return int(row[0] or 0)
+    def count_events_by_domains(
+        self,
+        domains: list[str],
+        include_tombstoned: bool = False,
+        tenant_id: str = "",
+    ) -> int:
+        return len(
+            self.get_events_by_domains(
+                domains=domains,
+                include_tombstoned=include_tombstoned,
+                tenant_id=tenant_id,
+            )
+        )
 
     def list_events_page(
         self,
@@ -468,67 +461,16 @@ class Database:
         include_tombstoned: bool,
         limit: int,
         offset: int,
+        tenant_id: str = "",
     ) -> list[dict]:
         safe_limit = max(1, int(limit))
         safe_offset = max(0, int(offset))
-        normalized = [d.strip().lower() for d in domains if d and d.strip()]
-
-        if not normalized:
-            if include_tombstoned:
-                rows = self.conn.execute(
-                    """SELECT e.*
-                        FROM events e
-                        ORDER BY e.ts
-                        LIMIT ? OFFSET ?""",
-                    (safe_limit, safe_offset),
-                ).fetchall()
-            else:
-                rows = self.conn.execute(
-                    """SELECT e.*
-                        FROM events e
-                        WHERE e.deleted_at IS NULL
-                        ORDER BY e.ts
-                        LIMIT ? OFFSET ?""",
-                    (safe_limit, safe_offset),
-                ).fetchall()
-        else:
-            domains_json = json.dumps(normalized)
-            if include_tombstoned:
-                rows = self.conn.execute(
-                    """SELECT DISTINCT e.*
-                        FROM events e
-                        JOIN event_domains ed ON ed.event_id = e.id
-                        WHERE ed.domain IN (SELECT value FROM json_each(?))
-                        ORDER BY e.ts
-                        LIMIT ? OFFSET ?""",
-                    (domains_json, safe_limit, safe_offset),
-                ).fetchall()
-            else:
-                rows = self.conn.execute(
-                    """SELECT DISTINCT e.*
-                        FROM events e
-                        JOIN event_domains ed ON ed.event_id = e.id
-                        WHERE ed.domain IN (SELECT value FROM json_each(?))
-                          AND e.deleted_at IS NULL
-                        ORDER BY e.ts
-                        LIMIT ? OFFSET ?""",
-                    (domains_json, safe_limit, safe_offset),
-                ).fetchall()
-
-        result = []
-        for row in rows:
-            d = dict(row)
-            d["payload"] = json.loads(d["payload"])
-            d["metadata"] = json.loads(d["metadata"])
-            d["domains"] = [
-                r[0]
-                for r in self.conn.execute(
-                    "SELECT domain FROM event_domains WHERE event_id = ? ORDER BY domain",
-                    (d["id"],),
-                ).fetchall()
-            ]
-            result.append(d)
-        return result
+        all_rows = self.get_events_by_domains(
+            domains=domains,
+            include_tombstoned=include_tombstoned,
+            tenant_id=tenant_id,
+        )
+        return all_rows[safe_offset:safe_offset + safe_limit]
 
     def get_event_count(self, domain: str = "general") -> int:
         if domain and domain != "general":
@@ -673,6 +615,7 @@ class Database:
     def get_current_facts_by_domain(
         self,
         domain: str,
+        tenant_id: str = "",
         agent_id: str = "",
         session_id: str = "",
     ) -> list[dict]:
@@ -739,6 +682,8 @@ class Database:
             d["value"] = json.loads(d["value"])
             d["transform_config"] = json.loads(d["transform_config"])
             d["stale"] = bool(d["stale"])
+            if tenant_id and (d.get("tenant_id") or "default") != tenant_id:
+                continue
             if d["key"] not in seen_keys:
                 seen_keys.add(d["key"])
                 result.append(d)
@@ -894,20 +839,23 @@ class Database:
             events[event["id"]] = event
         return events
 
-    def get_downstream_facts(self, item_id: str) -> list[str]:
+    def get_downstream_facts(self, item_id: str, tenant_id: str = "") -> list[str]:
         """Recursively find downstream facts using a single SQL CTE."""
         rows = self.conn.execute(
             """
             WITH RECURSIVE graph(child_id) AS (
-                SELECT child_id FROM edges WHERE parent_id = ?
+                SELECT child_id FROM edges
+                WHERE parent_id = ?
+                  AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
                 UNION
                 SELECT e.child_id
                 FROM edges e
                 JOIN graph g ON e.parent_id = g.child_id
+                WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
             )
             SELECT DISTINCT child_id FROM graph ORDER BY child_id
             """,
-            (item_id,),
+            (item_id, tenant_id, tenant_id, tenant_id, tenant_id),
         ).fetchall()
         return [str(row["child_id"]) for row in rows]
 
@@ -949,22 +897,32 @@ class Database:
 
     # ── Embeddings ───────────────────────────────────────────────
 
-    def upsert_event_embedding(self, event_id: str, vector: list[float], model_id: str) -> None:
+    def upsert_event_embedding(
+        self,
+        event_id: str,
+        vector: list[float],
+        model_id: str,
+        tenant_id: str = "default",
+    ) -> None:
         self.conn.execute(
-            """INSERT INTO event_embeddings (event_id, model_id, vector)
-               VALUES (?, ?, ?)
+            """INSERT INTO event_embeddings (event_id, tenant_id, model_id, vector)
+               VALUES (?, ?, ?, ?)
                ON CONFLICT(event_id) DO UPDATE SET
+                 tenant_id = excluded.tenant_id,
                  model_id = excluded.model_id,
                  vector = excluded.vector,
                  created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
-            (event_id, model_id, encode_vector(vector)),
+            (event_id, tenant_id or "default", model_id, encode_vector(vector)),
         )
         self._maybe_commit()
 
-    def get_event_embedding(self, event_id: str) -> dict | None:
+    def get_event_embedding(self, event_id: str, tenant_id: str = "") -> dict | None:
         row = self.conn.execute(
-            "SELECT event_id, model_id, vector, created_at FROM event_embeddings WHERE event_id = ?",
-            (event_id,),
+            """SELECT event_id, tenant_id, model_id, vector, created_at
+               FROM event_embeddings
+               WHERE event_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
         ).fetchone()
         if row is None:
             return None
@@ -972,27 +930,35 @@ class Database:
         data["vector"] = decode_vector(data["vector"])
         return data
 
-    def upsert_fact_embedding(self, fact_id: str, vector: list[float], model_id: str) -> None:
+    def upsert_fact_embedding(
+        self,
+        fact_id: str,
+        vector: list[float],
+        model_id: str,
+        tenant_id: str = "default",
+    ) -> None:
         self.conn.execute(
-            """INSERT INTO fact_embeddings (fact_id, model_id, vector)
-               VALUES (?, ?, ?)
+            """INSERT INTO fact_embeddings (fact_id, tenant_id, model_id, vector)
+               VALUES (?, ?, ?, ?)
                ON CONFLICT(fact_id) DO UPDATE SET
+                 tenant_id = excluded.tenant_id,
                  model_id = excluded.model_id,
                  vector = excluded.vector,
                  created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
-            (fact_id, model_id, encode_vector(vector)),
+            (fact_id, tenant_id or "default", model_id, encode_vector(vector)),
         )
         self._maybe_commit()
 
-    def get_fact_embeddings(self, fact_ids: list[str]) -> dict[str, dict]:
+    def get_fact_embeddings(self, fact_ids: list[str], tenant_id: str = "") -> dict[str, dict]:
         if not fact_ids:
             return {}
         fact_ids_json = json.dumps(fact_ids)
         rows = self.conn.execute(
-            """SELECT fact_id, model_id, vector, created_at
+            """SELECT fact_id, tenant_id, model_id, vector, created_at
                FROM fact_embeddings
-               WHERE fact_id IN (SELECT value FROM json_each(?))""",
-            (fact_ids_json,),
+               WHERE fact_id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_ids_json, tenant_id, tenant_id),
         ).fetchall()
         result: dict[str, dict] = {}
         for row in rows:
