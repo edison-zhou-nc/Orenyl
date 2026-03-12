@@ -355,6 +355,34 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                         str(domain or "general"),
                     ):
                         raise PermissionError("forbidden:policy_denied")
+            elif name == "delete_and_recompute":
+                target_id = str(args.get("target_id", ""))
+                target_type = str(args.get("target_type", "event"))
+                delete_domains: set[str] = set()
+                if target_type == "event":
+                    target_event = db.get_event(target_id, tenant_id=tenant_context.tenant_id)
+                    if target_event:
+                        delete_domains.update(target_event.get("domains") or [])
+                elif target_type == "fact":
+                    parent_edges = db.get_parents(target_id, tenant_id=tenant_context.tenant_id)
+                    for edge in parent_edges:
+                        if edge.get("parent_type") != "event":
+                            continue
+                        parent_event = db.get_event(
+                            str(edge.get("parent_id", "")),
+                            tenant_id=tenant_context.tenant_id,
+                        )
+                        if parent_event:
+                            delete_domains.update(parent_event.get("domains") or [])
+                if not delete_domains:
+                    delete_domains = {"general"}
+                for domain in sorted(delete_domains):
+                    if not policy.enforce_write_domain(
+                        tenant_context.tenant_id,
+                        principal_agent,
+                        str(domain or "general"),
+                    ):
+                        raise PermissionError("forbidden:policy_denied")
         audit.log_security_event(
             name,
             "allow",
