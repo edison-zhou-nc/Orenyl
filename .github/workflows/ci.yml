@@ -26,6 +26,18 @@ jobs:
           python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Run unit + integration tests
         run: python -m pytest tests/unit tests/integration -q
+      - name: Run Phase 3 isolation + federation gates
+        run: |
+          python -m pytest \
+            tests/integration/test_phase3_tool_isolation.py \
+            tests/integration/test_federation_worker_idempotency.py \
+            tests/integration/test_federation_conflict_resolution.py \
+            tests/unit/test_sync_envelope_validation.py \
+            tests/integration/test_sync_journal_persistence.py -q
+      - name: Run Phase 3 load harness (opt-in; skip by default)
+        env:
+          LORE_ENABLE_PHASE3_LOAD_TEST: "0"
+        run: python -m pytest tests/benchmarks/test_phase3_multi_tenant_load.py -q
       - name: Build package artifacts
         run: python -m build
       - name: Smoke import from built package

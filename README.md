@@ -136,6 +136,24 @@ Run Phase 1 synthetic retrieval regression benchmark:
 python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q
 ```
 
+Run Phase 3 cross-tenant isolation suite:
+
+```bash
+python -m pytest tests/integration/test_phase3_tool_isolation.py -q
+```
+
+Run Phase 3 federation suite:
+
+```bash
+python -m pytest tests/integration/test_federation_worker_idempotency.py tests/integration/test_federation_conflict_resolution.py -q
+```
+
+Run Phase 3 multi-tenant load harness (opt-in):
+
+```bash
+LORE_ENABLE_PHASE3_LOAD_TEST=1 LORE_PHASE3_LOAD_EVENTS=1000000 python -m pytest tests/benchmarks/test_phase3_multi_tenant_load.py -q
+```
+
 ## Contributing
 
 See `CONTRIBUTING.md`.

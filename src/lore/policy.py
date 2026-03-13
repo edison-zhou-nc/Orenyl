@@ -34,8 +34,25 @@ class PolicyEngine:
             at_ts=now_iso(),
         )
 
+    def can_delegate_read(
+        self,
+        tenant_id: str,
+        agent_id: str,
+        domain: str,
+        now: str | None = None,
+    ) -> bool:
+        return self.db.has_delegation_grant(
+            tenant_id=tenant_id,
+            grantee_agent_id=agent_id,
+            domain=domain,
+            action="read",
+            at_ts=now or now_iso(),
+        )
+
     def enforce_read_domain(self, tenant_id: str, agent_id: str, domain: str) -> bool:
         if self.can_read_domain(tenant_id, agent_id, domain):
+            return True
+        if self.can_delegate_read(tenant_id, agent_id, domain):
             return True
         if self.shadow_mode:
             logger.info(

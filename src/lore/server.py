@@ -37,6 +37,8 @@ from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
 from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
+from .context_pack import _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests
+from .federation_worker import FederationWorker
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
 from .policy import (
     PolicyEngine,
@@ -64,6 +66,7 @@ _DEFAULT_SALT_WARNING_EMITTED = False
 _token_verifier: OIDCTokenVerifier | None = None
 _token_verifier_error: Exception | None = None
 _token_verifier_lock = threading.Lock()
+_federation_worker: FederationWorker | None = None
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
@@ -96,13 +99,25 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _token_verifier, _token_verifier_error, embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
+    global _token_verifier, _token_verifier_error
+    global embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
+    global _federation_worker
     with _token_verifier_lock:
         _token_verifier = None
         _token_verifier_error = None
         embedding_provider = None
         _DEFAULT_SALT_WARNING_EMITTED = False
+        _federation_worker = None
+    reset_context_pack_runtime_state_for_tests()
     reset_metrics_for_tests()
+
+
+def _get_federation_worker() -> FederationWorker:
+    global _federation_worker
+    if _federation_worker is None:
+        node_id = os.environ.get("LORE_FEDERATION_NODE_ID", "").strip() or "node-local"
+        _federation_worker = FederationWorker(db=db, node_id=node_id)
+    return _federation_worker
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:

@@ -53,6 +53,8 @@ def resolve_tenant_context(
     if not multi_tenant_enabled():
         tenant_id = "default"
     else:
+        if tenant_claim and tenant_arg and tenant_claim != tenant_arg:
+            raise PermissionError("tenant_scope_violation")
         tenant_id = tenant_claim or tenant_arg
         if not tenant_id:
             raise PermissionError("tenant_scope_violation")

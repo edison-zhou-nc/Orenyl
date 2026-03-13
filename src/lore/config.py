@@ -36,3 +36,11 @@ def min_fact_confidence_threshold() -> float:
 
 def multi_tenant_enabled() -> bool:
     return os.environ.get("LORE_ENABLE_MULTI_TENANT", "0").strip() == "1"
+
+
+def vector_backend_name() -> str:
+    return os.environ.get("LORE_VECTOR_BACKEND", "local").strip().lower() or "local"
+
+
+def pgvector_dsn() -> str:
+    return os.environ.get("LORE_PGVECTOR_DSN", "").strip()

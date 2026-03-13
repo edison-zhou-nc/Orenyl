@@ -7,12 +7,14 @@ import logging
 
 from .config import min_fact_confidence_threshold
 from .db import Database
-from .embeddings import cosine_similarity
 from .embedding_provider import build_embedding_provider_from_env
+from .embeddings import cosine_similarity
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
+from .vector_backend import build_vector_backend_from_env
 
 _embedding_provider = None
+_vector_backend = None
 logger = logging.getLogger(__name__)
 
 
@@ -21,6 +23,19 @@ def _get_embedding_provider():
     if _embedding_provider is None:
         _embedding_provider = build_embedding_provider_from_env()
     return _embedding_provider
+
+
+def _get_vector_backend(db: Database):
+    global _vector_backend
+    if _vector_backend is None:
+        _vector_backend = build_vector_backend_from_env(db)
+    return _vector_backend
+
+
+def _reset_runtime_state_for_tests() -> None:
+    global _embedding_provider, _vector_backend
+    _embedding_provider = None
+    _vector_backend = None
 
 
 def should_retrieve(query: str) -> bool:
@@ -124,35 +139,82 @@ class ContextPackBuilder:
                 [fact["id"] for fact in facts],
                 tenant_id=tenant_id,
             )
-            vector_scored: list[tuple[float, str]] = []
+            has_model_or_dim_mismatch = False
             for fact in facts:
                 existing = stored_fact_embeddings.get(fact["id"])
-                if existing is not None:
-                    if str(existing.get("model_id", "")) != str(provider.provider_id):
-                        logger.warning(
-                            "context_pack_embedding_model_mismatch fact_id=%s stored_model=%s provider=%s",
-                            fact["id"],
-                            existing.get("model_id"),
-                            provider.provider_id,
+                if existing is None:
+                    continue
+                if str(existing.get("model_id", "")) != str(provider.provider_id):
+                    logger.warning(
+                        (
+                            "context_pack_embedding_model_mismatch "
+                            "fact_id=%s stored_model=%s provider=%s"
+                        ),
+                        fact["id"],
+                        existing.get("model_id"),
+                        provider.provider_id,
+                    )
+                    has_model_or_dim_mismatch = True
+                    continue
+                if len(existing["vector"]) != len(query_vector):
+                    logger.warning(
+                        (
+                            "context_pack_embedding_dim_mismatch "
+                            "fact_id=%s stored_dim=%s query_dim=%s"
+                        ),
+                        fact["id"],
+                        len(existing["vector"]),
+                        len(query_vector),
+                    )
+                    has_model_or_dim_mismatch = True
+
+            backend = _get_vector_backend(self.db)
+            raw_order = backend.query(
+                namespace=tenant_id or "default",
+                query=query_vector,
+                top_k=max(limit * 3, len(facts)),
+            )
+            allowed_ids = {fact["id"] for fact in facts}
+            vector_order = [item_id for item_id in raw_order if item_id in allowed_ids]
+            if not vector_order or has_model_or_dim_mismatch:
+                vector_scored: list[tuple[float, str]] = []
+                for fact in facts:
+                    existing = stored_fact_embeddings.get(fact["id"])
+                    if existing is not None:
+                        if str(existing.get("model_id", "")) != str(provider.provider_id):
+                            logger.warning(
+                                (
+                                    "context_pack_embedding_model_mismatch "
+                                    "fact_id=%s stored_model=%s provider=%s"
+                                ),
+                                fact["id"],
+                                existing.get("model_id"),
+                                provider.provider_id,
+                            )
+                            existing = None
+                        elif len(existing["vector"]) != len(query_vector):
+                            logger.warning(
+                                (
+                                    "context_pack_embedding_dim_mismatch "
+                                    "fact_id=%s stored_dim=%s query_dim=%s"
+                                ),
+                                fact["id"],
+                                len(existing["vector"]),
+                                len(query_vector),
+                            )
+                            existing = None
+                    if existing is not None:
+                        fact_vector = existing["vector"]
+                    else:
+                        fact_text = (
+                            f"{fact.get('key', '')}:"
+                            f"{json.dumps(fact.get('value', ''), sort_keys=True)}"
                         )
-                        existing = None
-                    elif len(existing["vector"]) != len(query_vector):
-                        logger.warning(
-                            "context_pack_embedding_dim_mismatch fact_id=%s stored_dim=%s query_dim=%s",
-                            fact["id"],
-                            len(existing["vector"]),
-                            len(query_vector),
-                        )
-                        existing = None
-                if existing is not None:
-                    fact_vector = existing["vector"]
-                else:
-                    fact_text = f"{fact.get('key', '')}:{json.dumps(fact.get('value', ''), sort_keys=True)}"
-                    fact_vector = provider.embed_text(fact_text)
-                similarity = cosine_similarity(query_vector, fact_vector)
-                vector_scored.append((similarity, fact["id"]))
-            vector_scored.sort(key=lambda row: (-row[0], row[1]))
-            vector_order = [item_id for _, item_id in vector_scored]
+                        fact_vector = provider.embed_text(fact_text)
+                    similarity = cosine_similarity(query_vector, fact_vector)
+                    vector_scored.append((similarity, fact["id"]))
+                vector_scored.sort(key=lambda row: (-row[0], row[1]))
+                vector_order = [item_id for _, item_id in vector_scored]
         except Exception as exc:
             logger.warning("embedding_pipeline_fallback domain=%s error=%s", domain, exc)
             vector_order = None
@@ -197,7 +259,10 @@ class ContextPackBuilder:
             ]
             fact_sensitivity = "medium"
             if parent_levels:
-                fact_sensitivity = max(parent_levels, key=lambda level: sensitivity_rank.get(level, 2))
+                fact_sensitivity = max(
+                    parent_levels,
+                    key=lambda level: sensitivity_rank.get(level, 2),
+                )
             if sensitivity_rank.get(fact_sensitivity, 2) > max_rank:
                 continue
 
