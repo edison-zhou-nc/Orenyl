@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embeddings import decode_vector, encode_vector
-from .models import Event, Fact, Edge, Tombstone
+from .models import Edge, Event, Fact, Tombstone
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -111,8 +111,16 @@ class Database:
                 _safe_add_column("ALTER TABLE events ADD COLUMN agent_id TEXT")
             if "session_id" not in event_cols:
                 _safe_add_column("ALTER TABLE events ADD COLUMN session_id TEXT")
+            if "tenant_id" not in event_cols:
+                _safe_add_column("ALTER TABLE events ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE events SET tenant_id = 'default' WHERE tenant_id IS NULL")
             self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_agent_id ON events(agent_id)")
-            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id)")
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id)"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_events_tenant_id ON events(tenant_id)"
+            )
 
         if "facts" in tables:
             fact_cols = {
@@ -140,6 +148,59 @@ class Database:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN rule_version TEXT NOT NULL DEFAULT 'v1'"
                 )
+            if "tenant_id" not in fact_cols:
+                _safe_add_column("ALTER TABLE facts ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE facts SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_facts_tenant_id ON facts(tenant_id)")
+
+        if "edges" in tables:
+            edge_cols = {row[1] for row in self.conn.execute("PRAGMA table_info(edges)").fetchall()}
+            if "tenant_id" not in edge_cols:
+                _safe_add_column("ALTER TABLE edges ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE edges SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute("CREATE INDEX IF NOT EXISTS idx_edges_tenant_id ON edges(tenant_id)")
+
+        if "tombstones" in tables:
+            tombstone_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(tombstones)").fetchall()
+            }
+            if "tenant_id" not in tombstone_cols:
+                _safe_add_column("ALTER TABLE tombstones ADD COLUMN tenant_id TEXT")
+            self.conn.execute("UPDATE tombstones SET tenant_id = 'default' WHERE tenant_id IS NULL")
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_tombstones_tenant_id ON tombstones(tenant_id)"
+            )
+
+        if "event_embeddings" in tables:
+            event_embedding_cols = {
+                row[1]
+                for row in self.conn.execute(
+                    "PRAGMA table_info(event_embeddings)"
+                ).fetchall()
+            }
+            if "tenant_id" not in event_embedding_cols:
+                _safe_add_column("ALTER TABLE event_embeddings ADD COLUMN tenant_id TEXT")
+            self.conn.execute(
+                "UPDATE event_embeddings SET tenant_id = 'default' WHERE tenant_id IS NULL"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_event_embeddings_tenant_id "
+                "ON event_embeddings(tenant_id)"
+            )
+
+        if "fact_embeddings" in tables:
+            fact_embedding_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(fact_embeddings)").fetchall()
+            }
+            if "tenant_id" not in fact_embedding_cols:
+                _safe_add_column("ALTER TABLE fact_embeddings ADD COLUMN tenant_id TEXT")
+            self.conn.execute(
+                "UPDATE fact_embeddings SET tenant_id = 'default' WHERE tenant_id IS NULL"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_fact_embeddings_tenant_id "
+                "ON fact_embeddings(tenant_id)"
+            )
 
         self.conn.commit()
 
@@ -158,10 +219,11 @@ class Database:
     def insert_event(self, event: Event) -> str:
         self.conn.execute(
             """INSERT INTO events (
-                   id, type, payload, content_hash, sensitivity, consent_source, expires_at, metadata,
-                   retention_tier, archived_at, agent_id, session_id, source, ts, valid_from, valid_to, created_at
+                   id, type, payload, content_hash, sensitivity, consent_source,
+                   expires_at, metadata, retention_tier, archived_at, agent_id,
+                   session_id, source, tenant_id, ts, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event.id,
                 event.type,
@@ -176,6 +238,7 @@ class Database:
                 event.metadata.get("agent_id"),
                 event.metadata.get("session_id"),
                 event.source,
+                event.tenant_id or event.metadata.get("tenant_id", "default"),
                 event.ts,
                 event.valid_from,
                 event.valid_to,
@@ -190,8 +253,13 @@ class Database:
         self._maybe_commit()
         return event.id
 
-    def get_event(self, event_id: str) -> dict | None:
-        row = self.conn.execute("SELECT * FROM events WHERE id = ?", (event_id,)).fetchone()
+    def get_event(self, event_id: str, tenant_id: str = "") -> dict | None:
+        row = self.conn.execute(
+            """SELECT * FROM events
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
+        ).fetchone()
         if row is None:
             return None
         d = dict(row)
@@ -210,22 +278,31 @@ class Database:
         if not content_hash:
             return None
         row = self.conn.execute(
-            "SELECT id FROM events WHERE content_hash = ? AND deleted_at IS NULL ORDER BY ts DESC LIMIT 1",
+            "SELECT id FROM events WHERE content_hash = ? "
+            "AND deleted_at IS NULL ORDER BY ts DESC LIMIT 1",
             (content_hash,),
         ).fetchone()
         if row is None:
             return None
         return self.get_event(row["id"])
 
-    def get_active_events(self, event_type: str | None = None) -> list[dict]:
+    def get_active_events(self, event_type: str | None = None, tenant_id: str = "") -> list[dict]:
         if event_type:
             rows = self.conn.execute(
-                "SELECT * FROM events WHERE deleted_at IS NULL AND type = ? ORDER BY ts",
-                (event_type,),
+                """SELECT * FROM events
+                   WHERE deleted_at IS NULL
+                     AND type = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (event_type, tenant_id, tenant_id),
             ).fetchall()
         else:
             rows = self.conn.execute(
-                "SELECT * FROM events WHERE deleted_at IS NULL ORDER BY ts"
+                """SELECT * FROM events
+                   WHERE deleted_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (tenant_id, tenant_id),
             ).fetchall()
         result = []
         for row in rows:
@@ -242,7 +319,12 @@ class Database:
             result.append(d)
         return result
 
-    def get_recent_events_in_domains(self, domains: list[str], since_ts: str) -> list[dict]:
+    def get_recent_events_in_domains(
+        self,
+        domains: list[str],
+        since_ts: str,
+        tenant_id: str = "",
+    ) -> list[dict]:
         if not domains:
             return []
         domains_json = json.dumps(domains)
@@ -252,9 +334,10 @@ class Database:
                JOIN event_domains ed ON ed.event_id = e.id
                WHERE e.deleted_at IS NULL
                  AND e.ts >= ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                  AND ed.domain IN (SELECT value FROM json_each(?))
                ORDER BY e.ts DESC""",
-            (since_ts, domains_json),
+            (since_ts, tenant_id, tenant_id, domains_json),
         ).fetchall()
         result: list[dict] = []
         for row in rows:
@@ -271,13 +354,15 @@ class Database:
             result.append(data)
         return result
 
-    def get_facts_by_ids(self, fact_ids: list[str]) -> list[dict]:
+    def get_facts_by_ids(self, fact_ids: list[str], tenant_id: str = "") -> list[dict]:
         if not fact_ids:
             return []
         fact_ids_json = json.dumps(fact_ids)
         rows = self.conn.execute(
-            "SELECT * FROM facts WHERE id IN (SELECT value FROM json_each(?))",
-            (fact_ids_json,),
+            """SELECT * FROM facts
+               WHERE id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_ids_json, tenant_id, tenant_id),
         ).fetchall()
         out: list[dict] = []
         for row in rows:
@@ -311,19 +396,20 @@ class Database:
             result.append(d)
         return result
 
-    def get_active_events_by_domains(self, domains: list[str]) -> list[dict]:
+    def get_active_events_by_domains(self, domains: list[str], tenant_id: str = "") -> list[dict]:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
-            return self.get_active_events()
+            return self.get_active_events(tenant_id=tenant_id)
         domains_json = json.dumps(normalized)
         rows = self.conn.execute(
             """SELECT DISTINCT e.*
                 FROM events e
                 JOIN event_domains ed ON ed.event_id = e.id
                 WHERE e.deleted_at IS NULL
+                  AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                   AND ed.domain IN (SELECT value FROM json_each(?))
                 ORDER BY e.ts""",
-            (domains_json,),
+            (tenant_id, tenant_id, domains_json),
         ).fetchall()
         result = []
         for row in rows:
@@ -340,30 +426,54 @@ class Database:
             result.append(d)
         return result
 
-    def get_events_by_domains(self, domains: list[str], include_tombstoned: bool = False) -> list[dict]:
+    def get_events_by_domains(
+        self,
+        domains: list[str],
+        include_tombstoned: bool = False,
+        tenant_id: str = "",
+    ) -> list[dict]:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
-            return self.get_all_events() if include_tombstoned else self.get_active_events()
-        domains_json = json.dumps(normalized)
-        if include_tombstoned:
-            rows = self.conn.execute(
-                """SELECT DISTINCT e.*
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                    ORDER BY e.ts""",
-                (domains_json,),
-            ).fetchall()
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                       FROM events e
+                       WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                       ORDER BY e.ts""",
+                    (tenant_id, tenant_id),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT e.*
+                       FROM events e
+                       WHERE e.deleted_at IS NULL
+                         AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                       ORDER BY e.ts""",
+                    (tenant_id, tenant_id),
+                ).fetchall()
         else:
-            rows = self.conn.execute(
-                """SELECT DISTINCT e.*
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                      AND e.deleted_at IS NULL
-                    ORDER BY e.ts""",
-                (domains_json,),
-            ).fetchall()
+            domains_json = json.dumps(normalized)
+            if include_tombstoned:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts""",
+                    (domains_json, tenant_id, tenant_id),
+                ).fetchall()
+            else:
+                rows = self.conn.execute(
+                    """SELECT DISTINCT e.*
+                        FROM events e
+                        JOIN event_domains ed ON ed.event_id = e.id
+                        WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                        ORDER BY e.ts""",
+                    (domains_json, tenant_id, tenant_id),
+                ).fetchall()
         result = []
         for row in rows:
             d = dict(row)
@@ -379,14 +489,28 @@ class Database:
             result.append(d)
         return result
 
-    def count_events_by_domains(self, domains: list[str], include_tombstoned: bool = False) -> int:
+    def count_events_by_domains(
+        self,
+        domains: list[str],
+        include_tombstoned: bool = False,
+        tenant_id: str = "",
+    ) -> int:
         normalized = [d.strip().lower() for d in domains if d and d.strip()]
         if not normalized:
             if include_tombstoned:
-                row = self.conn.execute("SELECT COUNT(*) FROM events").fetchone()
+                row = self.conn.execute(
+                    """SELECT COUNT(*)
+                       FROM events
+                       WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                    (tenant_id, tenant_id),
+                ).fetchone()
             else:
                 row = self.conn.execute(
-                    "SELECT COUNT(*) FROM events WHERE deleted_at IS NULL"
+                    """SELECT COUNT(*)
+                       FROM events
+                       WHERE deleted_at IS NULL
+                         AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                    (tenant_id, tenant_id),
                 ).fetchone()
             return int(row[0] or 0)
 
@@ -394,19 +518,21 @@ class Database:
         if include_tombstoned:
             row = self.conn.execute(
                 """SELECT COUNT(DISTINCT e.id)
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))""",
-                (domains_json,),
+                   FROM events e
+                   JOIN event_domains ed ON ed.event_id = e.id
+                   WHERE ed.domain IN (SELECT value FROM json_each(?))
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domains_json, tenant_id, tenant_id),
             ).fetchone()
         else:
             row = self.conn.execute(
                 """SELECT COUNT(DISTINCT e.id)
-                    FROM events e
-                    JOIN event_domains ed ON ed.event_id = e.id
-                    WHERE ed.domain IN (SELECT value FROM json_each(?))
-                      AND e.deleted_at IS NULL""",
-                (domains_json,),
+                   FROM events e
+                   JOIN event_domains ed ON ed.event_id = e.id
+                   WHERE ed.domain IN (SELECT value FROM json_each(?))
+                     AND e.deleted_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domains_json, tenant_id, tenant_id),
             ).fetchone()
         return int(row[0] or 0)
 
@@ -416,6 +542,7 @@ class Database:
         include_tombstoned: bool,
         limit: int,
         offset: int,
+        tenant_id: str = "",
     ) -> list[dict]:
         safe_limit = max(1, int(limit))
         safe_offset = max(0, int(offset))
@@ -426,18 +553,20 @@ class Database:
                 rows = self.conn.execute(
                     """SELECT e.*
                         FROM events e
+                        WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                         ORDER BY e.ts
                         LIMIT ? OFFSET ?""",
-                    (safe_limit, safe_offset),
+                    (tenant_id, tenant_id, safe_limit, safe_offset),
                 ).fetchall()
             else:
                 rows = self.conn.execute(
                     """SELECT e.*
                         FROM events e
                         WHERE e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                         ORDER BY e.ts
                         LIMIT ? OFFSET ?""",
-                    (safe_limit, safe_offset),
+                    (tenant_id, tenant_id, safe_limit, safe_offset),
                 ).fetchall()
         else:
             domains_json = json.dumps(normalized)
@@ -447,9 +576,10 @@ class Database:
                         FROM events e
                         JOIN event_domains ed ON ed.event_id = e.id
                         WHERE ed.domain IN (SELECT value FROM json_each(?))
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                         ORDER BY e.ts
                         LIMIT ? OFFSET ?""",
-                    (domains_json, safe_limit, safe_offset),
+                    (domains_json, tenant_id, tenant_id, safe_limit, safe_offset),
                 ).fetchall()
             else:
                 rows = self.conn.execute(
@@ -458,9 +588,10 @@ class Database:
                         JOIN event_domains ed ON ed.event_id = e.id
                         WHERE ed.domain IN (SELECT value FROM json_each(?))
                           AND e.deleted_at IS NULL
+                          AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
                         ORDER BY e.ts
                         LIMIT ? OFFSET ?""",
-                    (domains_json, safe_limit, safe_offset),
+                    (domains_json, tenant_id, tenant_id, safe_limit, safe_offset),
                 ).fetchall()
 
         result = []
@@ -478,33 +609,43 @@ class Database:
             result.append(d)
         return result
 
-    def get_event_count(self, domain: str = "general") -> int:
+    def get_event_count(self, domain: str = "general", tenant_id: str = "") -> int:
         if domain and domain != "general":
             row = self.conn.execute(
                 """SELECT COUNT(DISTINCT e.id)
                    FROM events e
                    JOIN event_domains ed ON ed.event_id = e.id
-                   WHERE e.deleted_at IS NULL AND ed.domain = ?""",
-                (domain,),
+                   WHERE e.deleted_at IS NULL
+                     AND ed.domain = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domain, tenant_id, tenant_id),
             ).fetchone()
             return int(row[0] or 0)
         row = self.conn.execute(
-            "SELECT COUNT(*) FROM events WHERE deleted_at IS NULL"
+            """SELECT COUNT(*) FROM events
+               WHERE deleted_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (tenant_id, tenant_id),
         ).fetchone()
         return int(row[0] or 0)
 
-    def get_latest_event_ts(self, domain: str = "general") -> str | None:
+    def get_latest_event_ts(self, domain: str = "general", tenant_id: str = "") -> str | None:
         if domain and domain != "general":
             row = self.conn.execute(
                 """SELECT MAX(e.ts)
                    FROM events e
                    JOIN event_domains ed ON ed.event_id = e.id
-                   WHERE e.deleted_at IS NULL AND ed.domain = ?""",
-                (domain,),
+                   WHERE e.deleted_at IS NULL
+                     AND ed.domain = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
+                (domain, tenant_id, tenant_id),
             ).fetchone()
             return row[0]
         row = self.conn.execute(
-            "SELECT MAX(ts) FROM events WHERE deleted_at IS NULL"
+            """SELECT MAX(ts) FROM events
+               WHERE deleted_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (tenant_id, tenant_id),
         ).fetchone()
         return row[0]
 
@@ -531,17 +672,34 @@ class Database:
             result.append(d)
         return result
 
-    def soft_delete_event(self, event_id: str, deleted_at: str) -> bool:
+    def soft_delete_event(self, event_id: str, deleted_at: str, tenant_id: str = "") -> bool:
         cur = self.conn.execute(
-            "UPDATE events SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
-            (deleted_at, event_id),
+            """UPDATE events
+               SET deleted_at = ?
+               WHERE id = ?
+                 AND deleted_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (deleted_at, event_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def hard_delete_event(self, event_id: str) -> bool:
-        self.conn.execute("DELETE FROM event_domains WHERE event_id = ?", (event_id,))
-        cur = self.conn.execute("DELETE FROM events WHERE id = ?", (event_id,))
+    def hard_delete_event(self, event_id: str, tenant_id: str = "") -> bool:
+        self.conn.execute(
+            """DELETE FROM event_domains
+               WHERE event_id IN (
+                   SELECT id FROM events
+                   WHERE id = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               )""",
+            (event_id, tenant_id, tenant_id),
+        )
+        cur = self.conn.execute(
+            """DELETE FROM events
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
+        )
         self._maybe_commit()
         return cur.rowcount > 0
 
@@ -567,9 +725,10 @@ class Database:
         self.conn.execute(
             """INSERT INTO facts (
                    id, key, value, transform_config, stale, importance,
-                   version, rule_id, rule_version, confidence, model_id, valid_from, valid_to, created_at
+                   version, rule_id, rule_version, confidence, model_id,
+                   tenant_id, valid_from, valid_to, created_at
                )
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 fact.id,
                 fact.key,
@@ -582,6 +741,7 @@ class Database:
                 fact.rule_version,
                 fact.confidence,
                 fact.model_id,
+                fact.tenant_id,
                 fact.valid_from,
                 fact.valid_to,
                 fact.created_at,
@@ -590,20 +750,24 @@ class Database:
         self._maybe_commit()
         return fact.id
 
-    def get_current_facts(self, key: str | None = None) -> list[dict]:
+    def get_current_facts(self, key: str | None = None, tenant_id: str = "") -> list[dict]:
         """Get all valid, non-invalidated facts (optionally filtered by key)."""
         if key:
             rows = self.conn.execute(
                 """SELECT * FROM facts
-                   WHERE invalidated_at IS NULL AND key = ?
+                   WHERE invalidated_at IS NULL
+                     AND key = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
                    ORDER BY version DESC""",
-                (key,),
+                (key, tenant_id, tenant_id),
             ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT * FROM facts
                    WHERE invalidated_at IS NULL
-                   ORDER BY key, version DESC"""
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY key, version DESC""",
+                (tenant_id, tenant_id),
             ).fetchall()
         result = []
         seen_keys: set[str] = set()
@@ -621,6 +785,7 @@ class Database:
     def get_current_facts_by_domain(
         self,
         domain: str,
+        tenant_id: str = "",
         agent_id: str = "",
         session_id: str = "",
     ) -> list[dict]:
@@ -629,6 +794,7 @@ class Database:
                 """SELECT DISTINCT f.*
                    FROM facts f
                    WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
                      AND EXISTS (
                          SELECT 1
                          FROM edges e
@@ -638,6 +804,7 @@ class Database:
                            AND e.parent_type = 'event'
                            AND ed.domain = ?
                            AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -645,19 +812,28 @@ class Database:
                          JOIN events ev2 ON ev2.id = e2.parent_id
                          WHERE e2.child_id = f.id
                            AND e2.parent_type = 'event'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
                            AND (
                                (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.agent_id, '') <> ?)
                                OR (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.session_id, '') <> ?)
                            )
                      )
                    ORDER BY f.key, f.version DESC""",
-                (domain, agent_id, agent_id, session_id, session_id),
+                (
+                    tenant_id, tenant_id,
+                    domain,
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    agent_id, agent_id,
+                    session_id, session_id,
+                ),
             ).fetchall()
         else:
             rows = self.conn.execute(
                 """SELECT DISTINCT f.*
                    FROM facts f
                    WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
                      AND EXISTS (
                          SELECT 1
                          FROM edges e
@@ -665,6 +841,7 @@ class Database:
                          WHERE e.child_id = f.id
                            AND e.parent_type = 'event'
                            AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
                      )
                      AND NOT EXISTS (
                          SELECT 1
@@ -672,13 +849,20 @@ class Database:
                          JOIN events ev2 ON ev2.id = e2.parent_id
                          WHERE e2.child_id = f.id
                            AND e2.parent_type = 'event'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
                            AND (
                                (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.agent_id, '') <> ?)
                                OR (NULLIF(?, '') IS NOT NULL AND COALESCE(ev2.session_id, '') <> ?)
                            )
                      )
                    ORDER BY f.key, f.version DESC""",
-                (agent_id, agent_id, session_id, session_id),
+                (
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    tenant_id, tenant_id,
+                    agent_id, agent_id,
+                    session_id, session_id,
+                ),
             ).fetchall()
         result = []
         seen_keys: set[str] = set()
@@ -692,8 +876,13 @@ class Database:
                 result.append(d)
         return result
 
-    def get_fact(self, fact_id: str) -> dict | None:
-        row = self.conn.execute("SELECT * FROM facts WHERE id = ?", (fact_id,)).fetchone()
+    def get_fact(self, fact_id: str, tenant_id: str = "") -> dict | None:
+        row = self.conn.execute(
+            """SELECT * FROM facts
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_id, tenant_id, tenant_id),
+        ).fetchone()
         if row is None:
             return None
         d = dict(row)
@@ -702,25 +891,40 @@ class Database:
         d["stale"] = bool(d["stale"])
         return d
 
-    def get_latest_version(self, key: str) -> int:
+    def get_latest_version(self, key: str, tenant_id: str = "") -> int:
         row = self.conn.execute(
-            "SELECT MAX(version) as max_v FROM facts WHERE key = ?", (key,)
+            """SELECT MAX(version) as max_v FROM facts
+               WHERE key = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (key, tenant_id, tenant_id),
         ).fetchone()
         return row["max_v"] or 0
 
-    def invalidate_fact(self, fact_id: str, reason: str, invalidated_at: str) -> bool:
+    def invalidate_fact(
+        self,
+        fact_id: str,
+        reason: str,
+        invalidated_at: str,
+        tenant_id: str = "",
+    ) -> bool:
         cur = self.conn.execute(
             """UPDATE facts SET invalidated_at = ?, invalidation_reason = ?
-               WHERE id = ? AND invalidated_at IS NULL""",
-            (invalidated_at, reason, fact_id),
+               WHERE id = ?
+                 AND invalidated_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (invalidated_at, reason, fact_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def get_facts_by_key(self, key: str) -> list[dict]:
+    def get_facts_by_key(self, key: str, tenant_id: str = "") -> list[dict]:
         """Get all versions of facts for a key (including invalidated)."""
         rows = self.conn.execute(
-            "SELECT * FROM facts WHERE key = ? ORDER BY version", (key,)
+            """SELECT * FROM facts
+               WHERE key = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               ORDER BY version""",
+            (key, tenant_id, tenant_id),
         ).fetchall()
         result = []
         for row in rows:
@@ -778,35 +982,177 @@ class Database:
         ).fetchall()
         return [str(row["version"]) for row in rows]
 
+    def has_agent_permission(
+        self,
+        tenant_id: str,
+        agent_id: str,
+        domain: str,
+        action: str,
+        at_ts: str,
+    ) -> bool:
+        row = self.conn.execute(
+            """SELECT 1
+               FROM agent_permissions
+               WHERE tenant_id = ?
+                 AND agent_id = ?
+                 AND action = ?
+                 AND effect = 'allow'
+                 AND (domain = ? OR domain = '*')
+                 AND (expires_at IS NULL OR expires_at > ?)
+               LIMIT 1""",
+            (tenant_id, agent_id, action, domain, at_ts),
+        ).fetchone()
+        return row is not None
+
+    def has_delegation_grant(
+        self,
+        tenant_id: str,
+        grantee_agent_id: str,
+        domain: str,
+        action: str,
+        at_ts: str,
+    ) -> bool:
+        row = self.conn.execute(
+            """SELECT 1
+               FROM delegation_grants
+               WHERE tenant_id = ?
+                 AND grantee_agent_id = ?
+                 AND action = ?
+                 AND (domain = ? OR domain = '*')
+                 AND (fact_id IS NULL OR fact_id = '')
+                 AND expires_at > ?
+               LIMIT 1""",
+            (tenant_id, grantee_agent_id, action, domain, at_ts),
+        ).fetchone()
+        return row is not None
+
+    def append_sync_journal_entry(
+        self,
+        tenant_id: str,
+        direction: str,
+        envelope_id: str,
+        idempotency_key: str,
+        payload: dict[str, Any],
+        status: str = "pending",
+    ) -> bool:
+        try:
+            self.conn.execute(
+                """INSERT INTO sync_journal (
+                       tenant_id, direction, envelope_id, idempotency_key, payload, status
+                   )
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    tenant_id,
+                    direction,
+                    envelope_id,
+                    idempotency_key,
+                    json.dumps(payload or {}),
+                    status,
+                ),
+            )
+        except sqlite3.IntegrityError:
+            return False
+        self._maybe_commit()
+        return True
+
+    def list_sync_journal_entries(
+        self,
+        tenant_id: str,
+        direction: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        safe_limit = max(1, min(int(limit), 1000))
+        rows = self.conn.execute(
+            """SELECT *
+               FROM sync_journal
+               WHERE tenant_id = ?
+                 AND (NULLIF(?, '') IS NULL OR direction = ?)
+                 AND (NULLIF(?, '') IS NULL OR status = ?)
+               ORDER BY id ASC
+               LIMIT ?""",
+            (
+                tenant_id,
+                direction or "",
+                direction or "",
+                status or "",
+                status or "",
+                safe_limit,
+            ),
+        ).fetchall()
+        entries: list[dict] = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item.get("payload") or "{}")
+            entries.append(item)
+        return entries
+
+    def update_sync_journal_status(
+        self,
+        tenant_id: str,
+        direction: str,
+        idempotency_key: str,
+        status: str,
+    ) -> bool:
+        cur = self.conn.execute(
+            """UPDATE sync_journal
+               SET status = ?
+               WHERE tenant_id = ?
+                 AND direction = ?
+                 AND idempotency_key = ?""",
+            (status, tenant_id, direction, idempotency_key),
+        )
+        self._maybe_commit()
+        return cur.rowcount > 0
+
     # ── Edges ───────────────────────────────────────────────
 
     def insert_edge(self, edge: Edge):
         self.conn.execute(
-            """INSERT INTO edges (parent_id, parent_type, child_id, child_type, relation)
-               VALUES (?, ?, ?, ?, ?)""",
-            (edge.parent_id, edge.parent_type, edge.child_id, edge.child_type, edge.relation),
+            """INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                edge.tenant_id,
+                edge.parent_id,
+                edge.parent_type,
+                edge.child_id,
+                edge.child_type,
+                edge.relation,
+            ),
         )
         self._maybe_commit()
 
-    def get_children(self, parent_id: str) -> list[dict]:
+    def get_children(self, parent_id: str, tenant_id: str = "") -> list[dict]:
         rows = self.conn.execute(
-            "SELECT * FROM edges WHERE parent_id = ?", (parent_id,)
+            """SELECT * FROM edges
+               WHERE parent_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (parent_id, tenant_id, tenant_id),
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_parents(self, child_id: str) -> list[dict]:
+    def get_parents(self, child_id: str, tenant_id: str = "") -> list[dict]:
         rows = self.conn.execute(
-            "SELECT * FROM edges WHERE child_id = ?", (child_id,)
+            """SELECT * FROM edges
+               WHERE child_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (child_id, tenant_id, tenant_id),
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def get_parents_for_children(self, child_ids: list[str]) -> dict[str, list[dict]]:
+    def get_parents_for_children(
+        self,
+        child_ids: list[str],
+        tenant_id: str = "",
+    ) -> dict[str, list[dict]]:
         if not child_ids:
             return {}
         child_ids_json = json.dumps(child_ids)
         rows = self.conn.execute(
-            "SELECT * FROM edges WHERE child_id IN (SELECT value FROM json_each(?))",
-            (child_ids_json,),
+            """SELECT * FROM edges
+               WHERE child_id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (child_ids_json, tenant_id, tenant_id),
         ).fetchall()
         grouped: dict[str, list[dict]] = {child_id: [] for child_id in child_ids}
         for row in rows:
@@ -814,13 +1160,15 @@ class Database:
             grouped.setdefault(edge["child_id"], []).append(edge)
         return grouped
 
-    def get_events_by_ids(self, event_ids: list[str]) -> dict[str, dict]:
+    def get_events_by_ids(self, event_ids: list[str], tenant_id: str = "") -> dict[str, dict]:
         if not event_ids:
             return {}
         event_ids_json = json.dumps(event_ids)
         rows = self.conn.execute(
-            "SELECT * FROM events WHERE id IN (SELECT value FROM json_each(?))",
-            (event_ids_json,),
+            """SELECT * FROM events
+               WHERE id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_ids_json, tenant_id, tenant_id),
         ).fetchall()
         domain_rows = self.conn.execute(
             (
@@ -842,41 +1190,55 @@ class Database:
             events[event["id"]] = event
         return events
 
-    def get_downstream_facts(self, item_id: str) -> list[str]:
+    def get_downstream_facts(self, item_id: str, tenant_id: str = "") -> list[str]:
         """Recursively find downstream facts using a single SQL CTE."""
         rows = self.conn.execute(
             """
             WITH RECURSIVE graph(child_id) AS (
-                SELECT child_id FROM edges WHERE parent_id = ?
+                SELECT child_id FROM edges
+                WHERE parent_id = ?
+                  AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
                 UNION
                 SELECT e.child_id
                 FROM edges e
                 JOIN graph g ON e.parent_id = g.child_id
+                WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
             )
             SELECT DISTINCT child_id FROM graph ORDER BY child_id
             """,
-            (item_id,),
+            (item_id, tenant_id, tenant_id, tenant_id, tenant_id),
         ).fetchall()
         return [str(row["child_id"]) for row in rows]
 
-    def delete_edges_for_item(self, item_id: str) -> int:
+    def delete_edges_for_item(self, item_id: str, tenant_id: str = "") -> int:
         cur = self.conn.execute(
-            "DELETE FROM edges WHERE parent_id = ? OR child_id = ?",
-            (item_id, item_id),
+            """DELETE FROM edges
+               WHERE (parent_id = ? OR child_id = ?)
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (item_id, item_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount
 
-    def hard_delete_facts_by_source(self, event_id: str) -> int:
+    def hard_delete_facts_by_source(self, event_id: str, tenant_id: str = "") -> int:
         rows = self.conn.execute(
-            "SELECT child_id FROM edges WHERE parent_id = ? AND parent_type = 'event'",
-            (event_id,),
+            """SELECT child_id
+               FROM edges
+               WHERE parent_id = ?
+                 AND parent_type = 'event'
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
         ).fetchall()
         fact_ids = [row[0] for row in rows]
         deleted = 0
         for fact_id in fact_ids:
-            self.delete_edges_for_item(fact_id)
-            cur = self.conn.execute("DELETE FROM facts WHERE id = ?", (fact_id,))
+            self.delete_edges_for_item(fact_id, tenant_id=tenant_id)
+            cur = self.conn.execute(
+                """DELETE FROM facts
+                   WHERE id = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                (fact_id, tenant_id, tenant_id),
+            )
             deleted += cur.rowcount
         self._maybe_commit()
         return deleted
@@ -897,22 +1259,32 @@ class Database:
 
     # ── Embeddings ───────────────────────────────────────────────
 
-    def upsert_event_embedding(self, event_id: str, vector: list[float], model_id: str) -> None:
+    def upsert_event_embedding(
+        self,
+        event_id: str,
+        vector: list[float],
+        model_id: str,
+        tenant_id: str = "default",
+    ) -> None:
         self.conn.execute(
-            """INSERT INTO event_embeddings (event_id, model_id, vector)
-               VALUES (?, ?, ?)
+            """INSERT INTO event_embeddings (event_id, tenant_id, model_id, vector)
+               VALUES (?, ?, ?, ?)
                ON CONFLICT(event_id) DO UPDATE SET
+                 tenant_id = excluded.tenant_id,
                  model_id = excluded.model_id,
                  vector = excluded.vector,
                  created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
-            (event_id, model_id, encode_vector(vector)),
+            (event_id, tenant_id or "default", model_id, encode_vector(vector)),
         )
         self._maybe_commit()
 
-    def get_event_embedding(self, event_id: str) -> dict | None:
+    def get_event_embedding(self, event_id: str, tenant_id: str = "") -> dict | None:
         row = self.conn.execute(
-            "SELECT event_id, model_id, vector, created_at FROM event_embeddings WHERE event_id = ?",
-            (event_id,),
+            """SELECT event_id, tenant_id, model_id, vector, created_at
+               FROM event_embeddings
+               WHERE event_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (event_id, tenant_id, tenant_id),
         ).fetchone()
         if row is None:
             return None
@@ -920,27 +1292,35 @@ class Database:
         data["vector"] = decode_vector(data["vector"])
         return data
 
-    def upsert_fact_embedding(self, fact_id: str, vector: list[float], model_id: str) -> None:
+    def upsert_fact_embedding(
+        self,
+        fact_id: str,
+        vector: list[float],
+        model_id: str,
+        tenant_id: str = "default",
+    ) -> None:
         self.conn.execute(
-            """INSERT INTO fact_embeddings (fact_id, model_id, vector)
-               VALUES (?, ?, ?)
+            """INSERT INTO fact_embeddings (fact_id, tenant_id, model_id, vector)
+               VALUES (?, ?, ?, ?)
                ON CONFLICT(fact_id) DO UPDATE SET
+                 tenant_id = excluded.tenant_id,
                  model_id = excluded.model_id,
                  vector = excluded.vector,
                  created_at = (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))""",
-            (fact_id, model_id, encode_vector(vector)),
+            (fact_id, tenant_id or "default", model_id, encode_vector(vector)),
         )
         self._maybe_commit()
 
-    def get_fact_embeddings(self, fact_ids: list[str]) -> dict[str, dict]:
+    def get_fact_embeddings(self, fact_ids: list[str], tenant_id: str = "") -> dict[str, dict]:
         if not fact_ids:
             return {}
         fact_ids_json = json.dumps(fact_ids)
         rows = self.conn.execute(
-            """SELECT fact_id, model_id, vector, created_at
+            """SELECT fact_id, tenant_id, model_id, vector, created_at
                FROM fact_embeddings
-               WHERE fact_id IN (SELECT value FROM json_each(?))""",
-            (fact_ids_json,),
+               WHERE fact_id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_ids_json, tenant_id, tenant_id),
         ).fetchall()
         result: dict[str, dict] = {}
         for row in rows:
@@ -953,22 +1333,34 @@ class Database:
 
     def insert_tombstone(self, tombstone: Tombstone):
         self.conn.execute(
-            """INSERT INTO tombstones (target_id, target_type, reason, deleted_at, cascade_invalidated)
-               VALUES (?, ?, ?, ?, ?)""",
+            """INSERT INTO tombstones (
+                   tenant_id, target_id, target_type, reason, deleted_at, cascade_invalidated
+               )
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (
-                tombstone.target_id, tombstone.target_type, tombstone.reason,
+                tombstone.tenant_id,
+                tombstone.target_id,
+                tombstone.target_type,
+                tombstone.reason,
                 tombstone.deleted_at, json.dumps(tombstone.cascade_invalidated),
             ),
         )
         self._maybe_commit()
 
-    def get_tombstones(self, target_id: str | None = None) -> list[dict]:
+    def get_tombstones(self, target_id: str | None = None, tenant_id: str = "") -> list[dict]:
         if target_id:
             rows = self.conn.execute(
-                "SELECT * FROM tombstones WHERE target_id = ?", (target_id,)
+                """SELECT * FROM tombstones
+                   WHERE target_id = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                (target_id, tenant_id, tenant_id),
             ).fetchall()
         else:
-            rows = self.conn.execute("SELECT * FROM tombstones").fetchall()
+            rows = self.conn.execute(
+                """SELECT * FROM tombstones
+                   WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+                (tenant_id, tenant_id),
+            ).fetchall()
         result = []
         for row in rows:
             d = dict(row)

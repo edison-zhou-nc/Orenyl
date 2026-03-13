@@ -32,3 +32,15 @@ def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
 def min_fact_confidence_threshold() -> float:
     value = _float_env("LORE_MIN_FACT_CONFIDENCE", 0.7)
     return max(0.0, min(value, 1.0))
+
+
+def multi_tenant_enabled() -> bool:
+    return os.environ.get("LORE_ENABLE_MULTI_TENANT", "0").strip() == "1"
+
+
+def vector_backend_name() -> str:
+    return os.environ.get("LORE_VECTOR_BACKEND", "local").strip().lower() or "local"
+
+
+def pgvector_dsn() -> str:
+    return os.environ.get("LORE_PGVECTOR_DSN", "").strip()

@@ -14,7 +14,13 @@ def compute_content_hash(content: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
-def check_duplicate(db: Any, content_hash: str, domains: list[str], window_hours: int = 24) -> bool:
+def check_duplicate(
+    db: Any,
+    content_hash: str,
+    domains: list[str],
+    window_hours: int = 24,
+    tenant_id: str = "",
+) -> bool:
     if not content_hash or not domains:
         return False
     # Dedup window is based on event occurrence time (events.ts), not insertion time.
@@ -30,7 +36,8 @@ def check_duplicate(db: Any, content_hash: str, domains: list[str], window_hours
             WHERE e.deleted_at IS NULL
               AND e.content_hash = ?
               AND e.ts >= ?
+              AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
               AND ed.domain IN (SELECT value FROM json_each(?))""",
-        (content_hash, threshold, domains_json),
+        (content_hash, threshold, tenant_id, tenant_id, domains_json),
     ).fetchone()
     return int(row[0] or 0) > 0
