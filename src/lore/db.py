@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embeddings import decode_vector, encode_vector
-from .models import Event, Fact, Edge, Tombstone
+from .models import Edge, Event, Fact, Tombstone
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -1003,6 +1003,107 @@ class Database:
             (tenant_id, agent_id, action, domain, at_ts),
         ).fetchone()
         return row is not None
+
+    def has_delegation_grant(
+        self,
+        tenant_id: str,
+        grantee_agent_id: str,
+        domain: str,
+        action: str,
+        at_ts: str,
+    ) -> bool:
+        row = self.conn.execute(
+            """SELECT 1
+               FROM delegation_grants
+               WHERE tenant_id = ?
+                 AND grantee_agent_id = ?
+                 AND action = ?
+                 AND (domain = ? OR domain = '*')
+                 AND (fact_id IS NULL OR fact_id = '')
+                 AND expires_at > ?
+               LIMIT 1""",
+            (tenant_id, grantee_agent_id, action, domain, at_ts),
+        ).fetchone()
+        return row is not None
+
+    def append_sync_journal_entry(
+        self,
+        tenant_id: str,
+        direction: str,
+        envelope_id: str,
+        idempotency_key: str,
+        payload: dict[str, Any],
+        status: str = "pending",
+    ) -> bool:
+        try:
+            self.conn.execute(
+                """INSERT INTO sync_journal (
+                       tenant_id, direction, envelope_id, idempotency_key, payload, status
+                   )
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    tenant_id,
+                    direction,
+                    envelope_id,
+                    idempotency_key,
+                    json.dumps(payload or {}),
+                    status,
+                ),
+            )
+        except sqlite3.IntegrityError:
+            return False
+        self._maybe_commit()
+        return True
+
+    def list_sync_journal_entries(
+        self,
+        tenant_id: str,
+        direction: str | None = None,
+        status: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        safe_limit = max(1, min(int(limit), 1000))
+        rows = self.conn.execute(
+            """SELECT *
+               FROM sync_journal
+               WHERE tenant_id = ?
+                 AND (NULLIF(?, '') IS NULL OR direction = ?)
+                 AND (NULLIF(?, '') IS NULL OR status = ?)
+               ORDER BY id ASC
+               LIMIT ?""",
+            (
+                tenant_id,
+                direction or "",
+                direction or "",
+                status or "",
+                status or "",
+                safe_limit,
+            ),
+        ).fetchall()
+        entries: list[dict] = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item.get("payload") or "{}")
+            entries.append(item)
+        return entries
+
+    def update_sync_journal_status(
+        self,
+        tenant_id: str,
+        direction: str,
+        idempotency_key: str,
+        status: str,
+    ) -> bool:
+        cur = self.conn.execute(
+            """UPDATE sync_journal
+               SET status = ?
+               WHERE tenant_id = ?
+                 AND direction = ?
+                 AND idempotency_key = ?""",
+            (status, tenant_id, direction, idempotency_key),
+        )
+        self._maybe_commit()
+        return cur.rowcount > 0
 
     # ── Edges ───────────────────────────────────────────────
 

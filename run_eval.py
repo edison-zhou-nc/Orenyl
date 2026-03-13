@@ -261,9 +261,11 @@ def run_phase1_precision_eval(
     # Ensure benchmark runs are isolated from process-wide provider caches.
     from lore import context_pack as context_pack_module
     context_pack_module._embedding_provider = None
+    context_pack_module._vector_backend = None
 
     hits = 0
     for idx, case in enumerate(cases, start=1):
+        context_pack_module._vector_backend = None
         db = Database(":memory:")
         engine = LineageEngine(db)
         pack_builder = ContextPackBuilder(db)
