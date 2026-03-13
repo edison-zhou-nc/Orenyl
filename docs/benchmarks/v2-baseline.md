@@ -32,3 +32,20 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 - Gate: `python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q`
 - Note: This is a synthetic regression signal, not a production relevance benchmark.
 - Additional vector-signal gate: `python -m pytest tests/benchmarks/test_phase1_vector_signal_quality.py -q`
+
+## Phase 3 Isolation + Federation Gates (2026-03-13)
+
+- Tool isolation suite: `python -m pytest tests/integration/test_phase3_tool_isolation.py -q`
+- Federation idempotency/conflict suite:
+  `python -m pytest tests/integration/test_federation_worker_idempotency.py tests/integration/test_federation_conflict_resolution.py -q`
+- Sync envelope/journal suite:
+  `python -m pytest tests/unit/test_sync_envelope_validation.py tests/integration/test_sync_journal_persistence.py -q`
+
+## Phase 3 Multi-Tenant Load Harness (Opt-in)
+
+- Test: `tests/benchmarks/test_phase3_multi_tenant_load.py`
+- Disabled by default.
+- Enable with:
+  `LORE_ENABLE_PHASE3_LOAD_TEST=1`
+- Configurable event count:
+  `LORE_PHASE3_LOAD_EVENTS` (default `1000000`)

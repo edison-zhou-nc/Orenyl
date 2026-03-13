@@ -37,7 +37,19 @@ from .models import Event, new_id, now_iso
 from .lineage import LineageEngine
 from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
+from .context_pack import _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests
+from .federation_worker import FederationWorker
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
+from .policy import (
+    PolicyEngine,
+    agent_permissions_enabled,
+    policy_shadow_mode_enabled,
+)
+from .tenant import (
+    reset_current_tenant_context,
+    resolve_tenant_context,
+    set_current_tenant_context,
+)
 
 DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get("LORE_MAX_CONTEXT_PACK_LIMIT", "100"))
@@ -54,6 +66,7 @@ _DEFAULT_SALT_WARNING_EMITTED = False
 _token_verifier: OIDCTokenVerifier | None = None
 _token_verifier_error: Exception | None = None
 _token_verifier_lock = threading.Lock()
+_federation_worker: FederationWorker | None = None
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
@@ -86,13 +99,25 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _token_verifier, _token_verifier_error, embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
+    global _token_verifier, _token_verifier_error
+    global embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
+    global _federation_worker
     with _token_verifier_lock:
         _token_verifier = None
         _token_verifier_error = None
         embedding_provider = None
         _DEFAULT_SALT_WARNING_EMITTED = False
+        _federation_worker = None
+    reset_context_pack_runtime_state_for_tests()
     reset_metrics_for_tests()
+
+
+def _get_federation_worker() -> FederationWorker:
+    global _federation_worker
+    if _federation_worker is None:
+        node_id = os.environ.get("LORE_FEDERATION_NODE_ID", "").strip() or "node-local"
+        _federation_worker = FederationWorker(db=db, node_id=node_id)
+    return _federation_worker
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -286,6 +311,7 @@ async def list_tools() -> list[Tool]:
 @app.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     request_id = ""
+    tenant_token = None
     try:
         args = dict(arguments or {})
         request_id = _resolve_request_id(args)
@@ -318,6 +344,60 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         args["_auth_scopes"] = list(access.scopes)
         args["_auth_client_id"] = access.client_id
+        tenant_context = resolve_tenant_context(
+            claims={"sub": access.client_id, "tenant_id": access.resource or ""},
+            args=args,
+        )
+        args["_auth_tenant_id"] = tenant_context.tenant_id
+        tenant_token = set_current_tenant_context(tenant_context)
+        if agent_permissions_enabled():
+            policy = PolicyEngine(db, shadow_mode=policy_shadow_mode_enabled())
+            principal_agent = access.client_id
+            if name == "retrieve_context_pack":
+                domain = str(args.get("domain", "general") or "general")
+                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                    raise PermissionError("forbidden:policy_denied")
+            elif name in {"list_events", "export_domain", "audit_trace"}:
+                domain = str(args.get("domain", "general") or "general")
+                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                    raise PermissionError("forbidden:policy_denied")
+            elif name == "store_event":
+                domains = args.get("domains", ["general"]) or ["general"]
+                for domain in domains:
+                    if not policy.enforce_write_domain(
+                        tenant_context.tenant_id,
+                        principal_agent,
+                        str(domain or "general"),
+                    ):
+                        raise PermissionError("forbidden:policy_denied")
+            elif name == "delete_and_recompute":
+                target_id = str(args.get("target_id", ""))
+                target_type = str(args.get("target_type", "event"))
+                delete_domains: set[str] = set()
+                if target_type == "event":
+                    target_event = db.get_event(target_id, tenant_id=tenant_context.tenant_id)
+                    if target_event:
+                        delete_domains.update(target_event.get("domains") or [])
+                elif target_type == "fact":
+                    parent_edges = db.get_parents(target_id, tenant_id=tenant_context.tenant_id)
+                    for edge in parent_edges:
+                        if edge.get("parent_type") != "event":
+                            continue
+                        parent_event = db.get_event(
+                            str(edge.get("parent_id", "")),
+                            tenant_id=tenant_context.tenant_id,
+                        )
+                        if parent_event:
+                            delete_domains.update(parent_event.get("domains") or [])
+                if not delete_domains:
+                    delete_domains = {"general"}
+                for domain in sorted(delete_domains):
+                    if not policy.enforce_write_domain(
+                        tenant_context.tenant_id,
+                        principal_agent,
+                        str(domain or "general"),
+                    ):
+                        raise PermissionError("forbidden:policy_denied")
         audit.log_security_event(
             name,
             "allow",
@@ -353,6 +433,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if request_id:
             error_payload["request_id"] = request_id
         return [TextContent(type="text", text=json.dumps(error_payload, indent=2))]
+    finally:
+        if tenant_token is not None:
+            reset_current_tenant_context(tenant_token)
 
 
 async def handle_store_event(args: dict) -> list[TextContent]:
@@ -384,7 +467,8 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         }, indent=2))]
     content_hash = compute_content_hash(content_basis)
     domains = args.get("domains", ["general"])
-    if check_duplicate(db, content_hash, domains, window_hours=24):
+    tenant_id = args.get("_auth_tenant_id", "")
+    if check_duplicate(db, content_hash, domains, window_hours=24, tenant_id=tenant_id):
         return [TextContent(type="text", text=json.dumps({
             "stored": False,
             "duplicate": True,
@@ -401,6 +485,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             domains,
             window_hours=24,
             threshold=semantic_dedup_threshold_for_domains(domains),
+            tenant_id=tenant_id,
         )
         if is_dup:
             return [TextContent(type="text", text=json.dumps({
@@ -437,8 +522,12 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         sensitivity=sensitivity,
         consent_source=args.get("consent_source", "implicit"),
         expires_at=args.get("expires_at"),
-        metadata=args.get("metadata", {}),
+        metadata={
+            **(args.get("metadata", {}) or {}),
+            "tenant_id": args.get("_auth_tenant_id", "default"),
+        },
         source=args.get("source", "user"),
+        tenant_id=args.get("_auth_tenant_id", "default"),
         ts=args.get("ts", now_iso()),
     )
 
@@ -450,6 +539,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             event.id,
             event_embedding,
             provider.provider_id,
+            tenant_id=tenant_id or "default",
         )
     except Exception as exc:
         logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
@@ -457,7 +547,11 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
     if derived_fact_ids:
         try:
-            backfill_missing_fact_embeddings(db, derived_fact_ids)
+            backfill_missing_fact_embeddings(
+                db,
+                derived_fact_ids,
+                tenant_id=args.get("_auth_tenant_id", ""),
+            )
         except Exception as exc:
             logger.warning("fact_embedding_backfill_failed event_id=%s error=%s", event.id, exc)
 
@@ -496,6 +590,7 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
         max_sensitivity=args.get("max_sensitivity", "high"),
         limit=limit,
         query=rewritten_query,
+        tenant_id=args.get("_auth_tenant_id", ""),
         agent_id=args.get("agent_id", ""),
         session_id=args.get("session_id", ""),
     )
@@ -529,6 +624,7 @@ async def handle_audit_trace(args: dict) -> list[TextContent]:
     trace = engine.get_audit_trace(
         args["item_id"],
         include_source_events=args.get("include_source_events", False),
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     logger.info(
         "audit_trace request_id=%s item_id=%s include_source_events=%s",
@@ -558,6 +654,7 @@ async def handle_delete_and_recompute(args: dict) -> list[TextContent]:
             reason=args.get("reason", ""),
             mode=mode,
             run_vacuum=args.get("run_vacuum", False),
+            tenant_id=args.get("_auth_tenant_id", ""),
         )
         proof_json = proof.to_json()
         audit_result = "allow"
@@ -589,12 +686,14 @@ async def handle_list_events(args: dict) -> list[TextContent]:
     total_count = db.count_events_by_domains(
         domain_filter,
         include_tombstoned=include_tombstoned,
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     window = db.list_events_page(
         domains=domain_filter,
         include_tombstoned=include_tombstoned,
         limit=limit,
         offset=offset,
+        tenant_id=args.get("_auth_tenant_id", ""),
     )
     logger.info(
         "list_events request_id=%s domain=%s offset=%s limit=%s include_tombstoned=%s",
@@ -618,10 +717,15 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     stream_mode = bool(args.get("stream", False))
     include_hashes = bool(args.get("include_hashes", False))
     cursor = str(args.get("cursor", "")).strip()
-    events = db.get_active_events_by_domains([domain]) if domain != "general" else db.get_active_events()
-    facts = db.get_current_facts_by_domain(domain)
+    tenant_id = args.get("_auth_tenant_id", "")
+    events = (
+        db.get_active_events_by_domains([domain], tenant_id=tenant_id)
+        if domain != "general"
+        else db.get_active_events(tenant_id=tenant_id)
+    )
+    facts = db.get_current_facts_by_domain(domain, tenant_id=tenant_id)
     fact_ids = [fact["id"] for fact in facts]
-    parents_by_fact = db.get_parents_for_children(fact_ids)
+    parents_by_fact = db.get_parents_for_children(fact_ids, tenant_id=tenant_id)
     parent_event_ids = sorted(
         {
             parent["parent_id"]
@@ -630,7 +734,7 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
             if parent.get("parent_type") == "event"
         }
     )
-    parent_events = db.get_events_by_ids(parent_event_ids)
+    parent_events = db.get_events_by_ids(parent_event_ids, tenant_id=tenant_id)
     restricted = []
     for fact in facts:
         parents = parents_by_fact.get(fact["id"], [])
