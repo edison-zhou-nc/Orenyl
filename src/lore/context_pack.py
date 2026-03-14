@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from .config import min_fact_confidence_threshold
+from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
 from .embedding_provider import build_embedding_provider_from_env
 from .embeddings import cosine_similarity
@@ -241,6 +241,20 @@ class ContextPackBuilder:
             }
         )
         parent_events_by_id = self.db.get_events_by_ids(parent_event_ids, tenant_id=tenant_id)
+        withdrawn_subject_ids: set[str] = set()
+        if compliance_strict_mode_enabled():
+            all_subject_ids = sorted(
+                {
+                    str((event or {}).get("metadata", {}).get("subject_id", "")).strip()
+                    for event in parent_events_by_id.values()
+                    if event
+                }
+            )
+            withdrawn_subject_ids = self.db.withdrawn_subject_ids(
+                subject_ids=[subject_id for subject_id in all_subject_ids if subject_id],
+                purpose="retrieval",
+                tenant_id=tenant_id,
+            )
 
         items = []
         min_confidence = min_fact_confidence_threshold()
@@ -254,6 +268,16 @@ class ContextPackBuilder:
             parent_events = [
                 parent_events_by_id.get(pid) for pid in derived_from
             ]
+            if withdrawn_subject_ids:
+                subject_ids = {
+                    str((event or {}).get("metadata", {}).get("subject_id", "")).strip()
+                    for event in parent_events
+                    if event
+                }
+                subject_ids = {subject_id for subject_id in subject_ids if subject_id}
+                withdrawn = bool(subject_ids & withdrawn_subject_ids)
+                if withdrawn:
+                    continue
             parent_levels = [
                 (e or {}).get("sensitivity", "medium").lower() for e in parent_events if e
             ]

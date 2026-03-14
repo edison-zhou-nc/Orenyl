@@ -162,6 +162,41 @@ CREATE TABLE IF NOT EXISTS fact_embeddings (
     FOREIGN KEY (fact_id) REFERENCES facts(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS consent_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    subject_id TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    status TEXT NOT NULL,             -- granted|withdrawn|expired
+    legal_basis TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'user',
+    effective_at TEXT NOT NULL,
+    recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    metadata TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS subject_requests (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    subject_id TEXT NOT NULL,
+    request_type TEXT NOT NULL,       -- erasure|portability|access|rectification
+    status TEXT NOT NULL DEFAULT 'open',
+    opened_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    closed_at TEXT,
+    details TEXT NOT NULL DEFAULT '{}'
+);
+
+CREATE TABLE IF NOT EXISTS dr_snapshots (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'default',
+    wal_lsn TEXT NOT NULL DEFAULT '',
+    checksum TEXT NOT NULL DEFAULT '',
+    storage_uri TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    verified_at TEXT,
+    metadata TEXT NOT NULL DEFAULT '{}'
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
 CREATE INDEX IF NOT EXISTS idx_events_deleted ON events(deleted_at);
@@ -191,3 +226,9 @@ CREATE INDEX IF NOT EXISTS idx_delegation_grants_lookup
 ON delegation_grants(tenant_id, grantee_agent_id, domain, action, expires_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_journal_idempotency
 ON sync_journal(tenant_id, direction, idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_consent_lookup
+ON consent_records(tenant_id, subject_id, purpose, effective_at);
+CREATE INDEX IF NOT EXISTS idx_subject_requests_lookup
+ON subject_requests(tenant_id, subject_id, request_type, status);
+CREATE INDEX IF NOT EXISTS idx_dr_snapshots_tenant
+ON dr_snapshots(tenant_id, created_at);

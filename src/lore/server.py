@@ -17,34 +17,41 @@ from typing import Any
 from mcp.server import Server
 from mcp.server.fastmcp import FastMCP
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
 
 from . import audit
+from .article30 import generate_article30_report
+from .audit_anomaly import scan_access_anomalies
 from .auth import (
     OIDCTokenVerifier,
     authorize_action,
     build_token_verifier_from_env,
     extract_auth_token,
 )
-from .db import Database
-from .config import semantic_dedup_threshold_for_domains
+from .compliance import ComplianceService
+from .config import read_only_mode_enabled, semantic_dedup_threshold_for_domains
+from .consent import ConsentService
 from .content_hash import check_duplicate, compute_content_hash
-from .encryption import encrypt_content, resolve_runtime_keyring
-from .embedding_provider import build_embedding_provider_from_env
-from .noise_filter import contains_sensitive_identifier, should_store
-from .semantic_dedup import check_semantic_duplicate
-from .models import Event, new_id, now_iso
-from .lineage import LineageEngine
-from .query_understanding import infer_domain, rewrite_query
 from .context_pack import ContextPackBuilder, backfill_missing_fact_embeddings
-from .context_pack import _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests
+from .context_pack import (
+    _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests,
+)
+from .db import Database
+from .embedding_provider import build_embedding_provider_from_env
+from .encryption import encrypt_content, resolve_runtime_keyring
 from .federation_worker import FederationWorker
+from .lineage import LineageEngine
+from .disaster_recovery import DRService
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
+from .models import Event, new_id, now_iso
+from .noise_filter import contains_sensitive_identifier, should_store
 from .policy import (
     PolicyEngine,
     agent_permissions_enabled,
     policy_shadow_mode_enabled,
 )
+from .query_understanding import infer_domain, rewrite_query
+from .semantic_dedup import check_semantic_duplicate
 from .tenant import (
     reset_current_tenant_context,
     resolve_tenant_context,
@@ -67,6 +74,16 @@ _token_verifier: OIDCTokenVerifier | None = None
 _token_verifier_error: Exception | None = None
 _token_verifier_lock = threading.Lock()
 _federation_worker: FederationWorker | None = None
+READ_ONLY_SAFE_TOOLS = {
+    "retrieve_context_pack",
+    "audit_trace",
+    "list_events",
+    "export_domain",
+    "export_subject_data",
+    "generate_processing_record",
+    "audit_anomaly_scan",
+    "verify_snapshot",
+}
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
@@ -118,6 +135,19 @@ def _get_federation_worker() -> FederationWorker:
         node_id = os.environ.get("LORE_FEDERATION_NODE_ID", "").strip() or "node-local"
         _federation_worker = FederationWorker(db=db, node_id=node_id)
     return _federation_worker
+
+
+def _get_compliance_service() -> ComplianceService:
+    return ComplianceService(db=db, engine=engine)
+
+
+def _get_consent_service() -> ConsentService:
+    return ConsentService(db=db)
+
+
+def _get_dr_service() -> DRService:
+    snapshot_dir = os.environ.get("LORE_DR_SNAPSHOT_DIR", "lore_snapshots")
+    return DRService(db=db, db_path=DB_PATH, snapshot_dir=snapshot_dir)
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
@@ -305,6 +335,98 @@ async def list_tools() -> list[Tool]:
                 "required": ["domain"],
             },
         ),
+        Tool(
+            name="erase_subject_data",
+            description=(
+                "Erase all active subject-linked records and cascade recompute with deletion proof."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subject_id": {"type": "string"},
+                    "mode": {"type": "string", "enum": ["soft", "hard"], "default": "hard"},
+                    "reason": {"type": "string", "default": "subject_erasure"},
+                },
+                "required": ["subject_id"],
+            },
+        ),
+        Tool(
+            name="export_subject_data",
+            description=(
+                "Export all active subject-linked records with deterministic integrity manifest."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subject_id": {"type": "string"},
+                },
+                "required": ["subject_id"],
+            },
+        ),
+        Tool(
+            name="record_consent",
+            description="Record consent status changes for a subject and processing purpose.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "subject_id": {"type": "string"},
+                    "purpose": {"type": "string", "default": "retrieval"},
+                    "status": {"type": "string"},
+                    "legal_basis": {"type": "string", "default": ""},
+                    "source": {"type": "string", "default": "user"},
+                    "metadata": {"type": "object", "default": {}},
+                },
+                "required": ["subject_id", "status"],
+            },
+        ),
+        Tool(
+            name="generate_processing_record",
+            description="Generate Article 30-style data processing record for the tenant.",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        Tool(
+            name="audit_anomaly_scan",
+            description="Scan audit events for suspicious access patterns over a recent window.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "window_minutes": {"type": "integer", "default": 60},
+                    "limit": {"type": "integer", "default": 500},
+                },
+            },
+        ),
+        Tool(
+            name="create_snapshot",
+            description="Create a DR snapshot of the current tenant database.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "label": {"type": "string", "default": "manual"},
+                },
+            },
+        ),
+        Tool(
+            name="verify_snapshot",
+            description="Verify snapshot integrity checksum.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "snapshot_id": {"type": "string"},
+                },
+                "required": ["snapshot_id"],
+            },
+        ),
+        Tool(
+            name="restore_snapshot",
+            description="Restore a previously captured DR snapshot.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "snapshot_id": {"type": "string"},
+                },
+                "required": ["snapshot_id"],
+            },
+        ),
     ]
 
 
@@ -357,11 +479,19 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 domain = str(args.get("domain", "general") or "general")
                 if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
                     raise PermissionError("forbidden:policy_denied")
-            elif name in {"list_events", "export_domain", "audit_trace"}:
+            elif name in {
+                "list_events",
+                "export_domain",
+                "audit_trace",
+                "export_subject_data",
+                "generate_processing_record",
+                "audit_anomaly_scan",
+                "verify_snapshot",
+            }:
                 domain = str(args.get("domain", "general") or "general")
                 if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
                     raise PermissionError("forbidden:policy_denied")
-            elif name == "store_event":
+            elif name in {"store_event", "record_consent", "create_snapshot", "restore_snapshot"}:
                 domains = args.get("domains", ["general"]) or ["general"]
                 for domain in domains:
                     if not policy.enforce_write_domain(
@@ -370,11 +500,17 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                         str(domain or "general"),
                     ):
                         raise PermissionError("forbidden:policy_denied")
-            elif name == "delete_and_recompute":
+            elif name in {"delete_and_recompute", "erase_subject_data"}:
                 target_id = str(args.get("target_id", ""))
                 target_type = str(args.get("target_type", "event"))
                 delete_domains: set[str] = set()
-                if target_type == "event":
+                if name == "erase_subject_data":
+                    subject_id = str(args.get("subject_id", "")).strip()
+                    delete_domains = db.get_active_domains_by_subject(
+                        subject_id=subject_id,
+                        tenant_id=tenant_context.tenant_id,
+                    )
+                elif target_type == "event":
                     target_event = db.get_event(target_id, tenant_id=tenant_context.tenant_id)
                     if target_event:
                         delete_domains.update(target_event.get("domains") or [])
@@ -404,6 +540,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             principal_id=access.client_id,
             request_id=request_id,
         )
+        if read_only_mode_enabled() and name not in READ_ONLY_SAFE_TOOLS:
+            raise RuntimeError("LORE_READ_ONLY_MODE enabled")
         if name == "store_event":
             return await handle_store_event(args)
         if name == "retrieve_context_pack":
@@ -416,6 +554,22 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return await handle_list_events(args)
         if name == "export_domain":
             return await handle_export_domain(args)
+        if name == "erase_subject_data":
+            return await handle_erase_subject_data(args)
+        if name == "export_subject_data":
+            return await handle_export_subject_data(args)
+        if name == "record_consent":
+            return await handle_record_consent(args)
+        if name == "generate_processing_record":
+            return await handle_generate_processing_record(args)
+        if name == "audit_anomaly_scan":
+            return await handle_audit_anomaly_scan(args)
+        if name == "create_snapshot":
+            return await handle_create_snapshot(args)
+        if name == "verify_snapshot":
+            return await handle_verify_snapshot(args)
+        if name == "restore_snapshot":
+            return await handle_restore_snapshot(args)
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
     except PermissionError:
         # Let MCP transport map authorization failures to protocol-level errors.
@@ -853,6 +1007,92 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(payload, indent=2, default=str))]
 
 
+async def handle_erase_subject_data(args: dict) -> list[TextContent]:
+    service = _get_compliance_service()
+    result = service.erase_subject_data(
+        subject_id=str(args.get("subject_id", "")),
+        mode=str(args.get("mode", "hard")),
+        tenant_id=str(args.get("_auth_tenant_id", "")),
+        reason=str(args.get("reason", "subject_erasure")),
+    )
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_export_subject_data(args: dict) -> list[TextContent]:
+    service = _get_compliance_service()
+    result = service.export_subject_data(
+        subject_id=str(args.get("subject_id", "")),
+        tenant_id=str(args.get("_auth_tenant_id", "")),
+    )
+    return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
+
+
+async def handle_record_consent(args: dict) -> list[TextContent]:
+    service = _get_consent_service()
+    record_id = service.record(
+        tenant_id=str(args.get("_auth_tenant_id", "default")),
+        subject_id=str(args.get("subject_id", "")),
+        purpose=str(args.get("purpose", "retrieval")),
+        status=str(args.get("status", "")),
+        legal_basis=str(args.get("legal_basis", "")),
+        source=str(args.get("source", "user")),
+        metadata=dict(args.get("metadata", {}) or {}),
+    )
+    payload = {"ok": True, "record_id": record_id}
+    return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+
+
+async def handle_generate_processing_record(args: dict) -> list[TextContent]:
+    report = generate_article30_report(
+        db=db,
+        tenant_id=str(args.get("_auth_tenant_id", "default")),
+    )
+    return [TextContent(type="text", text=json.dumps(report, indent=2))]
+
+
+async def handle_audit_anomaly_scan(args: dict) -> list[TextContent]:
+    limit = _clamp_positive_int(args.get("limit", 500), default=500, maximum=5000)
+    window_minutes = _clamp_positive_int(args.get("window_minutes", 60), default=60, maximum=10080)
+    events = audit.get_events(limit=limit)
+    alerts = scan_access_anomalies(events, window_minutes=window_minutes)
+    payload = {
+        "ok": True,
+        "window_minutes": window_minutes,
+        "events_scanned": len(events),
+        "alerts": alerts,
+    }
+    return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+
+
+async def handle_create_snapshot(args: dict) -> list[TextContent]:
+    service = _get_dr_service()
+    result = service.create_snapshot(
+        label=str(args.get("label", "manual")),
+        tenant_id=str(args.get("_auth_tenant_id", "default")),
+    )
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_verify_snapshot(args: dict) -> list[TextContent]:
+    service = _get_dr_service()
+    result = service.verify_snapshot(
+        snapshot_id=str(args.get("snapshot_id", "")),
+        tenant_id=str(args.get("_auth_tenant_id", "default")),
+    )
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
+async def handle_restore_snapshot(args: dict) -> list[TextContent]:
+    service = _get_dr_service()
+    result = service.restore_snapshot(
+        snapshot_id=str(args.get("snapshot_id", "")),
+        tenant_id=str(args.get("_auth_tenant_id", "default")),
+    )
+    if result.get("ok"):
+        result["warning"] = "restart_server_recommended_after_restore"
+    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+
 def run_ttl_sweep(delete_mode: str = "soft") -> dict[str, Any]:
     now = now_iso()
     expired = db.get_expired_events(now)
@@ -874,7 +1114,7 @@ async def _ttl_sweep_loop(interval_seconds: int, delete_mode: str, stop_event: a
         run_ttl_sweep(delete_mode=delete_mode)
         try:
             await asyncio.wait_for(stop_event.wait(), timeout=max(1, int(interval_seconds)))
-        except asyncio.TimeoutError:
+        except TimeoutError:
             continue
 
 
@@ -1047,6 +1287,134 @@ def build_fastmcp_server() -> FastMCP:
         if request_id:
             args["_request_id"] = request_id
         return await _invoke_tool("export_domain", args)
+
+    @server.tool(name="erase_subject_data", description="Erase all data for a subject.")
+    async def _erase_subject_data(
+        subject_id: str,
+        mode: str = "hard",
+        reason: str = "subject_erasure",
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "subject_id": subject_id,
+            "mode": mode,
+            "reason": reason,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("erase_subject_data", args)
+
+    @server.tool(name="export_subject_data", description="Export all data for a subject.")
+    async def _export_subject_data(
+        subject_id: str,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {"subject_id": subject_id}
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("export_subject_data", args)
+
+    @server.tool(name="record_consent", description="Record consent status for a subject.")
+    async def _record_consent(
+        subject_id: str,
+        status: str,
+        purpose: str = "retrieval",
+        legal_basis: str = "",
+        source: str = "user",
+        metadata: dict[str, Any] | None = None,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "subject_id": subject_id,
+            "status": status,
+            "purpose": purpose,
+            "legal_basis": legal_basis,
+            "source": source,
+            "metadata": metadata or {},
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("record_consent", args)
+
+    @server.tool(
+        name="generate_processing_record",
+        description="Generate Article 30 processing record for compliance.",
+    )
+    async def _generate_processing_record(
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {}
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("generate_processing_record", args)
+
+    @server.tool(name="audit_anomaly_scan", description="Scan audit logs for anomaly patterns.")
+    async def _audit_anomaly_scan(
+        window_minutes: int = 60,
+        limit: int = 500,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {
+            "window_minutes": window_minutes,
+            "limit": limit,
+        }
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("audit_anomaly_scan", args)
+
+    @server.tool(name="create_snapshot", description="Create a disaster recovery snapshot.")
+    async def _create_snapshot(
+        label: str = "manual",
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {"label": label}
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("create_snapshot", args)
+
+    @server.tool(name="verify_snapshot", description="Verify snapshot integrity.")
+    async def _verify_snapshot(
+        snapshot_id: str,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {"snapshot_id": snapshot_id}
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("verify_snapshot", args)
+
+    @server.tool(name="restore_snapshot", description="Restore a snapshot into active DB.")
+    async def _restore_snapshot(
+        snapshot_id: str,
+        auth_token: str = "",
+        request_id: str = "",
+    ) -> Any:
+        args: dict[str, Any] = {"snapshot_id": snapshot_id}
+        if auth_token:
+            args["_auth_token"] = auth_token
+        if request_id:
+            args["_request_id"] = request_id
+        return await _invoke_tool("restore_snapshot", args)
 
     return server
 
