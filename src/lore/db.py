@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embeddings import decode_vector, encode_vector
-from .models import Edge, Event, Fact, Tombstone
+from .models import ConsentRecord, DRSnapshot, Edge, Event, Fact, SubjectRequest, Tombstone
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
@@ -50,6 +50,8 @@ class Database:
         self.migrate_v1_to_v2()
         schema = SCHEMA_PATH.read_text()
         self.conn.executescript(schema)
+        # Legacy artifact from early phase-4 draft; hash chain lives in audit DB.
+        self.conn.execute("DROP TABLE IF EXISTS audit_hash_chain")
         # Ensure uniqueness is enforced for existing DBs upgraded prior to this index.
         self.conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(key, version)"
@@ -318,6 +320,39 @@ class Database:
             ]
             result.append(d)
         return result
+
+    def get_active_events_by_subject(self, subject_id: str, tenant_id: str = "") -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT *
+               FROM events
+               WHERE deleted_at IS NULL
+                 AND json_extract(metadata, '$.subject_id') = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               ORDER BY ts""",
+            (subject_id, tenant_id, tenant_id),
+        ).fetchall()
+        result: list[dict] = []
+        for row in rows:
+            data = dict(row)
+            data["payload"] = json.loads(data["payload"])
+            data["metadata"] = json.loads(data["metadata"])
+            data["domains"] = [
+                r[0]
+                for r in self.conn.execute(
+                    "SELECT domain FROM event_domains WHERE event_id = ? ORDER BY domain",
+                    (data["id"],),
+                ).fetchall()
+            ]
+            result.append(data)
+        return result
+
+    def get_active_domains_by_subject(self, subject_id: str, tenant_id: str = "") -> set[str]:
+        events = self.get_active_events_by_subject(subject_id=subject_id, tenant_id=tenant_id)
+        return {
+            str(domain or "general")
+            for event in events
+            for domain in (event.get("domains") or ["general"])
+        }
 
     def get_recent_events_in_domains(
         self,
@@ -1105,6 +1140,15 @@ class Database:
         self._maybe_commit()
         return cur.rowcount > 0
 
+    def sync_journal_count(self, tenant_id: str = "") -> int:
+        row = self.conn.execute(
+            """SELECT COUNT(*) AS c
+               FROM sync_journal
+               WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (tenant_id, tenant_id),
+        ).fetchone()
+        return int(row["c"]) if row is not None else 0
+
     # ── Edges ───────────────────────────────────────────────
 
     def insert_edge(self, edge: Edge):
@@ -1369,6 +1413,146 @@ class Database:
         return result
 
     # ── Retrieval Logs ──────────────────────────────────────
+
+    def insert_consent_record(self, record: ConsentRecord) -> int:
+        cursor = self.conn.execute(
+            """INSERT INTO consent_records (
+                   tenant_id, subject_id, purpose, status,
+                   legal_basis, source, effective_at, metadata
+               )
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                record.tenant_id or "default",
+                record.subject_id,
+                record.purpose,
+                record.status,
+                record.legal_basis,
+                record.source,
+                record.effective_at,
+                json.dumps(record.metadata),
+            ),
+        )
+        self._maybe_commit()
+        return int(cursor.lastrowid)
+
+    def latest_consent_status(
+        self,
+        subject_id: str,
+        purpose: str,
+        tenant_id: str = "",
+    ) -> str | None:
+        row = self.conn.execute(
+            """SELECT status
+               FROM consent_records
+               WHERE subject_id = ?
+                 AND purpose = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               ORDER BY effective_at DESC, recorded_at DESC, id DESC
+               LIMIT 1""",
+            (subject_id, purpose, tenant_id, tenant_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return str(row["status"])
+
+    def withdrawn_subject_ids(
+        self,
+        subject_ids: list[str],
+        purpose: str,
+        tenant_id: str = "",
+    ) -> set[str]:
+        normalized = sorted({subject_id for subject_id in subject_ids if subject_id})
+        if not normalized:
+            return set()
+        subject_ids_json = json.dumps(normalized)
+        rows = self.conn.execute(
+            """SELECT x.subject_id, (
+                   SELECT cr.status
+                   FROM consent_records cr
+                   WHERE cr.subject_id = x.subject_id
+                     AND cr.purpose = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(cr.tenant_id, 'default') = ?)
+                   ORDER BY cr.effective_at DESC, cr.recorded_at DESC, cr.id DESC
+                   LIMIT 1
+               ) AS latest_status
+               FROM (SELECT value AS subject_id FROM json_each(?)) x""",
+            (purpose, tenant_id, tenant_id, subject_ids_json),
+        ).fetchall()
+        return {
+            str(row["subject_id"])
+            for row in rows
+            if str(row["latest_status"] or "").lower() == "withdrawn"
+        }
+
+    def list_consent_purposes(self, tenant_id: str = "") -> list[dict[str, str]]:
+        rows = self.conn.execute(
+            """SELECT DISTINCT purpose, legal_basis
+               FROM consent_records
+               WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               ORDER BY purpose ASC""",
+            (tenant_id, tenant_id),
+        ).fetchall()
+        return [
+            {
+                "purpose": str(row["purpose"] or ""),
+                "legal_basis": str(row["legal_basis"] or ""),
+            }
+            for row in rows
+        ]
+
+    def create_subject_request(self, request: SubjectRequest) -> str:
+        self.conn.execute(
+            """INSERT INTO subject_requests (
+                   id, tenant_id, subject_id, request_type, status, opened_at, closed_at, details
+               )
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                request.request_id,
+                request.tenant_id or "default",
+                request.subject_id,
+                request.request_type,
+                request.status,
+                request.opened_at,
+                request.closed_at,
+                json.dumps(request.details),
+            ),
+        )
+        self._maybe_commit()
+        return request.request_id
+
+    def insert_dr_snapshot(self, snapshot: DRSnapshot) -> str:
+        self.conn.execute(
+            """INSERT INTO dr_snapshots (
+                   id, tenant_id, wal_lsn, checksum, storage_uri, created_at, verified_at, metadata
+               )
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                snapshot.snapshot_id,
+                snapshot.tenant_id or "default",
+                snapshot.wal_lsn,
+                snapshot.checksum,
+                snapshot.storage_uri,
+                snapshot.created_at,
+                snapshot.verified_at,
+                json.dumps(snapshot.metadata),
+            ),
+        )
+        self._maybe_commit()
+        return snapshot.snapshot_id
+
+    def get_dr_snapshot(self, snapshot_id: str, tenant_id: str = "") -> dict | None:
+        row = self.conn.execute(
+            """SELECT *
+               FROM dr_snapshots
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (snapshot_id, tenant_id, tenant_id),
+        ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["metadata"] = json.loads(result.get("metadata", "{}"))
+        return result
 
     def log_retrieval(self, query: str, context_pack: str, trace: str):
         self.conn.execute(

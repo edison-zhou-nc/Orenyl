@@ -29,3 +29,9 @@ python -m pytest -q
 - Explain the problem, approach, and validation.
 - Include any migration/config impact.
 - Keep PRs small and reviewable.
+
+## Disaster Recovery Notes
+
+- `restore_snapshot` uses SQLite backup into the active DB connection.
+- After restore, restart the server process to ensure all long-lived runtime objects
+  and caches are fully consistent with restored state.

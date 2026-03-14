@@ -164,3 +164,65 @@ class DeleteProof:
 
     def to_json(self) -> str:
         return json.dumps(self.to_dict(), indent=2)
+
+
+@dataclass
+class ConsentRecord:
+    tenant_id: str
+    subject_id: str
+    purpose: str
+    status: str
+    legal_basis: str = ""
+    source: str = "user"
+    effective_at: str = ""
+    recorded_at: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.effective_at:
+            self.effective_at = now_iso()
+        if not self.recorded_at:
+            self.recorded_at = now_iso()
+
+
+@dataclass
+class SubjectRequest:
+    request_id: str
+    tenant_id: str
+    subject_id: str
+    request_type: str
+    status: str = "open"
+    opened_at: str = ""
+    closed_at: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.opened_at:
+            self.opened_at = now_iso()
+
+
+@dataclass
+class AuditChainRecord:
+    seq_id: int
+    ts: str
+    action: str
+    request_id: str
+    event_hash: str
+    prev_hash: str
+    chain_hash: str
+
+
+@dataclass
+class DRSnapshot:
+    snapshot_id: str
+    tenant_id: str
+    wal_lsn: str = ""
+    checksum: str = ""
+    storage_uri: str = ""
+    created_at: str = ""
+    verified_at: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.created_at:
+            self.created_at = now_iso()
