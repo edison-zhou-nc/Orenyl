@@ -8,12 +8,12 @@ import logging
 import os
 import threading
 import time
-from typing import Iterable
+from collections.abc import Iterable
 
 import httpx
 import jwt
-from jwt.algorithms import RSAAlgorithm
 from jwt import InvalidTokenError
+from jwt.algorithms import RSAAlgorithm
 from mcp.server.auth.provider import AccessToken
 
 logger = logging.getLogger(__name__)
@@ -34,7 +34,9 @@ class OIDCTokenVerifier:
         self.audience = audience
         self.hs256_secret = hs256_secret
         self.jwks_url = jwks_url
-        self.allowed_algorithms = tuple(allowed_algorithms or (("RS256",) if jwks_url else ("HS256",)))
+        self.allowed_algorithms = tuple(
+            allowed_algorithms or (("RS256",) if jwks_url else ("HS256",))
+        )
         self.jwks_cache_ttl_seconds = jwks_cache_ttl_seconds
         self.clock_skew_seconds = clock_skew_seconds
         self._jwks_cache: dict | None = None
@@ -228,7 +230,11 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
     )
 
 
-def authorize_action(scopes: set[str] | Iterable[str], action: str, restricted: bool = False) -> None:
+def authorize_action(
+    scopes: set[str] | Iterable[str],
+    action: str,
+    restricted: bool = False,
+) -> None:
     scope_set = set(scopes)
     required = {
         "store_event": "memory:write",
@@ -237,6 +243,14 @@ def authorize_action(scopes: set[str] | Iterable[str], action: str, restricted: 
         "audit_trace": "memory:read",
         "list_events": "memory:read",
         "export_domain": "memory:export",
+        "erase_subject_data": "memory:delete",
+        "export_subject_data": "memory:export",
+        "record_consent": "memory:write",
+        "generate_processing_record": "memory:export",
+        "audit_anomaly_scan": "memory:read",
+        "create_snapshot": "memory:write",
+        "verify_snapshot": "memory:read",
+        "restore_snapshot": "memory:delete",
     }.get(action)
 
     if required and required not in scope_set:
