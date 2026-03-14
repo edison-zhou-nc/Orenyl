@@ -47,7 +47,9 @@ def _reset(monkeypatch):
         tenant_id="tenant-a",
     )
     fresh_db.insert_event(event)
-    LineageEngine(fresh_db).derive_facts_for_event(fresh_db.get_event(event.id, tenant_id="tenant-a"))
+    LineageEngine(fresh_db).derive_facts_for_event(
+        fresh_db.get_event(event.id, tenant_id="tenant-a")
+    )
     return fresh_db
 
 
@@ -160,3 +162,34 @@ def test_delete_and_recompute_allowed_with_write_permission(monkeypatch):
     )
     payload = json.loads(out[0].text)
     assert payload["target_id"] == "event:test:policy"
+
+
+def test_erase_subject_data_uses_subject_domains_for_policy(monkeypatch):
+    db = _reset(monkeypatch)
+    db.insert_event(
+        Event(
+            id="event:test:policy-subject",
+            type="med_started",
+            payload={"name": "metformin"},
+            domains=["health"],
+            tenant_id="tenant-a",
+            metadata={"subject_id": "user:123"},
+        )
+    )
+    db.conn.execute(
+        """INSERT INTO agent_permissions (tenant_id, agent_id, domain, action, effect)
+           VALUES (?, ?, ?, ?, ?)""",
+        ("tenant-a", "agent-a", "general", "write", "allow"),
+    )
+    db.conn.commit()
+
+    with pytest.raises(PermissionError, match="policy_denied"):
+        asyncio.run(
+            server.call_tool(
+                "erase_subject_data",
+                {
+                    "_auth_token": "writer",
+                    "subject_id": "user:123",
+                },
+            )
+        )

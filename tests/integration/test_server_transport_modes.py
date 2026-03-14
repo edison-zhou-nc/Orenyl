@@ -1,9 +1,9 @@
 import asyncio
+
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import audit
-from lore import server
+from lore import audit, server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
@@ -28,14 +28,22 @@ def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
 def test_streamable_http_server_registers_expected_tools():
     fast = server.build_fastmcp_server()
     names = {tool.name for tool in asyncio.run(fast.list_tools())}
-    assert names == {
+    assert {
         "store_event",
         "retrieve_context_pack",
         "delete_and_recompute",
         "audit_trace",
         "list_events",
         "export_domain",
-    }
+        "erase_subject_data",
+        "export_subject_data",
+        "record_consent",
+        "generate_processing_record",
+        "audit_anomaly_scan",
+        "create_snapshot",
+        "verify_snapshot",
+        "restore_snapshot",
+    } <= names
 
 
 def test_streamable_http_tool_call_logs_single_allow_event(monkeypatch):

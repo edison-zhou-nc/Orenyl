@@ -5,6 +5,18 @@ from __future__ import annotations
 import os
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
 def _float_env(name: str, default: float) -> float:
     raw = os.environ.get(name)
     if raw is None or not raw.strip():
@@ -44,3 +56,11 @@ def vector_backend_name() -> str:
 
 def pgvector_dsn() -> str:
     return os.environ.get("LORE_PGVECTOR_DSN", "").strip()
+
+
+def compliance_strict_mode_enabled() -> bool:
+    return _bool_env("LORE_COMPLIANCE_STRICT_MODE", default=True)
+
+
+def read_only_mode_enabled() -> bool:
+    return _bool_env("LORE_READ_ONLY_MODE", default=False)
