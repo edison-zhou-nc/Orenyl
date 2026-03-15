@@ -39,7 +39,9 @@ from .disaster_recovery import DRService
 from .embedding_provider import build_embedding_provider_from_env
 from .encryption import encrypt_content
 from .federation_worker import FederationWorker
+from .handlers import compliance as compliance_handlers
 from .handlers import core as core_handlers
+from .handlers import operations as operations_handlers
 from .handlers._common import (
     _build_export_items,
     _clamp_non_negative_int,
@@ -101,6 +103,14 @@ handle_audit_trace = core_handlers.handle_audit_trace
 handle_delete_and_recompute = core_handlers.handle_delete_and_recompute
 handle_list_events = core_handlers.handle_list_events
 handle_export_domain = core_handlers.handle_export_domain
+handle_erase_subject_data = compliance_handlers.handle_erase_subject_data
+handle_export_subject_data = compliance_handlers.handle_export_subject_data
+handle_record_consent = compliance_handlers.handle_record_consent
+handle_generate_processing_record = compliance_handlers.handle_generate_processing_record
+handle_audit_anomaly_scan = operations_handlers.handle_audit_anomaly_scan
+handle_create_snapshot = operations_handlers.handle_create_snapshot
+handle_verify_snapshot = operations_handlers.handle_verify_snapshot
+handle_restore_snapshot = operations_handlers.handle_restore_snapshot
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
@@ -1039,7 +1049,7 @@ async def _legacy_handle_export_domain(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(payload, indent=2, default=str))]
 
 
-async def handle_erase_subject_data(args: dict) -> list[TextContent]:
+async def _legacy_handle_erase_subject_data(args: dict) -> list[TextContent]:
     service = _get_compliance_service()
     result = service.erase_subject_data(
         subject_id=str(args.get("subject_id", "")),
@@ -1050,7 +1060,7 @@ async def handle_erase_subject_data(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def handle_export_subject_data(args: dict) -> list[TextContent]:
+async def _legacy_handle_export_subject_data(args: dict) -> list[TextContent]:
     service = _get_compliance_service()
     result = service.export_subject_data(
         subject_id=str(args.get("subject_id", "")),
@@ -1059,7 +1069,7 @@ async def handle_export_subject_data(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
 
-async def handle_record_consent(args: dict) -> list[TextContent]:
+async def _legacy_handle_record_consent(args: dict) -> list[TextContent]:
     service = _get_consent_service()
     record_id = service.record(
         tenant_id=str(args.get("_auth_tenant_id", "default")),
@@ -1074,7 +1084,7 @@ async def handle_record_consent(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 
 
-async def handle_generate_processing_record(args: dict) -> list[TextContent]:
+async def _legacy_handle_generate_processing_record(args: dict) -> list[TextContent]:
     report = generate_article30_report(
         db=db,
         tenant_id=str(args.get("_auth_tenant_id", "default")),
@@ -1082,7 +1092,7 @@ async def handle_generate_processing_record(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(report, indent=2))]
 
 
-async def handle_audit_anomaly_scan(args: dict) -> list[TextContent]:
+async def _legacy_handle_audit_anomaly_scan(args: dict) -> list[TextContent]:
     limit = _clamp_positive_int(args.get("limit", 500), default=500, maximum=5000)
     window_minutes = _clamp_positive_int(args.get("window_minutes", 60), default=60, maximum=10080)
     events = audit.get_events(limit=limit)
@@ -1096,7 +1106,7 @@ async def handle_audit_anomaly_scan(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 
 
-async def handle_create_snapshot(args: dict) -> list[TextContent]:
+async def _legacy_handle_create_snapshot(args: dict) -> list[TextContent]:
     service = _get_dr_service()
     result = service.create_snapshot(
         label=str(args.get("label", "manual")),
@@ -1105,7 +1115,7 @@ async def handle_create_snapshot(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def handle_verify_snapshot(args: dict) -> list[TextContent]:
+async def _legacy_handle_verify_snapshot(args: dict) -> list[TextContent]:
     service = _get_dr_service()
     result = service.verify_snapshot(
         snapshot_id=str(args.get("snapshot_id", "")),
@@ -1114,7 +1124,7 @@ async def handle_verify_snapshot(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def handle_restore_snapshot(args: dict) -> list[TextContent]:
+async def _legacy_handle_restore_snapshot(args: dict) -> list[TextContent]:
     service = _get_dr_service()
     result = service.restore_snapshot(
         snapshot_id=str(args.get("snapshot_id", "")),
