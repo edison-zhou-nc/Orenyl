@@ -39,6 +39,7 @@ from .disaster_recovery import DRService
 from .embedding_provider import build_embedding_provider_from_env
 from .encryption import encrypt_content
 from .federation_worker import FederationWorker
+from .handlers import core as core_handlers
 from .handlers._common import (
     _build_export_items,
     _clamp_non_negative_int,
@@ -91,6 +92,15 @@ READ_ONLY_SAFE_TOOLS = {
     "audit_anomaly_scan",
     "verify_snapshot",
 }
+
+handle_store_event = core_handlers.handle_store_event
+handle_retrieve_context_pack = core_handlers.handle_retrieve_context_pack
+handle_metrics = core_handlers.handle_metrics
+handle_health = core_handlers.handle_health
+handle_audit_trace = core_handlers.handle_audit_trace
+handle_delete_and_recompute = core_handlers.handle_delete_and_recompute
+handle_list_events = core_handlers.handle_list_events
+handle_export_domain = core_handlers.handle_export_domain
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
@@ -548,7 +558,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             reset_current_tenant_context(tenant_token)
 
 
-async def handle_store_event(args: dict) -> list[TextContent]:
+async def _legacy_handle_store_event(args: dict) -> list[TextContent]:
     started = time.perf_counter()
     payload = args.get("payload", {})
     content = args.get("content", "")
@@ -722,7 +732,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
 
-async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
+async def _legacy_handle_retrieve_context_pack(args: dict) -> list[TextContent]:
     started = time.perf_counter()
     domain = args.get("domain", "general")
     query = args.get("query", "")
@@ -752,11 +762,11 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=pack_json)]
 
 
-async def handle_metrics(args: dict) -> list[TextContent]:
+async def _legacy_handle_metrics(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=render_prometheus())]
 
 
-async def handle_health(args: dict) -> list[TextContent]:
+async def _legacy_handle_health(args: dict) -> list[TextContent]:
     db_ok = db.ping()
     payload = {
         "status": "ok" if db_ok else "degraded",
@@ -766,7 +776,7 @@ async def handle_health(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 
 
-async def handle_audit_trace(args: dict) -> list[TextContent]:
+async def _legacy_handle_audit_trace(args: dict) -> list[TextContent]:
     trace = engine.get_audit_trace(
         args["item_id"],
         include_source_events=args.get("include_source_events", False),
@@ -781,7 +791,7 @@ async def handle_audit_trace(args: dict) -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(trace, indent=2, default=str))]
 
 
-async def handle_delete_and_recompute(args: dict) -> list[TextContent]:
+async def _legacy_handle_delete_and_recompute(args: dict) -> list[TextContent]:
     request_id = str(args.get("_request_id", ""))
     principal_id = str(args.get("_auth_client_id", ""))
     target_id = args["target_id"]
@@ -823,7 +833,7 @@ async def handle_delete_and_recompute(args: dict) -> list[TextContent]:
         )
 
 
-async def handle_list_events(args: dict) -> list[TextContent]:
+async def _legacy_handle_list_events(args: dict) -> list[TextContent]:
     domain = args.get("domain", "general")
     include_tombstoned = args.get("include_tombstoned", False)
     offset = _clamp_non_negative_int(args.get("offset", 0), default=0)
@@ -864,7 +874,7 @@ async def handle_list_events(args: dict) -> list[TextContent]:
     ]
 
 
-async def handle_export_domain(args: dict) -> list[TextContent]:
+async def _legacy_handle_export_domain(args: dict) -> list[TextContent]:
     domain = args.get("domain", "general")
     fmt = args.get("format", "json")
     page_size = _clamp_non_negative_int(args.get("page_size", 0), default=0)
