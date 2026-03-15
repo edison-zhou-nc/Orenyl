@@ -1,19 +1,26 @@
-from lore.repositories.audit import AuditMixin
-from lore.repositories.embeddings import EmbeddingMixin
-from lore.repositories.federation import FederationMixin
+import json
+
+from lore.db import Database
 
 
-def test_support_mixins_cover_remaining_database_api():
-    assert {
-        "append_sync_journal_entry",
-        "list_sync_journal_entries",
-        "update_sync_journal_status",
-        "sync_journal_count",
-    } <= set(dir(FederationMixin))
-    assert {
-        "upsert_event_embedding",
-        "get_event_embedding",
-        "upsert_fact_embedding",
-        "get_fact_embeddings",
-    } <= set(dir(EmbeddingMixin))
-    assert {"log_retrieval", "get_retrieval_logs"} <= set(dir(AuditMixin))
+def test_support_repositories_cover_sync_counts_and_retrieval_logs():
+    db = Database(":memory:")
+
+    assert db.append_sync_journal_entry(
+        tenant_id="tenant-support",
+        direction="outbound",
+        envelope_id="env-support",
+        idempotency_key="idem-support",
+        payload={"op": "upsert"},
+    ) is True
+    assert db.sync_journal_count("tenant-support") == 1
+
+    db.log_retrieval(
+        query="what changed",
+        context_pack=json.dumps({"facts": []}),
+        trace=json.dumps({"included": []}),
+    )
+    logs = db.get_retrieval_logs(limit=1)
+    assert logs[0]["query"] == "what changed"
+    assert logs[0]["context_pack"] == {"facts": []}
+    assert logs[0]["trace"] == {"included": []}
