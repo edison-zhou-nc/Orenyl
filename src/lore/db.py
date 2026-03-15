@@ -10,11 +10,13 @@ from typing import Any
 
 from .embeddings import decode_vector, encode_vector
 from .models import ConsentRecord, DRSnapshot, Edge, Event, Fact, SubjectRequest, Tombstone
+from .repositories.events import EventMixin
+from .repositories.facts import FactMixin
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
-class Database:
+class Database(EventMixin, FactMixin):
     def __init__(self, db_path: str = ":memory:"):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
