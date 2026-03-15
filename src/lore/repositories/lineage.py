@@ -116,4 +116,6 @@ class LineageMixin(BaseMixin):
         return deleted
 
     def run_vacuum(self) -> None:
+        # SQLite rejects VACUUM inside a transaction, so callers must invoke this
+        # outside Database.transaction().
         self.conn.execute("VACUUM")
