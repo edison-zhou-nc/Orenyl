@@ -134,9 +134,7 @@ class Database(
             )
 
         if "facts" in tables:
-            fact_cols = {
-                row[1] for row in self.conn.execute("PRAGMA table_info(facts)").fetchall()
-            }
+            fact_cols = {row[1] for row in self.conn.execute("PRAGMA table_info(facts)").fetchall()}
             if "transform_config" not in fact_cols:
                 _safe_add_column(
                     "ALTER TABLE facts ADD COLUMN transform_config TEXT NOT NULL DEFAULT '{}'"
@@ -185,9 +183,7 @@ class Database(
         if "event_embeddings" in tables:
             event_embedding_cols = {
                 row[1]
-                for row in self.conn.execute(
-                    "PRAGMA table_info(event_embeddings)"
-                ).fetchall()
+                for row in self.conn.execute("PRAGMA table_info(event_embeddings)").fetchall()
             }
             if "tenant_id" not in event_embedding_cols:
                 _safe_add_column("ALTER TABLE event_embeddings ADD COLUMN tenant_id TEXT")
