@@ -241,10 +241,12 @@ async def handle_retrieve_context_pack(args: dict) -> list[TextContent]:
 
 
 async def handle_metrics(args: dict) -> list[TextContent]:
+    """Internal-only diagnostic endpoint that is not dispatched as an MCP tool."""
     return [TextContent(type="text", text=render_prometheus())]
 
 
 async def handle_health(args: dict) -> list[TextContent]:
+    """Internal-only diagnostic endpoint that is not dispatched as an MCP tool."""
     db_ok = get_db().ping()
     payload = {
         "status": "ok" if db_ok else "degraded",

@@ -1,4 +1,8 @@
-"""Lazy accessors to server globals for extracted handler modules."""
+"""Lazy accessors to server's module-level singletons for extracted handlers.
+
+These accessors give handlers access to server's module-level singletons.
+Handlers are not designed for standalone use outside the server context.
+"""
 
 
 def get_db():

@@ -31,17 +31,22 @@ def test_phase4_tools_registered_and_callable(monkeypatch):
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _Verifier())
 
     names = {tool.name for tool in asyncio.run(server.list_tools())}
-    assert len(names) == 14
-    assert {
+    assert names == {
+        "store_event",
+        "retrieve_context_pack",
+        "delete_and_recompute",
+        "audit_trace",
+        "list_events",
+        "export_domain",
         "record_consent",
-        "generate_processing_record",
-        "audit_anomaly_scan",
         "erase_subject_data",
         "export_subject_data",
+        "generate_processing_record",
+        "audit_anomaly_scan",
         "create_snapshot",
         "verify_snapshot",
         "restore_snapshot",
-    } <= names
+    }
 
     consent_out = asyncio.run(
         server.call_tool(
