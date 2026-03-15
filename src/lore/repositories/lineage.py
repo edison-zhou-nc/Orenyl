@@ -63,6 +63,7 @@ class LineageMixin(BaseMixin):
         return grouped
 
     def get_downstream_facts(self, item_id: str, tenant_id: str = "") -> list[str]:
+        """Recursively find downstream facts using a single SQL CTE."""
         rows = self.conn.execute(
             """
             WITH RECURSIVE graph(child_id) AS (

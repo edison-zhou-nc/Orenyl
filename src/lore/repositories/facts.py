@@ -46,6 +46,7 @@ class FactMixin(BaseMixin):
         return fact.id
 
     def get_current_facts(self, key: str | None = None, tenant_id: str = "") -> list[dict]:
+        """Get all valid, non-invalidated facts (optionally filtered by key)."""
         if key:
             rows = self.conn.execute(
                 """SELECT * FROM facts
@@ -211,6 +212,7 @@ class FactMixin(BaseMixin):
         return cur.rowcount > 0
 
     def get_facts_by_key(self, key: str, tenant_id: str = "") -> list[dict]:
+        """Get all versions of facts for a key (including invalidated)."""
         rows = self.conn.execute(
             """SELECT * FROM facts
                WHERE key = ?
