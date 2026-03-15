@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
 import hashlib
 import json
@@ -11,7 +10,6 @@ import logging
 import os
 import threading
 import time
-import uuid
 from typing import Any
 
 from mcp.server import Server
@@ -37,11 +35,20 @@ from .context_pack import (
     _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests,
 )
 from .db import Database
-from .embedding_provider import build_embedding_provider_from_env
-from .encryption import encrypt_content, resolve_runtime_keyring
-from .federation_worker import FederationWorker
-from .lineage import LineageEngine
 from .disaster_recovery import DRService
+from .embedding_provider import build_embedding_provider_from_env
+from .encryption import encrypt_content
+from .federation_worker import FederationWorker
+from .handlers._common import (
+    _build_export_items,
+    _clamp_non_negative_int,
+    _clamp_positive_int,
+    _decode_cursor,
+    _encode_cursor,
+    _resolve_request_id,
+    _runtime_encryption_material,
+)
+from .lineage import LineageEngine
 from .metrics import inc_tool_call, observe_latency, render_prometheus, reset_metrics_for_tests
 from .models import Event, new_id, now_iso
 from .noise_filter import contains_sensitive_identifier, should_store
@@ -108,13 +115,6 @@ def _get_embedding_provider():
     return embedding_provider
 
 
-def _resolve_request_id(args: dict[str, Any]) -> str:
-    request_id = str(args.get("_request_id", "")).strip()
-    if request_id:
-        return request_id
-    return f"req:{uuid.uuid4().hex[:12]}"
-
-
 def _reset_runtime_state_for_tests() -> None:
     global _token_verifier, _token_verifier_error
     global embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
@@ -150,76 +150,6 @@ def _get_dr_service() -> DRService:
     return DRService(db=db, db_path=DB_PATH, snapshot_dir=snapshot_dir)
 
 
-def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return default
-    if parsed < 1:
-        return 1
-    if parsed > maximum:
-        return maximum
-    return parsed
-
-
-def _clamp_non_negative_int(value: Any, default: int) -> int:
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(0, parsed)
-
-
-def _encode_cursor(created_at: str, item_id: str) -> str:
-    raw = json.dumps({"created_at": created_at, "id": item_id}, separators=(",", ":"))
-    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii")
-
-
-def _decode_cursor(cursor: str) -> tuple[str, str]:
-    try:
-        raw = base64.urlsafe_b64decode(cursor.encode("ascii")).decode("utf-8")
-        payload = json.loads(raw)
-        return str(payload["created_at"]), str(payload["id"])
-    except Exception as exc:
-        raise ValueError("invalid_cursor") from exc
-
-
-def _build_export_items(events: list[dict], facts: list[dict]) -> list[dict]:
-    items: list[dict] = []
-    for ev in events:
-        items.append({
-            "id": ev["id"],
-            "kind": "event",
-            "created_at": ev.get("created_at", ""),
-            "ts": ev.get("ts", ""),
-            "domain_hint": ev.get("domains", []),
-            "data": ev,
-        })
-    for fact in facts:
-        items.append({
-            "id": fact["id"],
-            "kind": "fact",
-            "created_at": fact.get("created_at", ""),
-            "key": fact.get("key", ""),
-            "data": fact,
-        })
-    items.sort(key=lambda item: (item.get("created_at", ""), item["id"]))
-    return items
-
-
-def _runtime_encryption_material() -> tuple[bytes, bytes, str] | None:
-    has_legacy = bool(os.environ.get("LORE_ENCRYPTION_PASSPHRASE", "").strip())
-    has_versioned = any(
-        key.startswith("LORE_ENCRYPTION_PASSPHRASE_")
-        for key in os.environ
-    )
-    if not has_legacy and not has_versioned:
-        return None
-    keyring = resolve_runtime_keyring()
-    selected = keyring.keys[keyring.active_version]
-    return selected.key, selected.salt, keyring.active_version
-
-
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     return [
@@ -229,16 +159,25 @@ async def list_tools() -> list[Tool]:
                 "Store important personal facts the user shares (health, career, finance, "
                 "relationships, preferences, decisions). Use this when the user reveals new "
                 "personal context that should be durable and auditable. "
-                "Example: store_event(domains=['health'], type='med_started', payload={'name':'metformin'})."
+                "Example: store_event(domains=['health'], "
+                "type='med_started', payload={'name':'metformin'})."
             ),
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "domains": {"type": "array", "items": {"type": "string"}, "default": ["general"]},
+                    "domains": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "default": ["general"],
+                    },
                     "content": {"type": "string", "default": ""},
                     "type": {"type": "string", "default": "note"},
                     "payload": {"type": "object", "default": {}},
-                    "sensitivity": {"type": "string", "enum": ["low", "medium", "high", "restricted"], "default": "high"},
+                    "sensitivity": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high", "restricted"],
+                        "default": "high",
+                    },
                     "consent_source": {"type": "string", "default": "implicit"},
                     "expires_at": {"type": "string"},
                     "metadata": {"type": "object", "default": {}},
@@ -261,7 +200,11 @@ async def list_tools() -> list[Tool]:
                     "domain": {"type": "string", "default": "general"},
                     "query": {"type": "string", "default": ""},
                     "include_summary": {"type": "boolean", "default": True},
-                    "max_sensitivity": {"type": "string", "enum": ["low", "medium", "high"], "default": "high"},
+                    "max_sensitivity": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high"],
+                        "default": "high",
+                    },
                     "limit": {"type": "integer", "default": 50},
                     "agent_id": {"type": "string", "default": ""},
                     "session_id": {"type": "string", "default": ""},
@@ -274,7 +217,8 @@ async def list_tools() -> list[Tool]:
                 "Delete an event or fact and recompute downstream lineage. "
                 "Use mode='soft' for reversible governance deletion and mode='hard' for "
                 "physical erasure/audit compliance. "
-                "Example: delete_and_recompute(target_id='event:...', target_type='event', mode='hard')."
+                "Example: delete_and_recompute(target_id='event:...', "
+                "target_type='event', mode='hard')."
             ),
             inputSchema={
                 "type": "object",
@@ -329,7 +273,11 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "domain": {"type": "string", "default": "general"},
-                    "format": {"type": "string", "enum": ["json", "markdown", "timeline"], "default": "json"},
+                    "format": {
+                        "type": "string",
+                        "enum": ["json", "markdown", "timeline"],
+                        "default": "json",
+                    },
                     "confirm_restricted": {"type": "boolean", "default": False},
                 },
                 "required": ["domain"],
@@ -477,7 +425,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             principal_agent = access.client_id
             if name == "retrieve_context_pack":
                 domain = str(args.get("domain", "general") or "general")
-                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                if not policy.enforce_read_domain(
+                    tenant_context.tenant_id, principal_agent, domain
+                ):
                     raise PermissionError("forbidden:policy_denied")
             elif name in {
                 "list_events",
@@ -489,7 +439,9 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 "verify_snapshot",
             }:
                 domain = str(args.get("domain", "general") or "general")
-                if not policy.enforce_read_domain(tenant_context.tenant_id, principal_agent, domain):
+                if not policy.enforce_read_domain(
+                    tenant_context.tenant_id, principal_agent, domain
+                ):
                     raise PermissionError("forbidden:policy_denied")
             elif name in {"store_event", "record_consent", "create_snapshot", "restore_snapshot"}:
                 domains = args.get("domains", ["general"]) or ["general"]
@@ -577,7 +529,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     except Exception as e:
         logger.exception("tool_handler_error tool=%s request_id=%s", name, request_id)
         raw_error = str(e)
-        safe_error = raw_error if (isinstance(e, RuntimeError) and "LORE_" in raw_error) else "internal_error; see server logs"
+        safe_error = (
+            raw_error
+            if (isinstance(e, RuntimeError) and "LORE_" in raw_error)
+            else "internal_error; see server logs"
+        )
         error_payload: dict[str, Any] = {
             "ok": False,
             "error": {"type": type(e).__name__, "message": safe_error},
@@ -610,25 +566,49 @@ async def handle_store_event(args: dict) -> list[TextContent]:
                 reject_reason,
                 args.get("domains", ["general"]),
             )
-            return [TextContent(type="text", text=json.dumps({
-                "stored": False,
-                "reason": reject_reason,
-            }, indent=2))]
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "stored": False,
+                            "reason": reject_reason,
+                        },
+                        indent=2,
+                    ),
+                )
+            ]
     elif contains_sensitive_identifier(content_basis):
-        return [TextContent(type="text", text=json.dumps({
-            "stored": False,
-            "reason": "sensitive_credential_or_identifier",
-        }, indent=2))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "stored": False,
+                        "reason": "sensitive_credential_or_identifier",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
     content_hash = compute_content_hash(content_basis)
     domains = args.get("domains", ["general"])
     tenant_id = args.get("_auth_tenant_id", "")
     if check_duplicate(db, content_hash, domains, window_hours=24, tenant_id=tenant_id):
-        return [TextContent(type="text", text=json.dumps({
-            "stored": False,
-            "duplicate": True,
-            "content_hash": content_hash,
-            "reason": "duplicate_within_24h",
-        }, indent=2))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "stored": False,
+                        "duplicate": True,
+                        "content_hash": content_hash,
+                        "reason": "duplicate_within_24h",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
     enable_semantic_dedup = os.environ.get("LORE_ENABLE_SEMANTIC_DEDUP", "0") == "1"
     if enable_semantic_dedup:
         provider = _get_embedding_provider()
@@ -642,17 +622,27 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             tenant_id=tenant_id,
         )
         if is_dup:
-            return [TextContent(type="text", text=json.dumps({
-                "stored": False,
-                "duplicate": True,
-                "content_hash": content_hash,
-                "reason": "semantic_duplicate_within_24h",
-                "existing_event_id": existing_event_id,
-            }, indent=2))]
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "stored": False,
+                            "duplicate": True,
+                            "content_hash": content_hash,
+                            "reason": "semantic_duplicate_within_24h",
+                            "existing_event_id": existing_event_id,
+                        },
+                        indent=2,
+                    ),
+                )
+            ]
     sensitivity = args.get("sensitivity", "high")
     plain_payload = payload
     encryption_material = _runtime_encryption_material()
-    should_encrypt_payload = sensitivity in {"high", "restricted"} and encryption_material is not None
+    should_encrypt_payload = (
+        sensitivity in {"high", "restricted"} and encryption_material is not None
+    )
     event_payload = plain_payload
     if should_encrypt_payload:
         runtime_key, runtime_salt, key_version = encryption_material
@@ -698,7 +688,9 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     except Exception as exc:
         logger.warning("event_embedding_index_failed event_id=%s error=%s", event.id, exc)
     # Avoid deriving plaintext-bearing facts from sensitive encrypted events.
-    derived_fact_ids = [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
+    derived_fact_ids = (
+        [] if should_encrypt_payload else engine.derive_facts_for_event(db.get_event(event.id))
+    )
     if derived_fact_ids:
         try:
             backfill_missing_fact_embeddings(
@@ -857,11 +849,19 @@ async def handle_list_events(args: dict) -> list[TextContent]:
         limit,
         include_tombstoned,
     )
-    return [TextContent(type="text", text=json.dumps({
-        "total_count": total_count,
-        "count": len(window),
-        "events": window,
-    }, indent=2))]
+    return [
+        TextContent(
+            type="text",
+            text=json.dumps(
+                {
+                    "total_count": total_count,
+                    "count": len(window),
+                    "events": window,
+                },
+                indent=2,
+            ),
+        )
+    ]
 
 
 async def handle_export_domain(args: dict) -> list[TextContent]:
@@ -914,10 +914,18 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
             )
             raise PermissionError(f"forbidden:{exc}") from exc
     if restricted and not args.get("confirm_restricted", False):
-        return [TextContent(type="text", text=json.dumps({
-            "error": "restricted_data_requires_confirmation",
-            "restricted_fact_ids": restricted,
-        }, indent=2))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "error": "restricted_data_requires_confirmation",
+                        "restricted_fact_ids": restricted,
+                    },
+                    indent=2,
+                ),
+            )
+        ]
 
     event_ids = {ev["id"] for ev in events}
     edges = []
@@ -927,11 +935,13 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
                 continue
             if domain != "general" and parent.get("parent_id") not in event_ids:
                 continue
-            edges.append({
-                "from": parent["parent_id"],
-                "to": fact["id"],
-                "relation": parent["relation"],
-            })
+            edges.append(
+                {
+                    "from": parent["parent_id"],
+                    "to": fact["id"],
+                    "relation": parent["relation"],
+                }
+            )
 
     payload = {
         "domain": domain,
@@ -965,22 +975,34 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
             "next_cursor": next_cursor,
         }
         if stream_mode:
-            lines = [json.dumps({"kind": "record", "item": item}, separators=(",", ":")) for item in window]
+            lines = [
+                json.dumps({"kind": "record", "item": item}, separators=(",", ":"))
+                for item in window
+            ]
             if include_hashes:
                 canonical = "\n".join(
-                    json.dumps(item, sort_keys=True, separators=(",", ":"))
-                    for item in window
+                    json.dumps(item, sort_keys=True, separators=(",", ":")) for item in window
                 )
-                lines.append(json.dumps({
-                    "kind": "chunk_hash",
-                    "sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
-                }, separators=(",", ":")))
-            lines.append(json.dumps({
-                "kind": "page_info",
-                "count": len(window),
-                "has_more": has_more,
-                "next_cursor": next_cursor,
-            }, separators=(",", ":")))
+                lines.append(
+                    json.dumps(
+                        {
+                            "kind": "chunk_hash",
+                            "sha256": hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+                        },
+                        separators=(",", ":"),
+                    )
+                )
+            lines.append(
+                json.dumps(
+                    {
+                        "kind": "page_info",
+                        "count": len(window),
+                        "has_more": has_more,
+                        "next_cursor": next_cursor,
+                    },
+                    separators=(",", ":"),
+                )
+            )
             return [TextContent(type="text", text="\n".join(lines))]
         return [TextContent(type="text", text=json.dumps(page_payload, indent=2, default=str))]
 
@@ -1109,7 +1131,9 @@ def run_ttl_sweep(delete_mode: str = "soft") -> dict[str, Any]:
     return {"checked_at": now, "count": len(processed), "event_ids": processed, "mode": delete_mode}
 
 
-async def _ttl_sweep_loop(interval_seconds: int, delete_mode: str, stop_event: asyncio.Event) -> None:
+async def _ttl_sweep_loop(
+    interval_seconds: int, delete_mode: str, stop_event: asyncio.Event
+) -> None:
     while not stop_event.is_set():
         run_ttl_sweep(delete_mode=delete_mode)
         try:
