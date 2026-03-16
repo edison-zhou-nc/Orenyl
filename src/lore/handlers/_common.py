@@ -31,6 +31,7 @@ def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
 
 
 def _clamp_non_negative_int(value: Any, default: int) -> int:
+    """Clamp values to zero or above without applying an upper bound."""
     try:
         parsed = int(value)
     except (TypeError, ValueError):
