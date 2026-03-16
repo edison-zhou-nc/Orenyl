@@ -81,6 +81,7 @@ READ_ONLY_SAFE_TOOLS = {
 
 handle_store_event = core_handlers.handle_store_event
 handle_retrieve_context_pack = core_handlers.handle_retrieve_context_pack
+# Diagnostic helpers stay import-compatible on lore.server but are not MCP tools.
 handle_metrics = core_handlers.handle_metrics
 handle_health = core_handlers.handle_health
 handle_audit_trace = core_handlers.handle_audit_trace
