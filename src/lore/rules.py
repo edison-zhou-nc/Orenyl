@@ -11,7 +11,6 @@ from .base_rule import DerivationRule
 from typing import Any
 
 
-
 class MedicationActiveRule(DerivationRule):
     """Domain 1: Medication tracking.
 
@@ -25,7 +24,7 @@ class MedicationActiveRule(DerivationRule):
         return ["med_started", "med_discontinued"]
 
     def derive(self, events: list[dict]) -> list[str]:
-        started: dict[str, str] = {}   # med_name -> latest start timestamp
+        started: dict[str, str] = {}  # med_name -> latest start timestamp
         discontinued: dict[str, str] = {}  # med_name -> latest discontinue timestamp
 
         for e in events:

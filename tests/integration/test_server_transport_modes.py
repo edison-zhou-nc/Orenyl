@@ -63,5 +63,9 @@ def test_streamable_http_tool_call_logs_single_allow_event(monkeypatch):
     fast = server.build_fastmcp_server()
     asyncio.run(fast.call_tool("list_events", {"auth_token": "ok"}))
 
-    allows = [event for event in audit.get_events() if event["action"] == "list_events" and event["result"] == "allow"]
+    allows = [
+        event
+        for event in audit.get_events()
+        if event["action"] == "list_events" and event["result"] == "allow"
+    ]
     assert len(allows) == 1

@@ -14,7 +14,14 @@ def test_schema_has_v2_tables_and_columns():
     assert "checkpoints" in tables
 
     event_cols = _cols(conn, "events")
-    assert {"content_hash", "sensitivity", "consent_source", "expires_at", "agent_id", "session_id"} <= event_cols
+    assert {
+        "content_hash",
+        "sensitivity",
+        "consent_source",
+        "expires_at",
+        "agent_id",
+        "session_id",
+    } <= event_cols
 
     fact_cols = _cols(conn, "facts")
     assert {"transform_config", "stale", "importance"} <= fact_cols
@@ -51,4 +58,3 @@ def test_schema_has_v2_constraints_indexes_and_fk():
 
     edge_indexes = {row[1] for row in conn.execute("PRAGMA index_list(edges)").fetchall()}
     assert "idx_edges_unique_relation" in edge_indexes
-

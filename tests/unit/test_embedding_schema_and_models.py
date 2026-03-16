@@ -4,10 +4,7 @@ from lore.models import Fact
 
 def test_db_has_embedding_tables_and_fact_confidence_fields():
     db = Database(":memory:")
-    fact_cols = {
-        row["name"]
-        for row in db.conn.execute("PRAGMA table_info(facts)").fetchall()
-    }
+    fact_cols = {row["name"] for row in db.conn.execute("PRAGMA table_info(facts)").fetchall()}
     assert "confidence" in fact_cols
     assert "model_id" in fact_cols
 

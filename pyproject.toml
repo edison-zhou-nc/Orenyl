@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lore"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "Lore governed memory"
 readme = "README.md"
 license = "MIT"
@@ -12,7 +12,7 @@ authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
 keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
@@ -47,6 +47,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S105", "S603"]
 
 [tool.black]
 line-length = 100

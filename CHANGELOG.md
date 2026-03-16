@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows semantic versioning.
 
+## [1.0.0] - 2026-03-16
+
+### Added
+- Final GA readiness, security, compliance, release, and documentation gates.
+- CI-backed health and performance release checks.
+
+### Changed
+- Promoted package metadata from `1.0.0rc1` to `1.0.0`.
+- Updated project classifiers to reflect production/stable release status.
+
 ## [1.0.0rc1] - 2026-03-16
 
 ### Added
@@ -24,4 +34,3 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Added
 - Beta governed-memory MCP server with event, fact, lineage, deletion, audit, consent, tenant, and DR support.
-

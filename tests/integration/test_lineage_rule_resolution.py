@@ -45,7 +45,9 @@ def test_delete_recompute_reruns_all_rules_and_records_single_proof_per_rule():
     db = Database(":memory:")
     engine = LineageEngine(db)
 
-    ev1 = Event(id="event:mix:1", type="med_started", payload={"name": "metformin"}, domains=["health"])
+    ev1 = Event(
+        id="event:mix:1", type="med_started", payload={"name": "metformin"}, domains=["health"]
+    )
     ev2 = Event(id="event:mix:2", type="note", payload={"text": "taking med"}, domains=["health"])
     db.insert_event(ev1)
     db.insert_event(ev2)
@@ -58,4 +60,3 @@ def test_delete_recompute_reruns_all_rules_and_records_single_proof_per_rule():
     assert "active_medications" in keys
     assert "domain_summary" in keys
     assert len(keys) == len(set(keys))
-

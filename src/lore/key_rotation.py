@@ -9,6 +9,7 @@ from .encryption import decrypt_content, encrypt_content, resolve_runtime_keyrin
 
 logger = logging.getLogger(__name__)
 
+
 def rotate_encrypted_payloads(db: Database, skip_missing_keys: bool = False) -> dict[str, int]:
     """Re-encrypt high/restricted event payload envelopes to active key version."""
     keyring = resolve_runtime_keyring()

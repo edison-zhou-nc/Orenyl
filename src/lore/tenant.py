@@ -44,10 +44,7 @@ def resolve_tenant_context(
 
     user_id = str(claim_data.get("sub", "")).strip()
     tenant_claim = str(
-        claim_data.get("tenant_id")
-        or claim_data.get("tenant")
-        or claim_data.get("tid")
-        or ""
+        claim_data.get("tenant_id") or claim_data.get("tenant") or claim_data.get("tid") or ""
     ).strip()
     tenant_arg = str(arg_data.get("tenant_id", "")).strip()
     if not multi_tenant_enabled():

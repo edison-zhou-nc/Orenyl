@@ -32,22 +32,30 @@ def test_export_domain_supports_cursor_pagination(monkeypatch):
     _reset_server(monkeypatch, db)
     _seed_export_data(db)
 
-    first = asyncio.run(server.handle_export_domain({
-        "domain": "preferences",
-        "format": "json",
-        "page_size": 2,
-    }))
+    first = asyncio.run(
+        server.handle_export_domain(
+            {
+                "domain": "preferences",
+                "format": "json",
+                "page_size": 2,
+            }
+        )
+    )
     first_payload = json.loads(first[0].text)
     assert len(first_payload["items"]) == 2
     assert first_payload["has_more"] is True
     assert first_payload["next_cursor"]
 
-    second = asyncio.run(server.handle_export_domain({
-        "domain": "preferences",
-        "format": "json",
-        "page_size": 2,
-        "cursor": first_payload["next_cursor"],
-    }))
+    second = asyncio.run(
+        server.handle_export_domain(
+            {
+                "domain": "preferences",
+                "format": "json",
+                "page_size": 2,
+                "cursor": first_payload["next_cursor"],
+            }
+        )
+    )
     second_payload = json.loads(second[0].text)
     assert len(second_payload["items"]) == 1
     assert second_payload["has_more"] is False
@@ -62,13 +70,17 @@ def test_export_domain_stream_jsonl_includes_chunk_hash(monkeypatch):
     _reset_server(monkeypatch, db)
     _seed_export_data(db)
 
-    out = asyncio.run(server.handle_export_domain({
-        "domain": "preferences",
-        "format": "json",
-        "stream": True,
-        "page_size": 2,
-        "include_hashes": True,
-    }))
+    out = asyncio.run(
+        server.handle_export_domain(
+            {
+                "domain": "preferences",
+                "format": "json",
+                "stream": True,
+                "page_size": 2,
+                "include_hashes": True,
+            }
+        )
+    )
     lines = [line for line in out[0].text.splitlines() if line.strip()]
     records = [json.loads(line) for line in lines]
 
@@ -78,8 +90,7 @@ def test_export_domain_stream_jsonl_includes_chunk_hash(monkeypatch):
     assert len(hash_records) == 1
 
     canonical = "\n".join(
-        json.dumps(record["item"], sort_keys=True, separators=(",", ":"))
-        for record in data_records
+        json.dumps(record["item"], sort_keys=True, separators=(",", ":")) for record in data_records
     )
     expected = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     assert hash_records[0]["sha256"] == expected

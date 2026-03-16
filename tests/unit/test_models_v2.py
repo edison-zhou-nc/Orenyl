@@ -21,4 +21,3 @@ def test_event_and_fact_have_v2_fields():
     assert fact.transform_config == {}
     assert fact.stale is False
     assert fact.importance == 0.5
-

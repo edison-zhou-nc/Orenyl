@@ -107,19 +107,23 @@ class ComplianceService:
 
         records: list[dict] = []
         for event in events:
-            records.append({
-                "id": event["id"],
-                "kind": "event",
-                "created_at": event.get("created_at", ""),
-                "data": event,
-            })
+            records.append(
+                {
+                    "id": event["id"],
+                    "kind": "event",
+                    "created_at": event.get("created_at", ""),
+                    "data": event,
+                }
+            )
         for fact in facts:
-            records.append({
-                "id": fact["id"],
-                "kind": "fact",
-                "created_at": fact.get("created_at", ""),
-                "data": fact,
-            })
+            records.append(
+                {
+                    "id": fact["id"],
+                    "kind": "fact",
+                    "created_at": fact.get("created_at", ""),
+                    "data": fact,
+                }
+            )
         records.sort(key=lambda item: (item.get("created_at", ""), item["id"]))
 
         per_record_hashes: list[str] = []
