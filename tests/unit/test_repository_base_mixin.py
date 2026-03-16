@@ -24,3 +24,10 @@ def test_base_mixin_commits_only_outside_transactions():
 
     assert outside.conn.commit_calls == 1
     assert inside.conn.commit_calls == 0
+
+
+def test_base_mixin_documents_commit_behavior():
+    assert (
+        BaseMixin._maybe_commit.__doc__
+        == "Commit unless the repository is inside an explicit transaction."
+    )
