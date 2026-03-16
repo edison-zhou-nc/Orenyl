@@ -1,6 +1,8 @@
 import asyncio
 
 from lore import server
+
+
 def test_run_ttl_sweep_includes_requested_mode(monkeypatch):
     class _FakeDB:
         def get_expired_events(self, _now: str):
@@ -34,4 +36,3 @@ def test_periodic_ttl_sweep_runs_on_interval(monkeypatch):
 
     assert len(calls) >= 2
     assert all(mode == "soft" for mode in calls)
-

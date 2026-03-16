@@ -31,7 +31,9 @@ def _make_rsa_keypair():
     return private_key, public_key
 
 
-def _make_rs256_token(private_key, kid: str, iss: str = "https://issuer.example", aud: str = "lore", scopes=None):
+def _make_rs256_token(
+    private_key, kid: str, iss: str = "https://issuer.example", aud: str = "lore", scopes=None
+):
     now = int(time.time())
     payload = {
         "sub": "user-1",
@@ -117,8 +119,10 @@ def test_verify_token_accepts_valid_rs256_token_with_jwks():
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
     )
+
     async def _fake_fetch_jwks():
         return {"keys": [jwk]}
+
     verifier._fetch_jwks = _fake_fetch_jwks
     token = _make_rs256_token(private_key, kid=kid, scopes=["memory:read", "memory:delete"])
 
@@ -140,8 +144,10 @@ def test_verify_token_rejects_rs256_token_with_unknown_kid():
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
     )
+
     async def _fake_fetch_jwks():
         return {"keys": [jwk]}
+
     verifier._fetch_jwks = _fake_fetch_jwks
     token = _make_rs256_token(private_key, kid="missing-kid")
 

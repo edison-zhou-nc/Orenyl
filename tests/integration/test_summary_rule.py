@@ -6,7 +6,9 @@ from lore.models import Event
 def test_domain_summary_fact_is_created():
     db = Database(":memory:")
     engine = LineageEngine(db)
-    ev = Event(id="event:test:sum1", type="note", payload={"text": "started metformin and feel better"})
+    ev = Event(
+        id="event:test:sum1", type="note", payload={"text": "started metformin and feel better"}
+    )
     ev.domains = ["health"]
     db.insert_event(ev)
     engine.derive_facts_for_event(db.get_event(ev.id))
@@ -58,4 +60,3 @@ def test_domain_summary_omits_high_sensitivity_note_text():
 
     summary = db.get_current_facts("domain_summary")[0]["value"]["summary"]
     assert "highly sensitive diagnosis details" not in summary
-

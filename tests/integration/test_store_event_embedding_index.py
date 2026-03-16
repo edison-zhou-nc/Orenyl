@@ -18,11 +18,15 @@ def test_store_event_indexes_event_embedding(monkeypatch):
     _reset_server(monkeypatch, db)
     monkeypatch.setenv("LORE_EMBEDDING_PROVIDER", "hash-local")
 
-    result = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": "I started metformin yesterday",
-        "type": "note",
-    }))
+    result = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": "I started metformin yesterday",
+                "type": "note",
+            }
+        )
+    )
     payload = json.loads(result[0].text)
     event_id = payload["event_id"]
 

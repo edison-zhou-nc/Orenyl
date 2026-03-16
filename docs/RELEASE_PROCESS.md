@@ -12,8 +12,12 @@
 1. Confirm all release docs are present and current.
 2. Run the full unit and integration suite.
 3. Run the GA gate tests, lint, format, and build commands.
-4. Bump from `1.0.0rc1` to `1.0.0`.
+4. Promote the release metadata from the current RC to `1.0.0`.
 5. Tag and publish artifacts.
+
+## Current release state
+
+The current plan has completed the `1.0.0` promotion. The next release cycle should start with a new RC version rather than reusing `1.0.0rc1`.
 
 ## Hotfix flow
 

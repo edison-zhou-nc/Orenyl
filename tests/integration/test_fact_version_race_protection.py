@@ -45,4 +45,3 @@ def test_concurrent_derivation_does_not_drop_fact_version(monkeypatch):
     assert [f["version"] for f in versions] == [1, 2]
     assert versions[0]["invalidated_at"] is not None
     assert versions[1]["invalidated_at"] is None
-

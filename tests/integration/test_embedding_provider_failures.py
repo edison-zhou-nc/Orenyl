@@ -27,11 +27,15 @@ def test_store_event_survives_embedding_provider_failure(monkeypatch):
     _reset_server(monkeypatch, db)
     monkeypatch.setattr(server, "embedding_provider", _FailingProvider())
 
-    result = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": "Started metformin",
-        "type": "note",
-    }))
+    result = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": "Started metformin",
+                "type": "note",
+            }
+        )
+    )
     payload = json.loads(result[0].text)
 
     assert payload["stored"] is True

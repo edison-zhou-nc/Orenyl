@@ -11,4 +11,3 @@ def test_hard_delete_physically_removes_event():
     proof = engine.delete_and_recompute(ev.id, "event", reason="gdpr", mode="hard")
     assert proof.to_dict()["checks"]["deletion_verified"] is True
     assert db.get_event(ev.id) is None
-

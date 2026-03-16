@@ -18,11 +18,15 @@ def test_store_event_backfills_derived_fact_embeddings(monkeypatch):
     _reset_server(monkeypatch, db)
     monkeypatch.setenv("LORE_EMBEDDING_PROVIDER", "hash-local")
 
-    out = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "med_started",
-        "payload": {"name": "metformin"},
-    }))
+    out = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "med_started",
+                "payload": {"name": "metformin"},
+            }
+        )
+    )
     payload = json.loads(out[0].text)
     fact_ids = payload["derived_facts"]
     assert fact_ids

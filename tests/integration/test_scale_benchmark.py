@@ -51,9 +51,7 @@ def test_scale_benchmark_generates_baseline_artifact(workspace_tmp_path):
     out_path.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     optional_artifact_path = os.environ.get("LORE_BENCHMARK_ARTIFACT_PATH", "").strip()
     if optional_artifact_path:
-        Path(optional_artifact_path).write_text(
-            json.dumps(metrics, indent=2), encoding="utf-8"
-        )
+        Path(optional_artifact_path).write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     print("benchmark:", json.dumps(metrics))
 
@@ -62,4 +60,3 @@ def test_scale_benchmark_generates_baseline_artifact(workspace_tmp_path):
     assert metrics["store_seconds"] < 30
     assert metrics["retrieve_seconds"] < 5
     assert metrics["delete_seconds"] < 10
-

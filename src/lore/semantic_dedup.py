@@ -11,6 +11,7 @@ from .embeddings import cosine_similarity
 
 logger = logging.getLogger(__name__)
 
+
 def _event_text(event_row: dict[str, Any]) -> str:
     payload = event_row.get("payload")
     if isinstance(payload, str):
@@ -51,9 +52,9 @@ def check_semantic_duplicate(
         candidate_embedding = provider.embed_text(content)
     except Exception:
         return False, None
-    threshold_ts = (
-        datetime.now(timezone.utc) - timedelta(hours=window_hours)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    threshold_ts = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     rows = db.get_recent_events_in_domains(domains, threshold_ts, tenant_id=tenant_id)
 
     for event in rows:

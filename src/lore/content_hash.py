@@ -25,9 +25,9 @@ def check_duplicate(
         return False
     # Dedup window is based on event occurrence time (events.ts), not insertion time.
     # This preserves deterministic replay behavior but can be affected by backdated events.
-    threshold = (
-        datetime.now(timezone.utc) - timedelta(hours=window_hours)
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    threshold = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     domains_json = json.dumps(domains)
     row = db.conn.execute(
         """SELECT COUNT(DISTINCT e.id)

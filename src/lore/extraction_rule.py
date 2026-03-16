@@ -18,5 +18,4 @@ class ExtractionFact:
 class ExtractionRule(Protocol):
     rule_id: str
 
-    def extract(self, event: dict) -> list[ExtractionFact]:
-        ...
+    def extract(self, event: dict) -> list[ExtractionFact]: ...

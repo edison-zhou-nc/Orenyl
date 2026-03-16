@@ -9,8 +9,15 @@ def test_context_pack_uses_query_aware_hybrid_ranking():
     db = Database(":memory:")
     engine = LineageEngine(db)
 
-    e1 = Event(id="event:test:med", type="med_started", payload={"name": "metformin"}, domains=["health"])
-    e2 = Event(id="event:test:role", type="role_assigned", payload={"user": "u", "role": "admin"}, domains=["health"])
+    e1 = Event(
+        id="event:test:med", type="med_started", payload={"name": "metformin"}, domains=["health"]
+    )
+    e2 = Event(
+        id="event:test:role",
+        type="role_assigned",
+        payload={"user": "u", "role": "admin"},
+        domains=["health"],
+    )
     db.insert_event(e1)
     db.insert_event(e2)
     engine.derive_facts_for_event(db.get_event(e1.id))
@@ -27,8 +34,15 @@ def test_context_pack_passes_vector_order_into_ranker(monkeypatch):
     db = Database(":memory:")
     engine = LineageEngine(db)
 
-    e1 = Event(id="event:test:med2", type="med_started", payload={"name": "metformin"}, domains=["health"])
-    e2 = Event(id="event:test:role2", type="role_assigned", payload={"user": "u", "role": "admin"}, domains=["health"])
+    e1 = Event(
+        id="event:test:med2", type="med_started", payload={"name": "metformin"}, domains=["health"]
+    )
+    e2 = Event(
+        id="event:test:role2",
+        type="role_assigned",
+        payload={"user": "u", "role": "admin"},
+        domains=["health"],
+    )
     db.insert_event(e1)
     db.insert_event(e2)
     engine.derive_facts_for_event(db.get_event(e1.id))

@@ -29,12 +29,16 @@ def test_rotation_job_reencrypts_old_version_payloads(monkeypatch):
     monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", salt_v1)
 
-    out = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "note",
-        "content": "private record",
-        "sensitivity": "high",
-    }))
+    out = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "note",
+                "content": "private record",
+                "sensitivity": "high",
+            }
+        )
+    )
     event_id = json.loads(out[0].text)["event_id"]
     stored = db.get_event(event_id)
     assert stored["payload"]["ciphertext"]["key_version"] == "v1"
@@ -67,12 +71,16 @@ def test_rotation_job_can_skip_missing_key_versions(monkeypatch):
     monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", salt_v1)
 
-    out = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "note",
-        "content": "private record",
-        "sensitivity": "high",
-    }))
+    out = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "note",
+                "content": "private record",
+                "sensitivity": "high",
+            }
+        )
+    )
     event_id = json.loads(out[0].text)["event_id"]
     event = db.get_event(event_id)
     event["payload"]["ciphertext"]["key_version"] = "v9"
