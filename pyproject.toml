@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lore"
-version = "0.1.0"
+version = "1.0.0rc1"
 description = "Lore governed memory"
 readme = "README.md"
 license = "MIT"
@@ -26,6 +26,11 @@ dependencies = [
   "PyJWT[crypto]==2.11.0",
   "httpx==0.28.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/edison-zhou-nc/Lore"
+Repository = "https://github.com/edison-zhou-nc/Lore"
+Changelog = "https://github.com/edison-zhou-nc/Lore/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

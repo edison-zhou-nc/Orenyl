@@ -11,7 +11,7 @@ Lore gives agents durable memory without losing control: every derived fact is t
 - Deterministic memory model: immutable events, derived facts, lineage edges.
 - Deletion guarantees: cascade invalidation + recompute + verification proof.
 - Compliance-oriented: audit traces, sensitivity controls, export workflows.
-- MCP-native: stable six-tool contract for agent integration.
+- MCP-native: stable 14-tool contract for agent integration.
 
 ## Architecture
 
@@ -72,6 +72,14 @@ python -m lore.server
 4. `audit_trace(item_id, include_source_events=False)`
 5. `list_events(domain, limit=50, offset=0, include_tombstoned=False)`
 6. `export_domain(domain, format=json|markdown|timeline, confirm_restricted=False)`
+7. `erase_subject_data(subject_id, mode=hard|soft, reason=subject_erasure)`
+8. `export_subject_data(subject_id)`
+9. `record_consent(subject_id, status, purpose?, legal_basis?, source?, metadata?)`
+10. `generate_processing_record()`
+11. `audit_anomaly_scan(window_minutes?, limit?)`
+12. `create_snapshot(label?)`
+13. `verify_snapshot(snapshot_id)`
+14. `restore_snapshot(snapshot_id)`
 
 ## Configuration
 
