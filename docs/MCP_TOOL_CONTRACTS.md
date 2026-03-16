@@ -65,7 +65,7 @@ Lore currently exposes 14 MCP-dispatched tools. All tool calls require a valid a
 - Schema: requires `subject_id` and `status`; accepts `purpose`, `legal_basis`, `source`, and `metadata`.
 - Auth: requires `memory:write`.
 - Side effects: writes a consent record and updates compliance state.
-- Sample response: `{"ok": true, "subject_id": "user:123", "status": "granted"}`.
+- Sample response: `{"ok": true, "record_id": "consent:..."}`.
 
 ### `generate_processing_record`
 - Schema: no body fields.
@@ -77,7 +77,7 @@ Lore currently exposes 14 MCP-dispatched tools. All tool calls require a valid a
 - Schema: accepts `window_minutes` and `limit`.
 - Auth: requires `memory:export`.
 - Side effects: reads audit history and returns anomaly candidates.
-- Sample response: `{"ok": true, "window_minutes": 60, "findings": []}`.
+- Sample response: `{"ok": true, "window_minutes": 60, "alerts": []}`.
 
 ### `create_snapshot`
 - Schema: accepts `label`.

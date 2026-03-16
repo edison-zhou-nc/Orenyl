@@ -33,3 +33,11 @@ def test_mcp_tool_contract_doc_covers_registered_tools() -> None:
         assert "Auth:" in section, f"missing auth details for {tool.name}"
         assert "Side effects:" in section, f"missing side effects for {tool.name}"
         assert "Sample response:" in section, f"missing sample response for {tool.name}"
+
+
+def test_mcp_tool_contract_doc_examples_match_live_handlers() -> None:
+    doc = (REPO_ROOT / "docs" / "MCP_TOOL_CONTRACTS.md").read_text()
+
+    assert '"record_id":' in doc
+    assert '"alerts": []' in doc
+    assert '"findings": []' not in doc
