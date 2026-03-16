@@ -16,6 +16,8 @@ def test_server_file_stays_under_six_hundred_lines() -> None:
 def test_server_exports_all_current_handlers() -> None:
     handlers = {name for name in dir(server) if name.startswith("handle_")}
 
+    # This import-compatible surface intentionally includes 14 MCP-dispatched handlers
+    # plus 2 internal-only diagnostics (metrics and health).
     assert handlers == {
         "handle_audit_anomaly_scan",
         "handle_audit_trace",
