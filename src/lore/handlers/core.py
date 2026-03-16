@@ -10,9 +10,10 @@ import time
 
 from mcp.types import TextContent
 
+from .. import __version__ as lore_version
 from .. import audit
 from ..auth import authorize_action
-from ..config import semantic_dedup_threshold_for_domains
+from ..config import multi_tenant_enabled, semantic_dedup_threshold_for_domains
 from ..content_hash import check_duplicate, compute_content_hash
 from ..context_pack import backfill_missing_fact_embeddings
 from ..encryption import encrypt_content
@@ -248,10 +249,17 @@ async def handle_metrics(args: dict) -> list[TextContent]:
 async def handle_health(args: dict) -> list[TextContent]:
     """Internal-only diagnostic endpoint that is not dispatched as an MCP tool."""
     db_ok = get_db().ping()
+    try:
+        encryption_enabled = _runtime_encryption_material() is not None
+    except Exception:
+        encryption_enabled = False
     payload = {
         "status": "ok" if db_ok else "degraded",
         "db_connected": db_ok,
+        "version": lore_version,
         "transport": get_transport_mode(),
+        "multi_tenant_enabled": multi_tenant_enabled(),
+        "encryption_enabled": encryption_enabled,
     }
     return [TextContent(type="text", text=json.dumps(payload, indent=2))]
 

@@ -26,6 +26,12 @@ jobs:
           python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Run unit + integration tests
         run: python -m pytest tests/unit tests/integration -q
+      - name: Run GA health and perf gates
+        run: |
+          python -m pytest \
+            tests/unit/test_health_structured.py \
+            tests/integration/test_perf_regression.py \
+            tests/integration/test_server_metrics_and_health.py -q
       - name: Run Phase 3 isolation + federation gates
         run: |
           python -m pytest \
