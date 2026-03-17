@@ -18,11 +18,15 @@ def test_metrics_and_health_handlers(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
 
-    asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "med_started",
-        "payload": {"name": "metformin"},
-    }))
+    asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "med_started",
+                "payload": {"name": "metformin"},
+            }
+        )
+    )
     asyncio.run(server.handle_retrieve_context_pack({"domain": "health", "query": "med"}))
 
     metrics_out = asyncio.run(server.handle_metrics({}))

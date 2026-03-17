@@ -7,4 +7,3 @@ def test_skip_if_unchanged_increments_skip_counter():
     engine = LineageEngine(db)
     proof = engine.delete_and_recompute("event:missing", "event", reason="noop")
     assert "skip_count" in proof.to_dict()["checks"]
-

@@ -20,12 +20,16 @@ def test_high_sensitivity_payload_stored_encrypted_when_key_present(monkeypatch)
     monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
-    out = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "note",
-        "content": "started metformin",
-        "sensitivity": "high",
-    }))
+    out = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "note",
+                "content": "started metformin",
+                "sensitivity": "high",
+            }
+        )
+    )
     response = json.loads(out[0].text)
     event_id = response["event_id"]
     event = db.get_event(event_id)
@@ -60,12 +64,16 @@ def test_encryption_enabled_skips_sensitive_fact_derivation(monkeypatch):
     monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
-    out = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "type": "med_started",
-        "payload": {"name": "metformin"},
-        "sensitivity": "high",
-    }))
+    out = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "type": "med_started",
+                "payload": {"name": "metformin"},
+                "sensitivity": "high",
+            }
+        )
+    )
     event_id = json.loads(out[0].text)["event_id"]
     event = db.get_event(event_id)
 

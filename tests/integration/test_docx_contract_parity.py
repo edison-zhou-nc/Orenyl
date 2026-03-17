@@ -56,4 +56,3 @@ def test_export_domain_json_has_events_facts_edges_summary(monkeypatch):
     assert isinstance(data.get("facts"), list)
     assert isinstance(data.get("edges"), list)
     assert isinstance(data.get("summary"), str)
-

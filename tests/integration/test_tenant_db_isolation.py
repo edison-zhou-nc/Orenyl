@@ -30,7 +30,9 @@ def _seed_event(db: Database, event_id: str, tenant_id: str, domain: str = "heal
             "2026-03-12T00:00:00Z",
         ),
     )
-    db.conn.execute("INSERT INTO event_domains (event_id, domain) VALUES (?, ?)", (event_id, domain))
+    db.conn.execute(
+        "INSERT INTO event_domains (event_id, domain) VALUES (?, ?)", (event_id, domain)
+    )
 
 
 def _seed_fact(db: Database, fact_id: str, key: str, tenant_id: str) -> None:

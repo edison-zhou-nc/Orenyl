@@ -32,18 +32,26 @@ def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
     monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.95")
     monkeypatch.setattr(server, "embedding_provider", _FakeProvider())
 
-    first = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": "I started metformin",
-        "type": "note",
-    }))
+    first = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": "I started metformin",
+                "type": "note",
+            }
+        )
+    )
     assert "event_id" in json.loads(first[0].text)
 
-    second = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": "Began taking the medication",
-        "type": "note",
-    }))
+    second = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": "Began taking the medication",
+                "type": "note",
+            }
+        )
+    )
     data = json.loads(second[0].text)
 
     assert data.get("stored") is False

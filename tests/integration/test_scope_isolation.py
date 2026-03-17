@@ -80,4 +80,3 @@ def test_context_pack_returns_expected_fact_for_matching_session_scope():
     pack = ContextPackBuilder(db).build(domain="career", query="", session_id="session-1")
     keys = {f["key"] for f in pack.to_dict().get("facts", [])}
     assert "current_role" in keys
-

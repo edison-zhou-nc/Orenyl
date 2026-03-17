@@ -120,9 +120,7 @@ class LineageEngine:
                 last_error = exc
                 continue
 
-        raise RuntimeError(
-            f"fact_version_conflict:{output_key}:retries_exhausted"
-        ) from last_error
+        raise RuntimeError(f"fact_version_conflict:{output_key}:retries_exhausted") from last_error
 
     def derive_facts_for_event(self, event: dict) -> list[str]:
         """After storing an event, derive/update all relevant facts."""
@@ -146,13 +144,15 @@ class LineageEngine:
 
                 # Create lineage edges from all contributing events
                 for ev in all_events:
-                    self.db.insert_edge(Edge(
-                        tenant_id=tenant_id,
-                        parent_id=ev["id"],
-                        parent_type="event",
-                        child_id=fact_id,
-                        child_type="fact",
-                    ))
+                    self.db.insert_edge(
+                        Edge(
+                            tenant_id=tenant_id,
+                            parent_id=ev["id"],
+                            parent_type="event",
+                            child_id=fact_id,
+                            child_type="fact",
+                        )
+                    )
 
                 created_fact_ids.append(fact_id)
 
@@ -167,13 +167,15 @@ class LineageEngine:
                     rule_id=extracted.rule_id,
                     tenant_id=tenant_id,
                 )
-                self.db.insert_edge(Edge(
-                    tenant_id=tenant_id,
-                    parent_id=event["id"],
-                    parent_type="event",
-                    child_id=fact.id,
-                    child_type="fact",
-                ))
+                self.db.insert_edge(
+                    Edge(
+                        tenant_id=tenant_id,
+                        parent_id=event["id"],
+                        parent_type="event",
+                        child_id=fact.id,
+                        child_type="fact",
+                    )
+                )
                 created_fact_ids.append(fact.id)
 
         return created_fact_ids
@@ -339,21 +341,25 @@ class LineageEngine:
 
                 # Create lineage edges from remaining events
                 for ev in all_events:
-                    self.db.insert_edge(Edge(
-                        tenant_id=tenant_id or "default",
-                        parent_id=ev["id"],
-                        parent_type="event",
-                        child_id=fact_id,
-                        child_type="fact",
-                    ))
+                    self.db.insert_edge(
+                        Edge(
+                            tenant_id=tenant_id or "default",
+                            parent_id=ev["id"],
+                            parent_type="event",
+                            child_id=fact_id,
+                            child_type="fact",
+                        )
+                    )
 
-                proof.rederived_facts.append({
-                    "fact_id": fact_id,
-                    "key": rule.output_key,
-                    "value": value,
-                    "version": fact.version,
-                    "derived_from_events": [e["id"] for e in all_events],
-                })
+                proof.rederived_facts.append(
+                    {
+                        "fact_id": fact_id,
+                        "key": rule.output_key,
+                        "value": value,
+                        "version": fact.version,
+                        "derived_from_events": [e["id"] for e in all_events],
+                    }
+                )
 
             # Step 5: Post-delete retrieval check
             # Verify deleted content cannot resurface.
@@ -372,8 +378,7 @@ class LineageEngine:
             )
             if target_type == "fact" and not domain_scoped:
                 domain_scoped = any(
-                    spec.get("source") in {"domain", "hybrid"}
-                    for spec in rules_to_rerun.values()
+                    spec.get("source") in {"domain", "hybrid"} for spec in rules_to_rerun.values()
                 )
             proof.checks = {
                 "target_in_active_events": bool(
@@ -425,22 +430,26 @@ class LineageEngine:
             )
             if p["parent_type"] == "event" and not include_source_events:
                 parent_data = None
-            trace["upstream"].append({
-                "id": p["parent_id"],
-                "type": p["parent_type"],
-                "relation": p["relation"],
-                "data": parent_data,
-            })
+            trace["upstream"].append(
+                {
+                    "id": p["parent_id"],
+                    "type": p["parent_type"],
+                    "relation": p["relation"],
+                    "data": parent_data,
+                }
+            )
 
         # Downstream (children)
         children = self.db.get_children(item_id, tenant_id=tenant_id)
         for c in children:
             child_data = self.db.get_fact(c["child_id"], tenant_id=tenant_id)
-            trace["downstream"].append({
-                "id": c["child_id"],
-                "type": c["child_type"],
-                "relation": c["relation"],
-                "data": child_data,
-            })
+            trace["downstream"].append(
+                {
+                    "id": c["child_id"],
+                    "type": c["child_type"],
+                    "relation": c["relation"],
+                    "data": child_data,
+                }
+            )
 
         return trace

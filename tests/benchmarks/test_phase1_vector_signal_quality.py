@@ -27,13 +27,18 @@ class _ZeroProvider:
 
 def _vector_only_ranker(**kwargs):
     vector_order = kwargs.get("vector_order") or []
-    return [{"id": item_id, "score": float(len(vector_order) - idx)} for idx, item_id in enumerate(vector_order)]
+    return [
+        {"id": item_id, "score": float(len(vector_order) - idx)}
+        for idx, item_id in enumerate(vector_order)
+    ]
 
 
 def test_phase1_vector_signal_improves_precision_on_tiebreaker_corpus(monkeypatch):
     corpus = "scenarios/phase1_vector_tiebreaker_corpus.json"
     monkeypatch.setattr(context_pack_module, "rank_items", _vector_only_ranker)
-    monkeypatch.setattr(context_pack_module, "_get_embedding_provider", lambda: _SemanticTestProvider())
+    monkeypatch.setattr(
+        context_pack_module, "_get_embedding_provider", lambda: _SemanticTestProvider()
+    )
     with_vector = run_phase1_precision_eval(corpus_path=corpus, top_k=1)
 
     monkeypatch.setattr(context_pack_module, "_get_embedding_provider", lambda: _ZeroProvider())

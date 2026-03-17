@@ -26,7 +26,9 @@ def test_list_events_clamps_limit_and_offset(monkeypatch):
     monkeypatch.setattr(server, "MAX_LIST_EVENTS_LIMIT", 2)
 
     for i in range(5):
-        fresh_db.insert_event(Event(id=f"event:test:{i}", type="note", payload={"i": i}, domains=["general"]))
+        fresh_db.insert_event(
+            Event(id=f"event:test:{i}", type="note", payload={"i": i}, domains=["general"])
+        )
 
     out = asyncio.run(server.handle_list_events({"domain": "general", "limit": 50, "offset": -10}))
     payload = json.loads(out[0].text)
@@ -52,7 +54,9 @@ def test_list_events_uses_db_pagination_path(monkeypatch):
     monkeypatch.setattr(server, "MAX_LIST_EVENTS_LIMIT", 2)
 
     for i in range(5):
-        fresh_db.insert_event(Event(id=f"event:test:paged:{i}", type="note", payload={"i": i}, domains=["general"]))
+        fresh_db.insert_event(
+            Event(id=f"event:test:paged:{i}", type="note", payload={"i": i}, domains=["general"])
+        )
 
     def fail_full_scan(*args, **kwargs):
         raise AssertionError("full_scan_not_allowed")
@@ -66,4 +70,3 @@ def test_list_events_uses_db_pagination_path(monkeypatch):
     assert payload["total_count"] == 5
     assert payload["count"] == 2
     assert len(payload["events"]) == 2
-

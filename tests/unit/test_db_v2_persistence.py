@@ -76,7 +76,14 @@ def test_migrate_v1_to_v2_adds_missing_columns(workspace_tmp_path):
     db.migrate_v1_to_v2()
 
     event_cols = _cols(db.conn, "events")
-    assert {"content_hash", "sensitivity", "consent_source", "expires_at", "agent_id", "session_id"} <= event_cols
+    assert {
+        "content_hash",
+        "sensitivity",
+        "consent_source",
+        "expires_at",
+        "agent_id",
+        "session_id",
+    } <= event_cols
 
     fact_cols = _cols(db.conn, "facts")
     assert {"transform_config", "stale", "importance"} <= fact_cols
@@ -102,7 +109,14 @@ def test_insert_event_and_fact_persist_v2_fields_and_domains():
         "SELECT content_hash, sensitivity, consent_source, expires_at, agent_id, session_id FROM events WHERE id = ?",
         (ev.id,),
     ).fetchone()
-    assert tuple(row) == ("abc123", "high", "explicit", "2030-01-01T00:00:00Z", "agent-1", "session-1")
+    assert tuple(row) == (
+        "abc123",
+        "high",
+        "explicit",
+        "2030-01-01T00:00:00Z",
+        "agent-1",
+        "session-1",
+    )
 
     domains = {
         r[0]

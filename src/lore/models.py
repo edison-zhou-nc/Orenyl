@@ -108,12 +108,14 @@ class RecallTrace:
     included: list[dict[str, Any]] = field(default_factory=list)
 
     def add_item(self, item_id: str, why: list[str], lineage: list[str] | None = None):
-        self.included.append({
-            "item_id": item_id,
-            "why": why,
-            "lineage": lineage or [],
-            "lineage_available": True,
-        })
+        self.included.append(
+            {
+                "item_id": item_id,
+                "why": why,
+                "lineage": lineage or [],
+                "lineage_available": True,
+            }
+        )
 
 
 @dataclass
@@ -144,6 +146,7 @@ class ContextPack:
 @dataclass
 class DeleteProof:
     """The killer artifact: proof that deletion propagated correctly."""
+
     target_id: str
     target_type: str
     reason: str

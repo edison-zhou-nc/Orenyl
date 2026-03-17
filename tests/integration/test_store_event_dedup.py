@@ -17,18 +17,26 @@ def test_store_event_rejects_duplicate_hash_within_24h(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
 
-    first = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": "Started metformin",
-        "type": "note",
-    }))
+    first = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": "Started metformin",
+                "type": "note",
+            }
+        )
+    )
     assert "event_id" in json.loads(first[0].text)
 
-    second = asyncio.run(server.handle_store_event({
-        "domains": ["health"],
-        "content": " started   METFORMIN ",
-        "type": "note",
-    }))
+    second = asyncio.run(
+        server.handle_store_event(
+            {
+                "domains": ["health"],
+                "content": " started   METFORMIN ",
+                "type": "note",
+            }
+        )
+    )
     data = json.loads(second[0].text)
     assert data.get("stored") is False
     assert data.get("duplicate") is True

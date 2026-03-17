@@ -30,7 +30,9 @@ def test_soft_delete_rolls_back_on_stale_mark_failure(monkeypatch):
 def test_fact_delete_recompute_rolls_back_on_insert_failure(monkeypatch):
     db = Database(":memory:")
     engine = LineageEngine(db)
-    ev = Event(id="event:test:fact-rollback", type="diet_preference", payload={"value": "vegetarian"})
+    ev = Event(
+        id="event:test:fact-rollback", type="diet_preference", payload={"value": "vegetarian"}
+    )
     db.insert_event(ev)
     derived_ids = engine.derive_facts_for_event(db.get_event(ev.id))
     fact_id = derived_ids[0]
@@ -47,4 +49,3 @@ def test_fact_delete_recompute_rolls_back_on_insert_failure(monkeypatch):
     assert fact_after is not None
     assert fact_after["invalidated_at"] is None
     assert db.get_tombstones(fact_id) == []
-

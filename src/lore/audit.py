@@ -146,7 +146,9 @@ def clear_events() -> None:
 def verify_hash_chain() -> bool:
     with _LOCK:
         conn = _conn()
-        event_count = conn.execute("SELECT COUNT(*) AS c FROM security_audit_events").fetchone()["c"]
+        event_count = conn.execute("SELECT COUNT(*) AS c FROM security_audit_events").fetchone()[
+            "c"
+        ]
         rows = conn.execute(
             """SELECT c.seq_id, c.prev_hash, c.event_hash, c.chain_hash,
                       e.ts, e.action, e.result, e.principal_id, e.request_id, e.details_json
