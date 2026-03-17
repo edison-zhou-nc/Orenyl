@@ -10,11 +10,9 @@ from .embeddings import cosine_similarity, decode_vector, encode_vector
 
 
 class VectorBackend(Protocol):
-    def upsert(self, namespace: str, item_id: str, vector: list[float]) -> None:
-        ...
+    def upsert(self, namespace: str, item_id: str, vector: list[float]) -> None: ...
 
-    def query(self, namespace: str, query: list[float], top_k: int) -> list[str]:
-        ...
+    def query(self, namespace: str, query: list[float], top_k: int) -> list[str]: ...
 
 
 class LocalVectorBackend:

@@ -10,7 +10,14 @@ class DomainSummaryRule(DerivationRule):
     output_key = "domain_summary"
 
     def relevant_event_types(self) -> list[str]:
-        return ["note", "med_started", "med_discontinued", "role_assigned", "role_revoked", "diet_preference"]
+        return [
+            "note",
+            "med_started",
+            "med_discontinued",
+            "role_assigned",
+            "role_revoked",
+            "diet_preference",
+        ]
 
     def derive(self, events: list[dict]) -> dict:
         if not events:

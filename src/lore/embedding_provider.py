@@ -19,8 +19,7 @@ class EmbeddingProvider(Protocol):
     provider_id: str
     dim: int
 
-    def embed_text(self, text: str) -> list[float]:
-        ...
+    def embed_text(self, text: str) -> list[float]: ...
 
 
 @dataclass
@@ -40,7 +39,7 @@ class DeterministicHashEmbeddingProvider:
         while len(values) < self.dim:
             digest = hashlib.sha256(seed + counter.to_bytes(4, "big")).digest()
             for idx in range(0, len(digest), 4):
-                chunk = digest[idx: idx + 4]
+                chunk = digest[idx : idx + 4]
                 if len(chunk) < 4:
                     continue
                 as_int = int.from_bytes(chunk, "big")

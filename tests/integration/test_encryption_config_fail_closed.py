@@ -51,4 +51,3 @@ def test_missing_salt_is_error_when_passphrase_set_in_prod(monkeypatch):
                 }
             )
         )
-

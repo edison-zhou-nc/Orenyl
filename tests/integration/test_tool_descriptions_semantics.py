@@ -16,4 +16,3 @@ def test_delete_description_mentions_soft_and_hard_modes():
     desc = (delete.description or "").lower()
     assert "soft" in desc
     assert "hard" in desc
-

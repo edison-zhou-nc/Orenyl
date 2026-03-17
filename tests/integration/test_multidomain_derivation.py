@@ -12,8 +12,4 @@ def test_single_event_can_produce_facts_in_multiple_domains():
     created = engine.derive_facts_for_event(db.get_event(ev.id))
     assert isinstance(created, list)
     assert len(created) >= 1
-    assert any(
-        any(p["parent_id"] == ev.id for p in db.get_parents(fact_id))
-        for fact_id in created
-    )
-
+    assert any(any(p["parent_id"] == ev.id for p in db.get_parents(fact_id)) for fact_id in created)

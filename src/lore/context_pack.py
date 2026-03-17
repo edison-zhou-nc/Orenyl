@@ -265,9 +265,7 @@ class ContextPackBuilder:
             # Build provenance from lineage edges
             parents = parent_edges_by_fact.get(fact["id"], [])
             derived_from = [p["parent_id"] for p in parents]
-            parent_events = [
-                parent_events_by_id.get(pid) for pid in derived_from
-            ]
+            parent_events = [parent_events_by_id.get(pid) for pid in derived_from]
             if withdrawn_subject_ids:
                 subject_ids = {
                     str((event or {}).get("metadata", {}).get("subject_id", "")).strip()

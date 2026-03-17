@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lore"
-version = "0.1.0"
+version = "1.0.0"
 description = "Lore governed memory"
 readme = "README.md"
 license = "MIT"
@@ -12,7 +12,7 @@ authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
 keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
@@ -26,6 +26,11 @@ dependencies = [
   "PyJWT[crypto]==2.11.0",
   "httpx==0.28.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/edison-zhou-nc/Lore"
+Repository = "https://github.com/edison-zhou-nc/Lore"
+Changelog = "https://github.com/edison-zhou-nc/Lore/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -43,6 +48,9 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S105", "S603"]
+
 [tool.black]
 line-length = 100
 target-version = ["py312"]
@@ -50,3 +58,4 @@ target-version = ["py312"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = [".git", ".venv", ".tmp_pytest_local", "tests/.tmp", "tests/.pytest_tmp", "tests/pytest_tmp_*"]
+markers = ["perf: deterministic performance smoke gates"]

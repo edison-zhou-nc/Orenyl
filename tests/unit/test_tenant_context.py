@@ -32,7 +32,9 @@ def _env(name: str, value: str | None):
 def test_resolve_tenant_context_prefers_token_claims():
     claims = {"sub": "user-1", "tenant_id": "tenant-a"}
     with _env("LORE_ENABLE_MULTI_TENANT", "1"):
-        ctx = resolve_tenant_context(claims=claims, args={"agent_id": "agent-1", "session_id": "s1"})
+        ctx = resolve_tenant_context(
+            claims=claims, args={"agent_id": "agent-1", "session_id": "s1"}
+        )
     assert ctx.tenant_id == "tenant-a"
     assert ctx.user_id == "user-1"
     assert ctx.agent_id == "agent-1"

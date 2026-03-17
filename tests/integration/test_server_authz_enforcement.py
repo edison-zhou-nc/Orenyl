@@ -29,14 +29,24 @@ class StubVerifier:
                 resource="tenant-b",
             )
         if token == "read":
-            return AccessToken(token=token, client_id="u1", scopes=["memory:read"], resource="tenant-a")
+            return AccessToken(
+                token=token, client_id="u1", scopes=["memory:read"], resource="tenant-a"
+            )
         if token == "export":
-            return AccessToken(token=token, client_id="u1", scopes=["memory:export"], resource="tenant-a")
+            return AccessToken(
+                token=token, client_id="u1", scopes=["memory:export"], resource="tenant-a"
+            )
         if token == "admin":
             return AccessToken(
                 token=token,
                 client_id="u1",
-                scopes=["memory:read", "memory:write", "memory:delete", "memory:export", "memory:export:restricted"],
+                scopes=[
+                    "memory:read",
+                    "memory:write",
+                    "memory:delete",
+                    "memory:export",
+                    "memory:export:restricted",
+                ],
                 resource="tenant-a",
             )
         return None
@@ -171,6 +181,11 @@ def test_export_domain_restricted_requires_stronger_scope(monkeypatch):
         asyncio.run(
             server.call_tool(
                 "export_domain",
-                {"domain": "health", "format": "json", "confirm_restricted": True, "_auth_token": "export"},
+                {
+                    "domain": "health",
+                    "format": "json",
+                    "confirm_restricted": True,
+                    "_auth_token": "export",
+                },
             )
         )

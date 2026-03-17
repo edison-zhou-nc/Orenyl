@@ -69,7 +69,7 @@ def resolve_runtime_keyring() -> RuntimeKeyring:
             continue
         if not env_value.strip():
             continue
-        version_norm = env_name[len("LORE_ENCRYPTION_PASSPHRASE_"):]
+        version_norm = env_name[len("LORE_ENCRYPTION_PASSPHRASE_") :]
         version = version_norm.lower()
         if version in keys:
             continue
@@ -86,7 +86,7 @@ def encrypt_content(plaintext: str, key: bytes, salt: bytes, key_version: str = 
     if len(salt) < 8:
         raise ValueError("salt_too_short")
     nonce = os.urandom(12)
-    
+
     ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
     return {
         "alg": "aes-256-gcm",

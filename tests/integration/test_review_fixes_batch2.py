@@ -64,7 +64,9 @@ def test_audit_trace_include_source_events_changes_payload(monkeypatch):
     server.engine.derive_facts_for_event(db.get_event(ev.id))
     fact_id = db.get_current_facts("active_medications")[0]["id"]
 
-    off = asyncio.run(server.handle_audit_trace({"item_id": fact_id, "include_source_events": False}))
+    off = asyncio.run(
+        server.handle_audit_trace({"item_id": fact_id, "include_source_events": False})
+    )
     on = asyncio.run(server.handle_audit_trace({"item_id": fact_id, "include_source_events": True}))
     data_off = json.loads(off[0].text)
     data_on = json.loads(on[0].text)
@@ -78,7 +80,12 @@ def test_export_domain_is_domain_scoped(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
 
-    e1 = Event(id="event:test:health", type="med_started", payload={"name": "metformin"}, domains=["health"])
+    e1 = Event(
+        id="event:test:health",
+        type="med_started",
+        payload={"name": "metformin"},
+        domains=["health"],
+    )
     e2 = Event(
         id="event:test:career",
         type="role_assigned",
@@ -114,8 +121,12 @@ def test_export_domain_markdown_and_timeline_use_real_newlines(monkeypatch):
     db.insert_event(ev)
     server.engine.derive_facts_for_event(db.get_event(ev.id))
 
-    md = asyncio.run(server.handle_export_domain({"domain": "preferences", "format": "markdown"}))[0].text
-    tl = asyncio.run(server.handle_export_domain({"domain": "preferences", "format": "timeline"}))[0].text
+    md = asyncio.run(server.handle_export_domain({"domain": "preferences", "format": "markdown"}))[
+        0
+    ].text
+    tl = asyncio.run(server.handle_export_domain({"domain": "preferences", "format": "timeline"}))[
+        0
+    ].text
 
     assert "\n" in md
     assert "\\n" not in md
