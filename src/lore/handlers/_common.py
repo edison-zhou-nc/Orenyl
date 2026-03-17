@@ -19,6 +19,7 @@ def _resolve_request_id(args: dict[str, Any]) -> str:
 
 
 def _clamp_positive_int(value: Any, default: int, maximum: int) -> int:
+    """Clamp values to the inclusive range ``[1, maximum]``."""
     try:
         parsed = int(value)
     except (TypeError, ValueError):
