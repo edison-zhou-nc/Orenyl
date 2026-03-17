@@ -1,3 +1,5 @@
+"""GA release metadata checks for packaging and published version signals."""
+
 from pathlib import Path
 
 import lore

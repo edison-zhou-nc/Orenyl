@@ -31,3 +31,8 @@ def test_base_mixin_documents_commit_behavior():
         BaseMixin._maybe_commit.__doc__
         == "Commit unless the repository is inside an explicit transaction."
     )
+
+
+def test_base_mixin_declares_required_runtime_attributes():
+    assert BaseMixin.__annotations__["conn"].__name__ == "Connection"
+    assert BaseMixin.__annotations__["_in_transaction"] is bool

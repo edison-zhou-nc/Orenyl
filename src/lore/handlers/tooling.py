@@ -235,6 +235,8 @@ _REGISTERED_TOOLS = (
     ),
 )
 
+_TOOL_DESCRIPTIONS = {tool.name: tool.description or "" for tool in _REGISTERED_TOOLS}
+
 
 def list_registered_tools() -> list[Tool]:
     return list(_REGISTERED_TOOLS)
@@ -248,7 +250,7 @@ def _maybe_add_auth(args: dict[str, Any], auth_token: str, request_id: str) -> N
 
 
 def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
-    @server.tool(name="store_event", description="Store a memory event.")
+    @server.tool(name="store_event", description=_TOOL_DESCRIPTIONS["store_event"])
     async def _store_event(
         domains: list[str] | None = None,
         content: str = "",
@@ -280,7 +282,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("store_event", args)
 
-    @server.tool(name="retrieve_context_pack", description="Retrieve memory context.")
+    @server.tool(
+        name="retrieve_context_pack",
+        description=_TOOL_DESCRIPTIONS["retrieve_context_pack"],
+    )
     async def _retrieve_context_pack(
         domain: str = "general",
         query: str = "",
@@ -304,7 +309,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("retrieve_context_pack", args)
 
-    @server.tool(name="delete_and_recompute", description="Delete memory and recompute lineage.")
+    @server.tool(
+        name="delete_and_recompute",
+        description=_TOOL_DESCRIPTIONS["delete_and_recompute"],
+    )
     async def _delete_and_recompute(
         target_id: str,
         target_type: str,
@@ -324,7 +332,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("delete_and_recompute", args)
 
-    @server.tool(name="audit_trace", description="Get lineage trace for an item.")
+    @server.tool(name="audit_trace", description=_TOOL_DESCRIPTIONS["audit_trace"])
     async def _audit_trace(
         item_id: str,
         include_source_events: bool = False,
@@ -338,7 +346,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("audit_trace", args)
 
-    @server.tool(name="list_events", description="List events with pagination.")
+    @server.tool(name="list_events", description=_TOOL_DESCRIPTIONS["list_events"])
     async def _list_events(
         domain: str = "general",
         limit: int = 50,
@@ -356,7 +364,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("list_events", args)
 
-    @server.tool(name="export_domain", description="Export domain events, facts, and lineage.")
+    @server.tool(name="export_domain", description=_TOOL_DESCRIPTIONS["export_domain"])
     async def _export_domain(
         domain: str,
         format: str = "json",
@@ -372,7 +380,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("export_domain", args)
 
-    @server.tool(name="erase_subject_data", description="Erase all data for a subject.")
+    @server.tool(
+        name="erase_subject_data",
+        description=_TOOL_DESCRIPTIONS["erase_subject_data"],
+    )
     async def _erase_subject_data(
         subject_id: str,
         mode: str = "hard",
@@ -388,7 +399,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("erase_subject_data", args)
 
-    @server.tool(name="export_subject_data", description="Export all data for a subject.")
+    @server.tool(
+        name="export_subject_data",
+        description=_TOOL_DESCRIPTIONS["export_subject_data"],
+    )
     async def _export_subject_data(
         subject_id: str,
         auth_token: str = "",
@@ -398,7 +412,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("export_subject_data", args)
 
-    @server.tool(name="record_consent", description="Record consent status for a subject.")
+    @server.tool(
+        name="record_consent",
+        description=_TOOL_DESCRIPTIONS["record_consent"],
+    )
     async def _record_consent(
         subject_id: str,
         status: str,
@@ -422,7 +439,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
 
     @server.tool(
         name="generate_processing_record",
-        description="Generate Article 30 processing record for compliance.",
+        description=_TOOL_DESCRIPTIONS["generate_processing_record"],
     )
     async def _generate_processing_record(
         auth_token: str = "",
@@ -432,7 +449,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("generate_processing_record", args)
 
-    @server.tool(name="audit_anomaly_scan", description="Scan audit logs for anomaly patterns.")
+    @server.tool(
+        name="audit_anomaly_scan",
+        description=_TOOL_DESCRIPTIONS["audit_anomaly_scan"],
+    )
     async def _audit_anomaly_scan(
         window_minutes: int = 60,
         limit: int = 500,
@@ -446,7 +466,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("audit_anomaly_scan", args)
 
-    @server.tool(name="create_snapshot", description="Create a disaster recovery snapshot.")
+    @server.tool(
+        name="create_snapshot",
+        description=_TOOL_DESCRIPTIONS["create_snapshot"],
+    )
     async def _create_snapshot(
         label: str = "manual",
         auth_token: str = "",
@@ -456,7 +479,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("create_snapshot", args)
 
-    @server.tool(name="verify_snapshot", description="Verify snapshot integrity.")
+    @server.tool(
+        name="verify_snapshot",
+        description=_TOOL_DESCRIPTIONS["verify_snapshot"],
+    )
     async def _verify_snapshot(
         snapshot_id: str,
         auth_token: str = "",
@@ -466,7 +492,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("verify_snapshot", args)
 
-    @server.tool(name="restore_snapshot", description="Restore a snapshot into active DB.")
+    @server.tool(
+        name="restore_snapshot",
+        description=_TOOL_DESCRIPTIONS["restore_snapshot"],
+    )
     async def _restore_snapshot(
         snapshot_id: str,
         auth_token: str = "",
