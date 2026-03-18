@@ -7,7 +7,7 @@ name = "lore-mcp"
 version = "1.0.0"
 description = "Compliance-grade memory MCP server for AI agents with deterministic deletion and auditable lineage"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
 keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage", "gdpr", "ai-agent", "context-protocol"]
@@ -18,7 +18,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Libraries",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
-  "License :: OSI Approved :: MIT License",
+  "License :: OSI Approved :: Apache Software License",
 ]
 dependencies = [
   "mcp==1.26.0",
