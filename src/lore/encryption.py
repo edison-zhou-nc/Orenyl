@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import base64
+import logging
 import os
 from dataclasses import dataclass
 from argon2.low_level import Type, hash_secret_raw
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -44,6 +47,11 @@ def _decode_salt(var_name: str) -> bytes:
     allow_insecure_dev_salt = _read_env("LORE_ALLOW_INSECURE_DEV_SALT") == "1"
     if not allow_insecure_dev_salt:
         raise RuntimeError(f"{var_name} is required when passphrase is configured")
+    logger.warning(
+        "INSECURE DEV SALT ACTIVE: Using hardcoded fallback salt. "
+        "This is NOT safe for production. Set %s to a base64-encoded random salt.",
+        var_name,
+    )
     return b"lore-default-salt!"
 
 
