@@ -27,6 +27,8 @@ Add Lore as an MCP server in OpenClaw's configuration:
 }
 ```
 
+`LORE_ALLOW_STDIO_DEV=1` disables Lore's production guard for stdio transport, so keep that setting for local development only.
+
 Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory with compliance guarantees.
 
 ## What OpenClaw Gets

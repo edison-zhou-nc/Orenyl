@@ -58,7 +58,7 @@ def main() -> None:
     for item in pack.facts:
         print(f"  - {item['key']}: {item['value']}")
 
-    print("\n--- Deleting allergy record ---")
+    print("\n--- Deleting allergy record with proof ---")
     proof = engine.delete_and_recompute(
         "event:health:3", "event", reason="subject_erasure_request", mode="hard"
     )
