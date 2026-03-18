@@ -44,6 +44,13 @@ class ConcurrencyTrackingProvider:
                 self.active_calls -= 1
 
 
+@pytest.fixture(autouse=True)
+def _reset_embedding_state():
+    """Reset module-level executor and future between tests for clean isolation."""
+    yield
+    context_pack_module._reset_runtime_state_for_tests()
+
+
 def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
     """Slow embedding calls should time out and fall back quickly to keyword ranking."""
     db = Database(":memory:")
@@ -75,7 +82,6 @@ def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
     assert elapsed < 0.5
     assert pack.domain == "health"
     assert pack.items
-    time.sleep(0.25)
 
 
 def test_embedding_timeout_reuses_single_worker_when_provider_is_stuck():
@@ -86,5 +92,4 @@ def test_embedding_timeout_reuses_single_worker_when_provider_is_stuck():
         with pytest.raises(TimeoutError):
             context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
 
-    time.sleep(0.25)
     assert provider.max_active_calls == 1

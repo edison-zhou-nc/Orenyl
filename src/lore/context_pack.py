@@ -73,10 +73,13 @@ def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
     except concurrent.futures.TimeoutError as exc:
         raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds") from exc
     finally:
-        if future.done():
-            with _embedding_executor_lock:
-                if _embedding_future is future:
-                    _embedding_future = None
+        # Unconditionally clear the reference so a stuck provider does not
+        # permanently block subsequent embedding attempts for the process lifetime.
+        # The single-worker executor already prevents concurrent runs; the next
+        # caller will queue behind any still-running task and get its own timeout.
+        with _embedding_executor_lock:
+            if _embedding_future is future:
+                _embedding_future = None
 
 
 def should_retrieve(query: str) -> bool:

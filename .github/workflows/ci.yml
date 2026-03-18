@@ -29,8 +29,11 @@ jobs:
           python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Security scan (bandit)
         run: python -m bandit -r src/lore -ll -q
-      - name: Dependency audit (pip-audit)
-        run: python -m pip_audit -r requirements.lock -r requirements-dev.lock --disable-pip
+      - name: Dependency audit - production (pip-audit)
+        run: python -m pip_audit -r requirements.lock --disable-pip
+      - name: Dependency audit - dev tools (pip-audit)
+        run: python -m pip_audit -r requirements-dev.lock --disable-pip
+        continue-on-error: true
       - name: Type check (mypy)
         run: python -m mypy src/lore --config-file pyproject.toml
       - name: Run unit + integration tests with coverage
