@@ -9,6 +9,8 @@ import scripts.run_benchmarks as run_benchmarks
 class FakeDatabase:
     def __init__(self, _db_path: str = ":memory:") -> None:
         self.events: dict[str, dict] = {}
+        self.fact_ids: list[str] = []
+        self.edge_pairs: list[tuple[str, str]] = []
 
     @contextmanager
     def transaction(self):
@@ -25,6 +27,13 @@ class FakeDatabase:
 
     def get_event(self, event_id: str) -> dict:
         return self.events[event_id]
+
+    def insert_fact(self, fact) -> str:
+        self.fact_ids.append(fact.id)
+        return fact.id
+
+    def insert_edge(self, edge) -> None:
+        self.edge_pairs.append((edge.parent_id, edge.child_id))
 
 
 class FakeProof:
@@ -55,7 +64,7 @@ class FakeBuilder:
         self.db = db
 
     def build(self, **_kwargs):
-        return SimpleNamespace(items=[{"id": "fact:1"}])
+        return SimpleNamespace(items=[{"id": fact_id} for fact_id in self.db.fact_ids])
 
 
 def test_run_scale_populates_corpus_without_streaming_derivation(monkeypatch):
@@ -69,7 +78,9 @@ def test_run_scale_populates_corpus_without_streaming_derivation(monkeypatch):
     assert FakeEngine.last_instance.derived_event_ids == ["event:bench:probe"]
     assert FakeEngine.last_instance.deleted_event_ids == ["event:bench:probe"]
     assert result["deletion_verified"] is True
-    assert result["context_pack_items"] == 1
+    assert result["context_pack_items"] == 5
     assert isinstance(result["insert_and_derive_single_event_ms"], float)
     assert isinstance(result["retrieve_context_pack_ms"], float)
     assert isinstance(result["delete_and_recompute_ms"], float)
+    assert len(FakeEngine.last_instance.db.fact_ids) == 5
+    assert len(FakeEngine.last_instance.db.edge_pairs) == 5
