@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
-from lore.models import Event
+from lore.models import Edge, Event, Fact
 
 DOMAINS = ["health", "career", "finance", "relationships", "preferences", "decisions"]
 
@@ -29,7 +29,26 @@ def _make_event(event_id: str, index: int) -> Event:
 def _populate_corpus(db: Database, n_events: int) -> None:
     with db.transaction():
         for i in range(n_events):
-            db.insert_event(_make_event(f"event:bench:{i}", i))
+            event = _make_event(f"event:bench:{i}", i)
+            db.insert_event(event)
+            fact = Fact(
+                id=f"fact:bench:{i}",
+                key=f"benchmark_note_{i}",
+                value={"text": event.payload["text"]},
+                version=1,
+                rule_id="BenchmarkSeedRule@v1",
+                tenant_id=event.tenant_id,
+            )
+            db.insert_fact(fact)
+            db.insert_edge(
+                Edge(
+                    tenant_id=event.tenant_id,
+                    parent_id=event.id,
+                    parent_type="event",
+                    child_id=fact.id,
+                    child_type="fact",
+                )
+            )
 
 
 def run_scale(n_events: int) -> dict:

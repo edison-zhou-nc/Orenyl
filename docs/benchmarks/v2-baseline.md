@@ -55,17 +55,18 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 Environment: Windows, Python 3.12.10, SQLite in-memory
 
 Methodology:
-- Preload a corpus of `N` raw events without derivation to avoid measuring the benchmark script's old O(n^2) bulk-load pattern.
+- Preload a corpus of `N` events plus one synthetic derived fact and lineage edge per event to approximate a populated steady-state corpus without reintroducing the benchmark script's old O(n^2) bulk-load pattern.
 - Measure a single probe event's `insert + derive` latency at corpus size `N`.
 - Measure `retrieve_context_pack` and `delete_and_recompute` immediately after that probe ingest.
 
 | Operation | 1K events | 10K events | 100K events |
 |-----------|-----------|------------|-------------|
-| insert + derive (single event) | `16.3ms` | `174.9ms` | `2377.8ms` |
-| retrieve_context_pack | `14.5ms` | `117.2ms` | `1836.2ms` |
-| delete_and_recompute | `24.4ms` | `191.5ms` | `3368.5ms` |
+| insert + derive (single event) | `17.4ms` | `183.8ms` | `2967.5ms` |
+| retrieve_context_pack | `24.0ms` | `168.8ms` | `2390.3ms` |
+| delete_and_recompute | `27.4ms` | `337.6ms` | `5184.6ms` |
 | deletion_verified | `True` | `True` | `True` |
 
 Notes:
+- The seeded facts are synthetic benchmark fixtures used to keep retrieval and post-delete checks representative of a populated corpus; the probe event itself is still measured via the real `insert + derive` path.
 - The 100K retrieval and deletion numbers are materially slower than 10K and should be treated as honest current-state measurements, not aspirational targets.
 - These timings reflect the lineage engine's current O(n) scan behavior for operations at corpus size `N`, which is acceptable for now but a reasonable target for future scaling work.
