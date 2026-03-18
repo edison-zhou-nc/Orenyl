@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import threading
 import time
+
+import pytest
 
 from lore import context_pack as context_pack_module
 from lore.context_pack import ContextPackBuilder
@@ -18,6 +21,27 @@ class SlowEmbeddingProvider:
     def embed_text(self, text: str) -> list[float]:
         time.sleep(0.2)
         return [0.0] * self.dim
+
+
+class ConcurrencyTrackingProvider:
+    provider_id = "slow-concurrency-test"
+    dim = 128
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.active_calls = 0
+        self.max_active_calls = 0
+
+    def embed_text(self, text: str) -> list[float]:
+        with self._lock:
+            self.active_calls += 1
+            self.max_active_calls = max(self.max_active_calls, self.active_calls)
+        try:
+            time.sleep(0.2)
+            return [0.0] * self.dim
+        finally:
+            with self._lock:
+                self.active_calls -= 1
 
 
 def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
@@ -51,3 +75,16 @@ def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
     assert elapsed < 0.5
     assert pack.domain == "health"
     assert pack.items
+    time.sleep(0.25)
+
+
+def test_embedding_timeout_reuses_single_worker_when_provider_is_stuck():
+    """Repeated timeouts should not start overlapping embed calls."""
+    provider = ConcurrencyTrackingProvider()
+
+    for _ in range(3):
+        with pytest.raises(TimeoutError):
+            context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
+
+    time.sleep(0.25)
+    assert provider.max_active_calls == 1
