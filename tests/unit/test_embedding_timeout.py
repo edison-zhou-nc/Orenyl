@@ -93,3 +93,17 @@ def test_embedding_timeout_reuses_single_worker_when_provider_is_stuck():
             context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
 
     assert provider.max_active_calls == 1
+
+
+def test_embedding_timeout_fails_fast_without_queueing_more_work():
+    """Retries while the worker is still running should not enqueue additional work."""
+    provider = ConcurrencyTrackingProvider()
+
+    with pytest.raises(TimeoutError, match="embedding_timeout_after_0.01_seconds"):
+        context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
+
+    with pytest.raises(TimeoutError, match="embedding_worker_busy"):
+        context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
+
+    executor = context_pack_module._get_embedding_executor()
+    assert executor._work_queue.qsize() == 0
