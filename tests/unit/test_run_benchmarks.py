@@ -70,3 +70,6 @@ def test_run_scale_populates_corpus_without_streaming_derivation(monkeypatch):
     assert FakeEngine.last_instance.deleted_event_ids == ["event:bench:probe"]
     assert result["deletion_verified"] is True
     assert result["context_pack_items"] == 1
+    assert isinstance(result["insert_and_derive_single_event_ms"], float)
+    assert isinstance(result["retrieve_context_pack_ms"], float)
+    assert isinstance(result["delete_and_recompute_ms"], float)
