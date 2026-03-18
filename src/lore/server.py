@@ -46,6 +46,7 @@ from .policy import (
     agent_permissions_enabled,
     policy_shadow_mode_enabled,
 )
+from .rate_limit import RateLimiter
 from .tenant import (
     reset_current_tenant_context,
     resolve_tenant_context,
@@ -68,6 +69,7 @@ _token_verifier: OIDCTokenVerifier | None = None
 _token_verifier_error: Exception | None = None
 _token_verifier_lock = threading.Lock()
 _federation_worker: FederationWorker | None = None
+_rate_limiter = RateLimiter()
 READ_ONLY_SAFE_TOOLS = {
     "retrieve_context_pack",
     "audit_trace",
@@ -201,6 +203,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             args=args,
         )
         args["_auth_tenant_id"] = tenant_context.tenant_id
+        if _rate_limiter.enabled and not _rate_limiter.allow(tenant_context.tenant_id):
+            raise PermissionError("rate_limited")
         tenant_token = set_current_tenant_context(tenant_context)
         if agent_permissions_enabled():
             policy = PolicyEngine(db, shadow_mode=policy_shadow_mode_enabled())
