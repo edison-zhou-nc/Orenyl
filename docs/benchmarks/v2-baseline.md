@@ -49,3 +49,23 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
   `LORE_ENABLE_PHASE3_LOAD_TEST=1`
 - Configurable event count:
   `LORE_PHASE3_LOAD_EVENTS` (default `1000000`)
+
+## Published Benchmarks (2026-03-18)
+
+Environment: Windows, Python 3.12.10, SQLite in-memory
+
+Methodology:
+- Preload a corpus of `N` raw events without derivation to avoid measuring the benchmark script's old O(n^2) bulk-load pattern.
+- Measure a single probe event's `insert + derive` latency at corpus size `N`.
+- Measure `retrieve_context_pack` and `delete_and_recompute` immediately after that probe ingest.
+
+| Operation | 1K events | 10K events | 100K events |
+|-----------|-----------|------------|-------------|
+| insert + derive (single event) | `22.6ms` | `178.0ms` | `2307.0ms` |
+| retrieve_context_pack | `14.2ms` | `114.9ms` | `1796.3ms` |
+| delete_and_recompute | `18.0ms` | `216.6ms` | `3482.8ms` |
+| deletion_verified | `True` | `True` | `True` |
+
+Notes:
+- The 100K retrieval and deletion numbers are materially slower than 10K and should be treated as honest current-state measurements, not aspirational targets.
+- These timings reflect the lineage engine's current O(n) scan behavior for operations at corpus size `N`, which is acceptable for now but a reasonable target for future scaling work.
