@@ -74,6 +74,8 @@ def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
         raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds") from exc
     finally:
         with _embedding_executor_lock:
+            # Keep the in-flight future registered until it actually finishes so
+            # retries fail fast instead of queueing more timed-out embed work.
             if _embedding_future is future and future.done():
                 _embedding_future = None
 

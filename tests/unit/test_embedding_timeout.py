@@ -44,6 +44,27 @@ class ConcurrencyTrackingProvider:
                 self.active_calls -= 1
 
 
+class BlockingEmbeddingProvider:
+    provider_id = "blocking-test"
+    dim = 128
+
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+        self._lock = threading.Lock()
+        self.started_calls = 0
+        self.completed_calls = 0
+
+    def embed_text(self, text: str) -> list[float]:
+        with self._lock:
+            self.started_calls += 1
+        self.started.set()
+        self.release.wait(timeout=1.0)
+        with self._lock:
+            self.completed_calls += 1
+        return [0.0] * self.dim
+
+
 @pytest.fixture(autouse=True)
 def _reset_embedding_state():
     """Reset module-level executor and future between tests for clean isolation."""
@@ -97,13 +118,21 @@ def test_embedding_timeout_reuses_single_worker_when_provider_is_stuck():
 
 def test_embedding_timeout_fails_fast_without_queueing_more_work():
     """Retries while the worker is still running should not enqueue additional work."""
-    provider = ConcurrencyTrackingProvider()
+    provider = BlockingEmbeddingProvider()
 
     with pytest.raises(TimeoutError, match="embedding_timeout_after_0.01_seconds"):
         context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
 
+    assert provider.started.wait(timeout=0.1)
+
+    started = time.perf_counter()
     with pytest.raises(TimeoutError, match="embedding_worker_busy"):
         context_pack_module._embed_with_timeout(provider, "metformin", timeout=0.01)
+    elapsed = time.perf_counter() - started
 
-    executor = context_pack_module._get_embedding_executor()
-    assert executor._work_queue.qsize() == 0
+    provider.release.set()
+    time.sleep(0.05)
+
+    assert elapsed < 0.05
+    assert provider.started_calls == 1
+    assert provider.completed_calls == 1
