@@ -53,7 +53,10 @@ def main() -> None:
         sources = summary_item.get("provenance", {}).get("derived_from", [])
         print(f"Summary derived from: {sources}")
     else:
-        print("No domain_summary fact found.")
+        print(
+            "No domain_summary fact found. This demo expects note-based events, "
+            "because the lineage walkthrough traces the domain_summary rule."
+        )
 
     print("\n--- Deleting Monday standup ---")
     proof = engine.delete_and_recompute(
@@ -70,7 +73,10 @@ def main() -> None:
             "march 30" not in str(summary_after["value"]).lower(),
         )
     else:
-        print("No domain_summary fact found after deletion.")
+        print(
+            "No domain_summary fact found after deletion. This usually means the demo "
+            "events did not hit the note-based summary path."
+        )
 
 
 if __name__ == "__main__":

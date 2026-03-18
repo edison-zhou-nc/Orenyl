@@ -56,6 +56,7 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 
 Methodology:
 - Preload a corpus of `N` events plus one synthetic derived fact and lineage edge per event to approximate a populated steady-state corpus without reintroducing the benchmark script's old O(n^2) bulk-load pattern.
+- Use those synthetic seeded facts as benchmark fixtures so retrieval and post-delete checks run against a populated corpus; the probe event itself is still measured via the real `insert + derive` path.
 - Measure a single probe event's `insert + derive` latency at corpus size `N`.
 - Measure `retrieve_context_pack` and `delete_and_recompute` immediately after that probe ingest.
 
@@ -67,6 +68,5 @@ Methodology:
 | deletion_verified | `True` | `True` | `True` |
 
 Notes:
-- The seeded facts are synthetic benchmark fixtures used to keep retrieval and post-delete checks representative of a populated corpus; the probe event itself is still measured via the real `insert + derive` path.
 - The 100K retrieval and deletion numbers are materially slower than 10K and should be treated as honest current-state measurements, not aspirational targets.
 - These timings reflect the lineage engine's current O(n) scan behavior for operations at corpus size `N`, which is acceptable for now but a reasonable target for future scaling work.
