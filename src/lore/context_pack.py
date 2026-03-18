@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import threading
 
 from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
@@ -16,6 +18,7 @@ from .vector_backend import build_vector_backend_from_env
 _embedding_provider = None
 _vector_backend = None
 logger = logging.getLogger(__name__)
+_EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get("LORE_EMBEDDING_TIMEOUT_SECONDS", "10"))
 
 
 def _get_embedding_provider():
@@ -36,6 +39,26 @@ def _reset_runtime_state_for_tests() -> None:
     global _embedding_provider, _vector_backend
     _embedding_provider = None
     _vector_backend = None
+
+
+def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
+    result: dict[str, list[float]] = {}
+    error: dict[str, Exception] = {}
+
+    def _run() -> None:
+        try:
+            result["vector"] = provider.embed_text(text)
+        except Exception as exc:  # pragma: no cover - exercised via caller fallback
+            error["exc"] = exc
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    if thread.is_alive():
+        raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds")
+    if "exc" in error:
+        raise error["exc"]
+    return result["vector"]
 
 
 def should_retrieve(query: str) -> bool:
@@ -134,7 +157,11 @@ class ContextPackBuilder:
         vector_order = None
         try:
             provider = _get_embedding_provider()
-            query_vector = provider.embed_text(query or domain or "general")
+            query_vector = _embed_with_timeout(
+                provider,
+                query or domain or "general",
+                _EMBEDDING_TIMEOUT_SECONDS,
+            )
             stored_fact_embeddings = self.db.get_fact_embeddings(
                 [fact["id"] for fact in facts],
                 tenant_id=tenant_id,
@@ -210,7 +237,11 @@ class ContextPackBuilder:
                             f"{fact.get('key', '')}:"
                             f"{json.dumps(fact.get('value', ''), sort_keys=True)}"
                         )
-                        fact_vector = provider.embed_text(fact_text)
+                        fact_vector = _embed_with_timeout(
+                            provider,
+                            fact_text,
+                            _EMBEDDING_TIMEOUT_SECONDS,
+                        )
                     similarity = cosine_similarity(query_vector, fact_vector)
                     vector_scored.append((similarity, fact["id"]))
                 vector_scored.sort(key=lambda row: (-row[0], row[1]))
