@@ -1,0 +1,103 @@
+"""Run Lore benchmarks at multiple scales and print results."""
+
+from __future__ import annotations
+
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+from lore.context_pack import ContextPackBuilder
+from lore.db import Database
+from lore.lineage import LineageEngine
+from lore.models import Event
+
+DOMAINS = ["health", "career", "finance", "relationships", "preferences", "decisions"]
+
+
+def _make_event(event_id: str, index: int) -> Event:
+    return Event(
+        id=event_id,
+        type="note",
+        payload={"text": f"Benchmark event {index} about health topic {index % len(DOMAINS)}"},
+        domains=[DOMAINS[index % len(DOMAINS)]],
+        sensitivity="medium",
+    )
+
+
+def _populate_corpus(db: Database, n_events: int) -> None:
+    with db.transaction():
+        for i in range(n_events):
+            db.insert_event(_make_event(f"event:bench:{i}", i))
+
+
+def run_scale(n_events: int) -> dict:
+    db = Database(":memory:")
+    engine = LineageEngine(db)
+    builder = ContextPackBuilder(db)
+    _populate_corpus(db, n_events)
+
+    probe_id = "event:bench:probe"
+    probe_event = _make_event(probe_id, n_events)
+
+    # Measure a single event ingest at corpus size N.
+    t0 = time.perf_counter()
+    db.insert_event(probe_event)
+    engine.derive_facts_for_event(db.get_event(probe_id))
+    ingest_time = time.perf_counter() - t0
+
+    # Retrieve context pack
+    t0 = time.perf_counter()
+    pack = builder.build(domain="health", query="benchmark", limit=50)
+    retrieve_time = time.perf_counter() - t0
+
+    # Delete and recompute the measured event.
+    t0 = time.perf_counter()
+    proof = engine.delete_and_recompute(probe_id, "event", reason="benchmark", mode="soft")
+    delete_time = time.perf_counter() - t0
+
+    return {
+        "events": n_events,
+        "insert_and_derive_single_event_ms": round(ingest_time * 1000, 1),
+        "retrieve_context_pack_ms": round(retrieve_time * 1000, 1),
+        "delete_and_recompute_ms": round(delete_time * 1000, 1),
+        "deletion_verified": proof.to_dict().get("checks", {}).get("deletion_verified"),
+        "context_pack_items": len(pack.items),
+    }
+
+
+def main() -> None:
+    scales = [1_000, 10_000, 100_000]
+    results = []
+    for n in scales:
+        print(f"Running {n:,} events...", flush=True)
+        result = run_scale(n)
+        results.append(result)
+        print(f"  insert+derive: {result['insert_and_derive_single_event_ms']}ms")
+        print(f"  retrieve:     {result['retrieve_context_pack_ms']}ms")
+        print(f"  delete:       {result['delete_and_recompute_ms']}ms")
+
+    print("\n## Results (copy to docs/benchmarks/results.md)\n")
+    print("| Operation | 1K events | 10K events | 100K events |")
+    print("|-----------|-----------|------------|-------------|")
+    print(
+        f"| insert + derive (single event) | {results[0]['insert_and_derive_single_event_ms']}ms | "
+        f"{results[1]['insert_and_derive_single_event_ms']}ms | {results[2]['insert_and_derive_single_event_ms']}ms |"
+    )
+    print(
+        f"| retrieve_context_pack | {results[0]['retrieve_context_pack_ms']}ms | "
+        f"{results[1]['retrieve_context_pack_ms']}ms | {results[2]['retrieve_context_pack_ms']}ms |"
+    )
+    print(
+        f"| delete_and_recompute | {results[0]['delete_and_recompute_ms']}ms | "
+        f"{results[1]['delete_and_recompute_ms']}ms | {results[2]['delete_and_recompute_ms']}ms |"
+    )
+    print(
+        f"| deletion_verified | {results[0]['deletion_verified']} | "
+        f"{results[1]['deletion_verified']} | {results[2]['deletion_verified']} |"
+    )
+
+
+if __name__ == "__main__":
+    main()
