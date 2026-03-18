@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import os
 import threading
+from typing import cast
 
 from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
@@ -17,6 +19,9 @@ from .vector_backend import build_vector_backend_from_env
 
 _embedding_provider = None
 _vector_backend = None
+_embedding_executor: concurrent.futures.ThreadPoolExecutor | None = None
+_embedding_future: concurrent.futures.Future[list[float]] | None = None
+_embedding_executor_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 _EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get("LORE_EMBEDDING_TIMEOUT_SECONDS", "10"))
 
@@ -37,28 +42,41 @@ def _get_vector_backend(db: Database):
 
 def _reset_runtime_state_for_tests() -> None:
     global _embedding_provider, _vector_backend
+    global _embedding_executor, _embedding_future
     _embedding_provider = None
     _vector_backend = None
+    if _embedding_executor is not None:
+        _embedding_executor.shutdown(wait=False, cancel_futures=True)
+    _embedding_executor = None
+    _embedding_future = None
+
+
+def _get_embedding_executor() -> concurrent.futures.ThreadPoolExecutor:
+    global _embedding_executor
+    if _embedding_executor is None:
+        _embedding_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="lore-embedding",
+        )
+    return _embedding_executor
 
 
 def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
-    result: dict[str, list[float]] = {}
-    error: dict[str, Exception] = {}
-
-    def _run() -> None:
-        try:
-            result["vector"] = provider.embed_text(text)
-        except Exception as exc:  # pragma: no cover - synchronous raise path not exercised by tests
-            error["exc"] = exc
-
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-    thread.join(timeout)
-    if thread.is_alive():
-        raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds")
-    if "exc" in error:
-        raise error["exc"]
-    return result["vector"]
+    global _embedding_future
+    with _embedding_executor_lock:
+        if _embedding_future is not None and not _embedding_future.done():
+            raise TimeoutError("embedding_worker_busy")
+        future = _get_embedding_executor().submit(provider.embed_text, text)
+        _embedding_future = future
+    try:
+        return cast(list[float], future.result(timeout=timeout))
+    except concurrent.futures.TimeoutError as exc:
+        raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds") from exc
+    finally:
+        if future.done():
+            with _embedding_executor_lock:
+                if _embedding_future is future:
+                    _embedding_future = None
 
 
 def should_retrieve(query: str) -> bool:
