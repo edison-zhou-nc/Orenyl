@@ -87,5 +87,5 @@ This is Lore's core guarantee: **if upstream data is deleted, downstream derivat
 ## Next Steps
 
 - [Claude Code Integration](guides/claude-code.md)
+- [OpenClaw Integration](guides/openclaw.md) *(coming soon)*
 - [MCP Tool Contract](MCP_TOOL_CONTRACTS.md) - full API reference
-- [Examples](../examples/) - real-world usage patterns
