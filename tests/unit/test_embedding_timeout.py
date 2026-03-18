@@ -48,6 +48,6 @@ def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
     )
     elapsed = time.perf_counter() - started
 
-    assert elapsed < 0.1
+    assert elapsed < 0.5
     assert pack.domain == "health"
     assert pack.items

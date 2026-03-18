@@ -125,13 +125,14 @@ def _get_embedding_provider():
 def _reset_runtime_state_for_tests() -> None:
     global _token_verifier, _token_verifier_error
     global embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
-    global _federation_worker
+    global _federation_worker, _rate_limiter
     with _token_verifier_lock:
         _token_verifier = None
         _token_verifier_error = None
         embedding_provider = None
         _DEFAULT_SALT_WARNING_EMITTED = False
         _federation_worker = None
+        _rate_limiter = RateLimiter()
     reset_context_pack_runtime_state_for_tests()
     reset_metrics_for_tests()
 

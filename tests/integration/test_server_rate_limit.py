@@ -41,3 +41,21 @@ def test_call_tool_enforces_per_tenant_rate_limit(monkeypatch):
 
     with pytest.raises(PermissionError, match="rate_limited"):
         asyncio.run(server.call_tool("list_events", {"_auth_token": "ok", "domain": "general"}))
+
+
+def test_call_tool_succeeds_when_rate_limiting_disabled(monkeypatch):
+    fresh_db = Database(":memory:")
+    monkeypatch.setattr(server, "db", fresh_db)
+    monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
+    monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(fresh_db))
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _Verifier())
+    monkeypatch.setattr(
+        server,
+        "_rate_limiter",
+        RateLimiter(max_requests=0, window_seconds=60),
+        raising=False,
+    )
+
+    for _ in range(5):
+        result = asyncio.run(server.call_tool("list_events", {"_auth_token": "ok", "domain": "general"}))
+        assert "events" in json.loads(result[0].text)

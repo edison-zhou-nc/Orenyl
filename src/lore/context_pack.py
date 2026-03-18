@@ -48,7 +48,7 @@ def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
     def _run() -> None:
         try:
             result["vector"] = provider.embed_text(text)
-        except Exception as exc:  # pragma: no cover - exercised via caller fallback
+        except Exception as exc:  # pragma: no cover - synchronous raise path not exercised by tests
             error["exc"] = exc
 
     thread = threading.Thread(target=_run, daemon=True)
