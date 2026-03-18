@@ -96,7 +96,13 @@ def main() -> None:
     print(f"Agent B query 'kubernetes': {len(pack_beta_own.facts)} fact(s)")
     print("Agent B sees Kubernetes content:", "kubernetes" in beta_own_text)
 
-    print("\nTenant isolation confirmed when one tenant cannot retrieve the other tenant's content.")
+    alpha_ok = "payment gateway" in alpha_text
+    beta_isolated = "payment gateway" not in beta_payment_text
+    beta_ok = "kubernetes" in beta_own_text
+    if alpha_ok and beta_isolated and beta_ok:
+        print("\nTenant isolation confirmed when one tenant cannot retrieve the other tenant's content.")
+    else:
+        print("\nWARNING: tenant isolation demo did not produce the expected isolation evidence.")
 
 
 if __name__ == "__main__":

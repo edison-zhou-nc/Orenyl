@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/lore-mcp)](https://pypi.org/project/lore-mcp/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ![Lore social preview](docs/assets/lore_social_preview.png)
@@ -32,6 +33,7 @@ Or from source:
 git clone https://github.com/edison-zhou-nc/Lore.git
 cd Lore
 pip install -e .
+python -m pip install -r requirements-dev.txt
 ```
 
 ## Get Started
