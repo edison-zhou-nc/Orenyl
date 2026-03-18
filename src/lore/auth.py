@@ -151,10 +151,11 @@ class OIDCTokenVerifier:
             return {}
         # Parse errors are handled separately to keep fetch diagnostics explicit.
         try:
-            return response.json()
+            payload = response.json()
         except json.JSONDecodeError:
             logger.warning("jwks_parse_failed url=%s", self.jwks_url)
             return {}
+        return payload if isinstance(payload, dict) else {}
 
 
 def _extract_scopes(claims: dict) -> list[str]:

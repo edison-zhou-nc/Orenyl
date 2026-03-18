@@ -23,14 +23,14 @@ def rank_items(
     vector_scores = _rrf_score(vector_order)
     recency_scores = _rrf_score(recency_order)
 
-    result = []
+    scored_items: list[tuple[float, str]] = []
     for item_id in item_ids:
         score = 0.0
         score += keyword_scores.get(item_id, 0.0) * 0.30
         score += vector_scores.get(item_id, 0.0) * 0.40
         score += recency_scores.get(item_id, 0.0) * 0.15
         score += float(importance.get(item_id, 0.5)) * 0.15
-        result.append({"id": item_id, "score": score})
+        scored_items.append((score, item_id))
 
-    result.sort(key=lambda row: (-row["score"], row["id"]))
-    return result
+    scored_items.sort(key=lambda row: (-row[0], row[1]))
+    return [{"id": item_id, "score": score} for score, item_id in scored_items]
