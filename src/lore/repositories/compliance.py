@@ -66,7 +66,7 @@ class ComplianceMixin(BaseMixin):
             ),
         )
         self._maybe_commit()
-        return int(cursor.lastrowid)
+        return int(cursor.lastrowid) if cursor.lastrowid is not None else 0
 
     def latest_consent_status(
         self,

@@ -103,7 +103,12 @@ def log_security_event(
             """INSERT INTO security_audit_chain
                (event_id, prev_hash, event_hash, chain_hash)
                VALUES (?, ?, ?, ?)""",
-            (int(cursor.lastrowid), prev_hash, event_hash, chain_hash),
+            (
+                int(cursor.lastrowid) if cursor.lastrowid is not None else 0,
+                prev_hash,
+                event_hash,
+                chain_hash,
+            ),
         )
         conn.commit()
 
