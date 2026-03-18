@@ -61,9 +61,9 @@ Methodology:
 
 | Operation | 1K events | 10K events | 100K events |
 |-----------|-----------|------------|-------------|
-| insert + derive (single event) | `22.6ms` | `178.0ms` | `2307.0ms` |
-| retrieve_context_pack | `14.2ms` | `114.9ms` | `1796.3ms` |
-| delete_and_recompute | `18.0ms` | `216.6ms` | `3482.8ms` |
+| insert + derive (single event) | `16.3ms` | `174.9ms` | `2377.8ms` |
+| retrieve_context_pack | `14.5ms` | `117.2ms` | `1836.2ms` |
+| delete_and_recompute | `24.4ms` | `191.5ms` | `3368.5ms` |
 | deletion_verified | `True` | `True` | `True` |
 
 Notes:
