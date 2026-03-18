@@ -22,10 +22,15 @@ jobs:
           python -m pip install build
           python -m pip install "mypy==1.15.0"
           python -m pip install pytest-cov
+          python -m pip install bandit pip-audit
       - name: Ruff lint (correctness + SQLi guardrails)
         run: |
           python -m ruff check . --select F,B
           python -m ruff check src --select S105,S324,S603,S607,S608
+      - name: Security scan (bandit)
+        run: python -m bandit -r src/lore -ll -q
+      - name: Dependency audit (pip-audit)
+        run: python -m pip_audit -r requirements.lock -r requirements-dev.lock --disable-pip
       - name: Type check (mypy)
         run: python -m mypy src/lore --config-file pyproject.toml
       - name: Run unit + integration tests with coverage
