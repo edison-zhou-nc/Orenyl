@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 
+from . import env_vars
+
 
 def _bool_env(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)
@@ -28,12 +30,12 @@ def _float_env(name: str, default: float) -> float:
 
 
 def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
-    default = _float_env("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", 0.92)
+    default = _float_env(env_vars.SEMANTIC_DEDUP_THRESHOLD_DEFAULT, 0.92)
     # For multi-domain events, choose the highest configured cutoff so
     # dedup behavior is deterministic and conservative.
     overrides: list[float] = []
     for domain in domains:
-        key = f"LORE_SEMANTIC_DEDUP_THRESHOLD_{(domain or '').strip().upper()}"
+        key = f"{env_vars.SEMANTIC_DEDUP_THRESHOLD_PREFIX}{(domain or '').strip().upper()}"
         override = _float_env(key, -1.0)
         if override >= 0.0:
             overrides.append(override)
@@ -42,25 +44,25 @@ def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
 
 
 def min_fact_confidence_threshold() -> float:
-    value = _float_env("LORE_MIN_FACT_CONFIDENCE", 0.7)
+    value = _float_env(env_vars.MIN_FACT_CONFIDENCE, 0.7)
     return max(0.0, min(value, 1.0))
 
 
 def multi_tenant_enabled() -> bool:
-    return os.environ.get("LORE_ENABLE_MULTI_TENANT", "0").strip() == "1"
+    return os.environ.get(env_vars.ENABLE_MULTI_TENANT, "0").strip() == "1"
 
 
 def vector_backend_name() -> str:
-    return os.environ.get("LORE_VECTOR_BACKEND", "local").strip().lower() or "local"
+    return os.environ.get(env_vars.VECTOR_BACKEND, "local").strip().lower() or "local"
 
 
 def pgvector_dsn() -> str:
-    return os.environ.get("LORE_PGVECTOR_DSN", "").strip()
+    return os.environ.get(env_vars.PGVECTOR_DSN, "").strip()
 
 
 def compliance_strict_mode_enabled() -> bool:
-    return _bool_env("LORE_COMPLIANCE_STRICT_MODE", default=True)
+    return _bool_env(env_vars.COMPLIANCE_STRICT_MODE, default=True)
 
 
 def read_only_mode_enabled() -> bool:
-    return _bool_env("LORE_READ_ONLY_MODE", default=False)
+    return _bool_env(env_vars.READ_ONLY_MODE, default=False)

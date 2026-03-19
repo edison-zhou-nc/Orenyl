@@ -23,6 +23,11 @@ env/
 *.db-shm
 *.db-wal
 dist/
+dist_task1/
+lore_snapshots/
+.coverage
+.coverage.*
+htmlcov/
 
 # OS/editor noise
 .DS_Store

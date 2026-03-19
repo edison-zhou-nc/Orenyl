@@ -4,6 +4,7 @@ import json
 from lore import server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
+from lore.lazy import Lazy
 from lore.lineage import LineageEngine
 
 
@@ -30,7 +31,7 @@ def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
     _reset_server(monkeypatch, db)
     monkeypatch.setenv("LORE_ENABLE_SEMANTIC_DEDUP", "1")
     monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.95")
-    monkeypatch.setattr(server, "embedding_provider", _FakeProvider())
+    monkeypatch.setattr(server, "_embedding_provider_lazy", Lazy(lambda: _FakeProvider()))
 
     first = asyncio.run(
         server.handle_store_event(

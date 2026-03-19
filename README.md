@@ -157,7 +157,7 @@ python -m pytest -q
 Run eval harness:
 
 ```bash
-python run_eval.py
+python scripts/run_eval.py
 ```
 
 Run Phase 1 synthetic retrieval regression benchmark:

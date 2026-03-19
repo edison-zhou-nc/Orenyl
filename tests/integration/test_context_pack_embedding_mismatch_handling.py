@@ -28,7 +28,6 @@ def test_context_pack_warns_and_skips_stored_embedding_model_mismatch(monkeypatc
     db.upsert_fact_embedding(fact["id"], [0.1, 0.2], model_id="other-provider")
 
     caplog.set_level("WARNING")
-    monkeypatch.setattr(context_pack_module, "_embedding_provider", None)
     monkeypatch.setattr(context_pack_module, "_get_embedding_provider", lambda: _TinyProvider())
 
     pack = ContextPackBuilder(db).build(domain="health", query="med")

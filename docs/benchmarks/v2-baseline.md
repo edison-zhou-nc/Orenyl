@@ -14,7 +14,7 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 ## Verification Timings
 
 - `py -m pytest tests/unit tests/integration -q`: 0.663s
-- `py run_eval.py`: 0.079s
+- `py scripts/run_eval.py`: 0.079s
 
 ## Functional Baseline
 
@@ -26,7 +26,7 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 ## Phase 1 Retrieval Quality (2026-03-10)
 
 - Corpus file: `scenarios/phase1_retrieval_corpus.json`
-- Harness: `run_phase1_precision_eval()` in `run_eval.py`
+- Harness: `run_phase1_precision_eval()` in `scripts/run_eval.py`
 - Metric: Top-3 key precision over synthetic corpus
 - Top-3 precision: `1.00`
 - Gate: `python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py -q`

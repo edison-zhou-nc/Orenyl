@@ -12,6 +12,7 @@ from mcp.types import TextContent
 
 from .. import __version__ as lore_version
 from .. import audit
+from .. import env_vars
 from ..auth import authorize_action
 from ..config import multi_tenant_enabled, semantic_dedup_threshold_for_domains
 from ..content_hash import check_duplicate, compute_content_hash
@@ -97,7 +98,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
                 ),
             )
         ]
-    enable_semantic_dedup = os.environ.get("LORE_ENABLE_SEMANTIC_DEDUP", "0") == "1"
+    enable_semantic_dedup = os.environ.get(env_vars.ENABLE_SEMANTIC_DEDUP, "0") == "1"
     if enable_semantic_dedup:
         provider = get_embedding_provider()
         is_dup, existing_event_id = check_semantic_duplicate(

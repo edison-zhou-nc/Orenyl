@@ -88,7 +88,6 @@ def test_embedding_timeout_falls_back_to_keyword_ranking(monkeypatch):
     db.insert_event(event)
     engine.derive_facts_for_event(db.get_event(event.id))
 
-    monkeypatch.setattr(context_pack_module, "_embedding_provider", None)
     monkeypatch.setattr(context_pack_module, "_get_embedding_provider", lambda: SlowEmbeddingProvider())
     monkeypatch.setattr(context_pack_module, "_EMBEDDING_TIMEOUT_SECONDS", 0.01, raising=False)
 

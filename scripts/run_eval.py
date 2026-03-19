@@ -6,7 +6,7 @@ and produces a scoreboard proving deletion compliance.
 
 Usage:
     python -m tests.run_eval
-    python tests/run_eval.py
+    python scripts/run_eval.py
 """
 
 from __future__ import annotations
@@ -17,8 +17,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 # Add src/ to path for local execution without editable install.
-sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from lore.db import Database
 from lore.models import Event, new_id, now_iso
@@ -252,7 +254,7 @@ def run_phase1_precision_eval(
 ) -> float:
     """Compute top-k key precision over the Phase 1 retrieval corpus."""
     if corpus_path is None:
-        corpus_path = Path(__file__).parent / "scenarios" / "phase1_retrieval_corpus.json"
+        corpus_path = REPO_ROOT / "scenarios" / "phase1_retrieval_corpus.json"
     corpus_file = Path(corpus_path)
     cases: list[dict[str, Any]] = json.loads(corpus_file.read_text(encoding="utf-8"))
     if not cases:
@@ -346,8 +348,8 @@ def print_scoreboard(cards: list[ScoreCard]):
 
 
 def main():
-    local_scenarios = Path(__file__).parent / "scenarios"
-    tests_scenarios = Path(__file__).parent / "tests" / "scenarios"
+    local_scenarios = REPO_ROOT / "scenarios"
+    tests_scenarios = REPO_ROOT / "tests" / "scenarios"
     scenarios_dir = local_scenarios if local_scenarios.exists() else tests_scenarios
     scenario_files = sorted(scenarios_dir.glob("*.jsonl"))
 
