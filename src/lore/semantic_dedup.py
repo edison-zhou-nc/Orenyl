@@ -61,9 +61,17 @@ def check_semantic_duplicate(
         existing = db.get_event_embedding(event.get("id", ""), tenant_id=tenant_id)
         existing_embedding: list[float] | None = None
         if existing is not None:
-            existing_embedding = existing["vector"]
+            stored_embedding = existing.get("vector")
+            if isinstance(stored_embedding, list):
+                existing_embedding = stored_embedding
             existing_model = str(existing.get("model_id", ""))
-            if existing_model != str(provider.provider_id):
+            if existing_embedding is None:
+                logger.warning(
+                    "semantic_dedup_invalid_stored_embedding event_id=%s provider=%s",
+                    event.get("id"),
+                    provider.provider_id,
+                )
+            elif existing_model != str(provider.provider_id):
                 logger.warning(
                     "semantic_dedup_embedding_model_mismatch event_id=%s stored_model=%s provider=%s",
                     event.get("id"),
