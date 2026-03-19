@@ -12,6 +12,8 @@ from typing import Protocol
 
 import httpx
 
+from . import env_vars
+
 logger = logging.getLogger(__name__)
 
 
@@ -108,15 +110,17 @@ def _is_retryable_status(status_code: int) -> bool:
 
 
 def build_embedding_provider_from_env() -> EmbeddingProvider:
-    provider_name = os.environ.get("LORE_EMBEDDING_PROVIDER", "hash-local").strip().lower()
+    provider_name = os.environ.get(env_vars.EMBEDDING_PROVIDER, "hash-local").strip().lower()
     if provider_name == "openai":
-        api_key = os.environ.get("LORE_OPENAI_API_KEY", "")
-        model = os.environ.get("LORE_EMBEDDING_MODEL", "text-embedding-3-small")
-        if os.environ.get("LORE_EMBEDDING_DIM", "").strip():
+        api_key = os.environ.get(env_vars.OPENAI_API_KEY, "")
+        model = os.environ.get(env_vars.EMBEDDING_MODEL, "text-embedding-3-small")
+        if os.environ.get(env_vars.EMBEDDING_DIM, "").strip():
             logger.warning(
-                "LORE_EMBEDDING_DIM is ignored when LORE_EMBEDDING_PROVIDER=openai; provider dimensions are model-defined"
+                "%s is ignored when %s=openai; provider dimensions are model-defined",
+                env_vars.EMBEDDING_DIM,
+                env_vars.EMBEDDING_PROVIDER,
             )
         return OpenAIEmbeddingProvider(api_key=api_key, model=model)
 
-    dim = int(os.environ.get("LORE_EMBEDDING_DIM", "128"))
+    dim = int(os.environ.get(env_vars.EMBEDDING_DIM, "128"))
     return DeterministicHashEmbeddingProvider(dim=dim)

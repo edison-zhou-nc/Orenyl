@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 
+from . import env_vars
 from .db import Database
 from .models import now_iso
 
@@ -79,8 +80,8 @@ class PolicyEngine:
 
 
 def agent_permissions_enabled() -> bool:
-    return os.environ.get("LORE_ENABLE_AGENT_PERMISSIONS", "0").strip() == "1"
+    return os.environ.get(env_vars.ENABLE_AGENT_PERMISSIONS, "0").strip() == "1"
 
 
 def policy_shadow_mode_enabled() -> bool:
-    return os.environ.get("LORE_POLICY_SHADOW_MODE", "0").strip() == "1"
+    return os.environ.get(env_vars.POLICY_SHADOW_MODE, "0").strip() == "1"

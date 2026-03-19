@@ -16,6 +16,8 @@ from jwt import InvalidTokenError
 from jwt.algorithms import RSAAlgorithm
 from mcp.server.auth.provider import AccessToken
 
+from . import env_vars
+
 logger = logging.getLogger(__name__)
 
 
@@ -203,27 +205,27 @@ def _parse_int_env(
 
 
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
-    jwks_url = os.environ.get("LORE_OIDC_JWKS_URL", "")
-    allowed_algorithms_raw = os.environ.get("LORE_OIDC_ALLOWED_ALGS", "RS256")
+    jwks_url = os.environ.get(env_vars.OIDC_JWKS_URL, "")
+    allowed_algorithms_raw = os.environ.get(env_vars.OIDC_ALLOWED_ALGS, "RS256")
     allowed_algorithms = tuple(
         alg.strip().upper() for alg in allowed_algorithms_raw.split(",") if alg.strip()
     )
     normalized_algorithms = allowed_algorithms or ("RS256",)
-    issuer = os.environ.get("LORE_OIDC_ISSUER", "").strip()
+    issuer = os.environ.get(env_vars.OIDC_ISSUER, "").strip()
     if not issuer and (jwks_url or any(alg.startswith("RS") for alg in normalized_algorithms)):
-        raise RuntimeError("LORE_OIDC_ISSUER must be set when RS256/JWKS is enabled")
+        raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
     # Backward-compatible fallback for HS-only deployments without an issuer env var.
     if not issuer:
         issuer = "https://issuer.example"
     return OIDCTokenVerifier(
         issuer=issuer,
-        audience=os.environ.get("LORE_OIDC_AUDIENCE", "lore"),
-        hs256_secret=os.environ.get("LORE_OIDC_HS256_SECRET", ""),
+        audience=os.environ.get(env_vars.OIDC_AUDIENCE, "lore"),
+        hs256_secret=os.environ.get(env_vars.OIDC_HS256_SECRET, ""),
         jwks_url=jwks_url,
         allowed_algorithms=normalized_algorithms,
-        jwks_cache_ttl_seconds=_parse_int_env("LORE_OIDC_JWKS_CACHE_TTL_SECONDS", 300),
+        jwks_cache_ttl_seconds=_parse_int_env(env_vars.OIDC_JWKS_CACHE_TTL_SECONDS, 300),
         clock_skew_seconds=_parse_int_env(
-            "LORE_OIDC_CLOCK_SKEW_SECONDS",
+            env_vars.OIDC_CLOCK_SKEW_SECONDS,
             30,
             min_value=0,
             max_value=300,

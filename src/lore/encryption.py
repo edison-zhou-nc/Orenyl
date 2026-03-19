@@ -6,8 +6,11 @@ import base64
 import logging
 import os
 from dataclasses import dataclass
+
 from argon2.low_level import Type, hash_secret_raw
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from . import env_vars
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,7 @@ def _decode_salt(var_name: str) -> bytes:
     salt_b64 = _read_env(var_name)
     if salt_b64:
         return base64.b64decode(salt_b64)
-    allow_insecure_dev_salt = _read_env("LORE_ALLOW_INSECURE_DEV_SALT") == "1"
+    allow_insecure_dev_salt = _read_env(env_vars.ALLOW_INSECURE_DEV_SALT) == "1"
     if not allow_insecure_dev_salt:
         raise RuntimeError(f"{var_name} is required when passphrase is configured")
     logger.warning(
@@ -56,15 +59,15 @@ def _decode_salt(var_name: str) -> bytes:
 
 
 def resolve_runtime_keyring() -> RuntimeKeyring:
-    active_version = _read_env("LORE_ENCRYPTION_KEY_VERSION") or "v1"
+    active_version = _read_env(env_vars.ENCRYPTION_KEY_VERSION) or "v1"
     normalized = active_version.upper()
-    passphrase_var = f"LORE_ENCRYPTION_PASSPHRASE_{normalized}"
-    salt_var = f"LORE_ENCRYPTION_SALT_{normalized}"
+    passphrase_var = f"{env_vars.ENCRYPTION_PASSPHRASE_PREFIX}{normalized}"
+    salt_var = f"{env_vars.ENCRYPTION_SALT_PREFIX}{normalized}"
 
     passphrase = _read_env(passphrase_var)
     if not passphrase:
-        passphrase = _read_env("LORE_ENCRYPTION_PASSPHRASE")
-        salt = _decode_salt("LORE_ENCRYPTION_SALT")
+        passphrase = _read_env(env_vars.ENCRYPTION_PASSPHRASE)
+        salt = _decode_salt(env_vars.ENCRYPTION_SALT)
     else:
         salt = _decode_salt(salt_var)
 
@@ -73,15 +76,15 @@ def resolve_runtime_keyring() -> RuntimeKeyring:
     }
 
     for env_name, env_value in os.environ.items():
-        if not env_name.startswith("LORE_ENCRYPTION_PASSPHRASE_"):
+        if not env_name.startswith(env_vars.ENCRYPTION_PASSPHRASE_PREFIX):
             continue
         if not env_value.strip():
             continue
-        version_norm = env_name[len("LORE_ENCRYPTION_PASSPHRASE_") :]
+        version_norm = env_name[len(env_vars.ENCRYPTION_PASSPHRASE_PREFIX) :]
         version = version_norm.lower()
         if version in keys:
             continue
-        prev_salt = _decode_salt(f"LORE_ENCRYPTION_SALT_{version_norm}")
+        prev_salt = _decode_salt(f"{env_vars.ENCRYPTION_SALT_PREFIX}{version_norm}")
         keys[version] = EncryptionKey(key=generate_key(env_value, prev_salt), salt=prev_salt)
 
     return RuntimeKeyring(active_version=active_version, keys=keys)

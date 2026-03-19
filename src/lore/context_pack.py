@@ -9,42 +9,44 @@ import os
 import threading
 from typing import cast
 
+from . import env_vars
 from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
 from .embedding_provider import build_embedding_provider_from_env
 from .embeddings import cosine_similarity
+from .lazy import Lazy
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
 from .vector_backend import build_vector_backend_from_env
 
-_embedding_provider = None
 _vector_backend = None
+_embedding_provider_lazy = Lazy(build_embedding_provider_from_env)
+_vector_backend_db_id: int | None = None
 _embedding_executor: concurrent.futures.ThreadPoolExecutor | None = None
 _embedding_future: concurrent.futures.Future[list[float]] | None = None
 _embedding_executor_lock = threading.Lock()
 logger = logging.getLogger(__name__)
-_EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get("LORE_EMBEDDING_TIMEOUT_SECONDS", "10"))
+_EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get(env_vars.EMBEDDING_TIMEOUT_SECONDS, "10"))
 
 
 def _get_embedding_provider():
-    global _embedding_provider
-    if _embedding_provider is None:
-        _embedding_provider = build_embedding_provider_from_env()
-    return _embedding_provider
+    return _embedding_provider_lazy.value
 
 
 def _get_vector_backend(db: Database):
-    global _vector_backend
-    if _vector_backend is None:
+    global _vector_backend, _vector_backend_db_id
+    db_id = id(db)
+    if _vector_backend is None or _vector_backend_db_id != db_id:
+        _vector_backend_db_id = db_id
         _vector_backend = build_vector_backend_from_env(db)
     return _vector_backend
 
 
 def _reset_runtime_state_for_tests() -> None:
-    global _embedding_provider, _vector_backend
-    global _embedding_executor, _embedding_future
-    _embedding_provider = None
+    global _vector_backend, _embedding_executor, _embedding_future, _vector_backend_db_id
+    _embedding_provider_lazy.reset()
     _vector_backend = None
+    _vector_backend_db_id = None
     if _embedding_executor is not None:
         _embedding_executor.shutdown(wait=False, cancel_futures=True)
     _embedding_executor = None
