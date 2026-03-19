@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
+import os
+import threading
+from typing import cast
 
 from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
@@ -15,7 +19,11 @@ from .vector_backend import build_vector_backend_from_env
 
 _embedding_provider = None
 _vector_backend = None
+_embedding_executor: concurrent.futures.ThreadPoolExecutor | None = None
+_embedding_future: concurrent.futures.Future[list[float]] | None = None
+_embedding_executor_lock = threading.Lock()
 logger = logging.getLogger(__name__)
+_EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get("LORE_EMBEDDING_TIMEOUT_SECONDS", "10"))
 
 
 def _get_embedding_provider():
@@ -34,8 +42,42 @@ def _get_vector_backend(db: Database):
 
 def _reset_runtime_state_for_tests() -> None:
     global _embedding_provider, _vector_backend
+    global _embedding_executor, _embedding_future
     _embedding_provider = None
     _vector_backend = None
+    if _embedding_executor is not None:
+        _embedding_executor.shutdown(wait=False, cancel_futures=True)
+    _embedding_executor = None
+    _embedding_future = None
+
+
+def _get_embedding_executor() -> concurrent.futures.ThreadPoolExecutor:
+    global _embedding_executor
+    if _embedding_executor is None:
+        _embedding_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="lore-embedding",
+        )
+    return _embedding_executor
+
+
+def _embed_with_timeout(provider, text: str, timeout: float) -> list[float]:
+    global _embedding_future
+    with _embedding_executor_lock:
+        if _embedding_future is not None and not _embedding_future.done():
+            raise TimeoutError("embedding_worker_busy")
+        future = _get_embedding_executor().submit(provider.embed_text, text)
+        _embedding_future = future
+    try:
+        return cast(list[float], future.result(timeout=timeout))
+    except concurrent.futures.TimeoutError as exc:
+        raise TimeoutError(f"embedding_timeout_after_{timeout}_seconds") from exc
+    finally:
+        with _embedding_executor_lock:
+            # Keep the in-flight future registered until it actually finishes so
+            # retries fail fast instead of queueing more timed-out embed work.
+            if _embedding_future is future and future.done():
+                _embedding_future = None
 
 
 def should_retrieve(query: str) -> bool:
@@ -134,7 +176,11 @@ class ContextPackBuilder:
         vector_order = None
         try:
             provider = _get_embedding_provider()
-            query_vector = provider.embed_text(query or domain or "general")
+            query_vector = _embed_with_timeout(
+                provider,
+                query or domain or "general",
+                _EMBEDDING_TIMEOUT_SECONDS,
+            )
             stored_fact_embeddings = self.db.get_fact_embeddings(
                 [fact["id"] for fact in facts],
                 tenant_id=tenant_id,
@@ -210,7 +256,11 @@ class ContextPackBuilder:
                             f"{fact.get('key', '')}:"
                             f"{json.dumps(fact.get('value', ''), sort_keys=True)}"
                         )
-                        fact_vector = provider.embed_text(fact_text)
+                        fact_vector = _embed_with_timeout(
+                            provider,
+                            fact_text,
+                            _EMBEDDING_TIMEOUT_SECONDS,
+                        )
                     similarity = cosine_similarity(query_vector, fact_vector)
                     vector_scored.append((similarity, fact["id"]))
                 vector_scored.sort(key=lambda row: (-row[0], row[1]))

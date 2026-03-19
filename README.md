@@ -1,17 +1,47 @@
 # Lore
 
+[![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/lore-mcp)](https://pypi.org/project/lore-mcp/)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 ![Lore social preview](docs/assets/lore_social_preview.png)
 
 Compliance-grade memory MCP server for AI agents, with deterministic deletion and auditable lineage.
 
-Lore gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification.
+Lore gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification proof.
+
+**Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
 
 ## Why Lore
 
-- Deterministic memory model: immutable events, derived facts, lineage edges.
-- Deletion guarantees: cascade invalidation + recompute + verification proof.
-- Compliance-oriented: audit traces, sensitivity controls, export workflows.
-- MCP-native: stable 14-tool contract for agent integration.
+- **Deterministic memory model** - immutable events, derived facts, lineage edges
+- **Deletion guarantees** - cascade invalidation plus recompute plus verification proof
+- **Compliance-oriented** - GDPR Article 17/20/30, audit traces, sensitivity controls
+- **MCP-native** - stable 14-tool contract for agent integration
+- **Zero-config start** - works out of the box with SQLite plus local embeddings
+
+## Install
+
+```bash
+pip install lore-mcp
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/edison-zhou-nc/Lore.git
+cd Lore
+python -m pip install -e .
+python -m pip install -r requirements-dev.txt
+```
+
+## Get Started
+
+- [5-Minute Quickstart](docs/quickstart.md) - try Lore locally in minutes
+- [Claude Code Integration](docs/guides/claude-code.md)
+- [OpenClaw Integration](docs/guides/openclaw.md)
+- [Examples](examples/) - health tracker, meeting memory, multi-agent isolation
 
 ## Architecture
 
@@ -23,14 +53,6 @@ Lore stores:
 - `tombstones/audit`: deletion and security decision records.
 
 Core invariant: if upstream data is deleted, downstream derivations must not resurface.
-
-## Install
-
-```bash
-python -m pip install -r requirements.txt
-python -m pip install -r requirements-dev.txt
-python -m pip install -e .
-```
 
 ## Quickstart (MCP Integrators)
 
@@ -168,4 +190,4 @@ See `CONTRIBUTING.md`.
 
 ## License
 
-MIT. See `LICENSE`.
+Apache-2.0. See `LICENSE`.

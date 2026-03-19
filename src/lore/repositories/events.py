@@ -363,14 +363,16 @@ class EventMixin(BaseMixin):
                      AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)""",
                 (domain, tenant_id, tenant_id),
             ).fetchone()
-            return row[0]
+            value = row[0] if row is not None else None
+            return str(value) if value is not None else None
         row = self.conn.execute(
             """SELECT MAX(ts) FROM events
                WHERE deleted_at IS NULL
                  AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
             (tenant_id, tenant_id),
         ).fetchone()
-        return row[0]
+        value = row[0] if row is not None else None
+        return str(value) if value is not None else None
 
     def get_expired_events(self, now_iso_ts: str) -> list[dict]:
         rows = self.conn.execute(
