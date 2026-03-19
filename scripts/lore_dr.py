@@ -8,13 +8,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from lore import env_vars
 from lore.db import Database
 from lore.disaster_recovery import DRService
 
 
 def _build_service() -> DRService:
-    db_path = os.environ.get("LORE_DB_PATH", "lore_memory.db")
-    snapshot_dir = os.environ.get("LORE_DR_SNAPSHOT_DIR", "lore_snapshots")
+    db_path = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "lore_snapshots")
     db = Database(db_path)
     return DRService(db=db, db_path=db_path, snapshot_dir=snapshot_dir)
 

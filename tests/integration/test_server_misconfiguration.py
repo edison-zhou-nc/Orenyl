@@ -3,6 +3,7 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
+from lore import env_vars
 from lore import server
 
 
@@ -11,7 +12,7 @@ def test_call_tool_masks_token_verifier_runtime_error(monkeypatch):
 
     def _raise_misconfig():
         attempts["count"] += 1
-        raise RuntimeError("LORE_OIDC_ISSUER must be set when RS256/JWKS is enabled")
+        raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
 
     server._reset_runtime_state_for_tests()
     monkeypatch.setattr(server, "build_token_verifier_from_env", _raise_misconfig)
@@ -50,9 +51,9 @@ def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
             return None
 
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowVerifier())
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "top-secret-passphrase")
-    monkeypatch.delenv("LORE_ENCRYPTION_SALT", raising=False)
-    monkeypatch.delenv("LORE_ALLOW_INSECURE_DEV_SALT", raising=False)
+    monkeypatch.setenv(env_vars.ENCRYPTION_PASSPHRASE, "top-secret-passphrase")
+    monkeypatch.delenv(env_vars.ENCRYPTION_SALT, raising=False)
+    monkeypatch.delenv(env_vars.ALLOW_INSECURE_DEV_SALT, raising=False)
 
     out = asyncio.run(
         server.call_tool(
@@ -70,7 +71,7 @@ def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
     assert payload["stored"] is False
     assert payload["error"]["type"] == "RuntimeError"
     assert "server_misconfigured" not in payload["error"]["message"]
-    assert "LORE_ENCRYPTION_SALT is required" in payload["error"]["message"]
+    assert f"{env_vars.ENCRYPTION_SALT} is required" in payload["error"]["message"]
 
 
 def test_call_tool_sanitizes_non_config_internal_errors(monkeypatch):
@@ -101,3 +102,34 @@ def test_call_tool_sanitizes_non_config_internal_errors(monkeypatch):
     assert payload["ok"] is False
     assert payload["error"]["type"] == "RuntimeError"
     assert payload["error"]["message"] == "internal_error; see server logs"
+
+
+def test_call_tool_uses_env_var_registry_to_pass_through_runtime_errors(monkeypatch):
+    class _AllowDeleteVerifier:
+        async def verify_token(self, token: str):
+            if token == "allow":
+                return AccessToken(token=token, client_id="u1", scopes=["memory:delete"])
+            return None
+
+    class _RaisingEngine:
+        def delete_and_recompute(self, *_args, **_kwargs):
+            raise RuntimeError("CUSTOM_ENV is required")
+
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowDeleteVerifier())
+    monkeypatch.setattr(server, "engine", _RaisingEngine())
+    monkeypatch.setattr(env_vars, "all_names", lambda: ("CUSTOM_ENV",))
+
+    out = asyncio.run(
+        server.call_tool(
+            "delete_and_recompute",
+            {
+                "_auth_token": "allow",
+                "target_id": "event:test",
+                "target_type": "event",
+            },
+        )
+    )
+
+    payload = json.loads(out[0].text)
+    assert payload["ok"] is False
+    assert payload["error"]["message"] == "CUSTOM_ENV is required"

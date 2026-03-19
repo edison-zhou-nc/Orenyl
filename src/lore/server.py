@@ -16,6 +16,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from . import audit
+from . import env_vars
 from .auth import (
     OIDCTokenVerifier,
     authorize_action,
@@ -38,6 +39,7 @@ from .handlers import core as core_handlers
 from .handlers import operations as operations_handlers
 from .handlers._common import _resolve_request_id
 from .handlers.tooling import list_registered_tools, register_fastmcp_tools
+from .lazy import Lazy
 from .lineage import LineageEngine
 from .metrics import reset_metrics_for_tests
 from .models import now_iso
@@ -53,14 +55,14 @@ from .tenant import (
     set_current_tenant_context,
 )
 
-DB_PATH = os.environ.get("LORE_DB_PATH", "lore_memory.db")
-MAX_CONTEXT_PACK_LIMIT = int(os.environ.get("LORE_MAX_CONTEXT_PACK_LIMIT", "100"))
-MAX_LIST_EVENTS_LIMIT = int(os.environ.get("LORE_MAX_LIST_EVENTS_LIMIT", "200"))
+DB_PATH = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
+MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"))
 
 db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
-embedding_provider = None
+_embedding_provider_lazy = Lazy(build_embedding_provider_from_env)
 
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
@@ -109,27 +111,27 @@ def _get_token_verifier() -> OIDCTokenVerifier:
             raise _token_verifier_error
         try:
             _token_verifier = build_token_verifier_from_env()
-        except Exception as exc:
+        except (RuntimeError, ValueError) as exc:
             _token_verifier_error = exc
             raise
         return _token_verifier
 
 
 def _get_embedding_provider():
-    global embedding_provider
-    if embedding_provider is None:
-        embedding_provider = build_embedding_provider_from_env()
-    return embedding_provider
+    return _embedding_provider_lazy.value
+
+
+def _misconfig_error_markers() -> tuple[str, ...]:
+    return env_vars.all_names() + env_vars.all_prefixes()
 
 
 def _reset_runtime_state_for_tests() -> None:
     global _token_verifier, _token_verifier_error
-    global embedding_provider, _DEFAULT_SALT_WARNING_EMITTED
-    global _federation_worker, _rate_limiter
+    global _DEFAULT_SALT_WARNING_EMITTED, _federation_worker, _rate_limiter
     with _token_verifier_lock:
         _token_verifier = None
         _token_verifier_error = None
-        embedding_provider = None
+        _embedding_provider_lazy.reset()
         _DEFAULT_SALT_WARNING_EMITTED = False
         _federation_worker = None
         _rate_limiter = RateLimiter()
@@ -140,7 +142,7 @@ def _reset_runtime_state_for_tests() -> None:
 def _get_federation_worker() -> FederationWorker:
     global _federation_worker
     if _federation_worker is None:
-        node_id = os.environ.get("LORE_FEDERATION_NODE_ID", "").strip() or "node-local"
+        node_id = os.environ.get(env_vars.FEDERATION_NODE_ID, "").strip() or "node-local"
         _federation_worker = FederationWorker(db=db, node_id=node_id)
     return _federation_worker
 
@@ -154,7 +156,7 @@ def _get_consent_service() -> ConsentService:
 
 
 def _get_dr_service() -> DRService:
-    snapshot_dir = os.environ.get("LORE_DR_SNAPSHOT_DIR", "lore_snapshots")
+    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "lore_snapshots")
     return DRService(db=db, db_path=DB_PATH, snapshot_dir=snapshot_dir)
 
 
@@ -174,7 +176,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         token = extract_auth_token(args)
         try:
             access = await _get_token_verifier().verify_token(token)
-        except Exception as exc:
+        except (RuntimeError, ValueError) as exc:
             logger.error("server_misconfigured tool=%s error=%s", name, exc)
             raise PermissionError("server_misconfigured") from exc
         if access is None:
@@ -280,7 +282,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             request_id=request_id,
         )
         if read_only_mode_enabled() and name not in READ_ONLY_SAFE_TOOLS:
-            raise RuntimeError("LORE_READ_ONLY_MODE enabled")
+            raise RuntimeError(f"{env_vars.READ_ONLY_MODE} enabled")
         if name == "store_event":
             return await handle_store_event(args)
         if name == "retrieve_context_pack":
@@ -317,8 +319,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         logger.exception("tool_handler_error tool=%s request_id=%s", name, request_id)
         raw_error = str(e)
         safe_error = (
+            # Preserve explicit config/runtime misconfiguration messages while
+            # continuing to redact internal operational errors.
             raw_error
-            if (isinstance(e, RuntimeError) and "LORE_" in raw_error)
+            if (
+                isinstance(e, RuntimeError)
+                and any(marker in raw_error for marker in _misconfig_error_markers())
+            )
             else "internal_error; see server logs"
         )
         error_payload: dict[str, Any] = {
@@ -363,14 +370,16 @@ async def _ttl_sweep_loop(
 
 
 def get_transport_mode() -> str:
-    return os.environ.get("LORE_TRANSPORT", "streamable-http").strip().lower()
+    return os.environ.get(env_vars.TRANSPORT, "streamable-http").strip().lower()
 
 
 def validate_transport_mode(mode: str) -> None:
     if mode not in {"stdio", "streamable-http"}:
         raise ValueError(f"unsupported_transport:{mode}")
-    if mode == "stdio" and os.environ.get("LORE_ALLOW_STDIO_DEV", "0") != "1":
-        raise PermissionError("stdio transport is dev-only; set LORE_ALLOW_STDIO_DEV=1")
+    if mode == "stdio" and os.environ.get(env_vars.ALLOW_STDIO_DEV, "0") != "1":
+        raise PermissionError(
+            f"stdio transport is dev-only; set {env_vars.ALLOW_STDIO_DEV}=1"
+        )
 
 
 def _decode_tool_output(tool_output: list[TextContent]) -> Any:
@@ -394,8 +403,8 @@ def build_fastmcp_server() -> FastMCP:
 
 
 async def run_stdio_server() -> None:
-    ttl_delete_mode = os.environ.get("LORE_TTL_DELETE_MODE", "soft")
-    ttl_interval_seconds = int(os.environ.get("LORE_TTL_SWEEP_INTERVAL_SECONDS", "3600"))
+    ttl_delete_mode = os.environ.get(env_vars.TTL_DELETE_MODE, "soft")
+    ttl_interval_seconds = int(os.environ.get(env_vars.TTL_SWEEP_INTERVAL_SECONDS, "3600"))
     run_ttl_sweep(delete_mode=ttl_delete_mode)
     stop_event = asyncio.Event()
     ttl_task = asyncio.create_task(
@@ -414,7 +423,7 @@ async def run_stdio_server() -> None:
 def main():
     try:
         _get_token_verifier()
-    except Exception as exc:
+    except (RuntimeError, ValueError) as exc:
         logger.error("server_misconfigured error=%s", exc)
         raise SystemExit(1) from exc
     mode = get_transport_mode()
