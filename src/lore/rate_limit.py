@@ -6,6 +6,8 @@ import os
 import threading
 import time
 
+from . import env_vars
+
 
 class RateLimiter:
     """Simple sliding-window rate limiter keyed by tenant ID."""
@@ -16,7 +18,7 @@ class RateLimiter:
         window_seconds: float = 60.0,
     ):
         if max_requests is None:
-            max_requests = int(os.environ.get("LORE_RATE_LIMIT_RPM", "100"))
+            max_requests = int(os.environ.get(env_vars.RATE_LIMIT_RPM, "100"))
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self._buckets: dict[str, list[float]] = {}

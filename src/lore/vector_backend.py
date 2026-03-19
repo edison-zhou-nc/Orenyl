@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from . import env_vars
 from .config import pgvector_dsn, vector_backend_name
 from .db import Database
 from .embeddings import cosine_similarity, decode_vector, encode_vector
@@ -102,6 +103,8 @@ def build_vector_backend_from_env(db: Database) -> VectorBackend:
     if backend == "pgvector":
         dsn = pgvector_dsn()
         if not dsn:
-            raise RuntimeError("LORE_PGVECTOR_DSN is required when LORE_VECTOR_BACKEND=pgvector")
+            raise RuntimeError(
+                f"{env_vars.PGVECTOR_DSN} is required when {env_vars.VECTOR_BACKEND}=pgvector"
+            )
         return PgvectorVectorBackend(dsn=dsn)
     return LocalVectorBackend(db)

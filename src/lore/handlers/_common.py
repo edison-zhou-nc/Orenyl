@@ -8,6 +8,7 @@ import os
 import uuid
 from typing import Any
 
+from .. import env_vars
 from ..encryption import resolve_runtime_keyring
 
 
@@ -82,8 +83,10 @@ def _build_export_items(events: list[dict], facts: list[dict]) -> list[dict]:
 
 
 def _runtime_encryption_material() -> tuple[bytes, bytes, str] | None:
-    has_legacy = bool(os.environ.get("LORE_ENCRYPTION_PASSPHRASE", "").strip())
-    has_versioned = any(key.startswith("LORE_ENCRYPTION_PASSPHRASE_") for key in os.environ)
+    has_legacy = bool(os.environ.get(env_vars.ENCRYPTION_PASSPHRASE, "").strip())
+    has_versioned = any(
+        key.startswith(env_vars.ENCRYPTION_PASSPHRASE_PREFIX) for key in os.environ
+    )
     if not has_legacy and not has_versioned:
         return None
     keyring = resolve_runtime_keyring()

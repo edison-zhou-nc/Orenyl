@@ -7,9 +7,13 @@ import re
 SENSITIVE_PATTERNS = [
     re.compile(r"password:", re.I),
     re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     re.compile(r"\bsk-[a-z0-9]+\b", re.I),
     re.compile(r"\bghp_[a-z0-9]+\b", re.I),
     re.compile(r"\bxoxb-[a-z0-9-]+\b", re.I),
+    re.compile(r"-----BEGIN(?:\s+(?:RSA|EC|DSA))?\s+PRIVATE KEY-----", re.I),
+    re.compile(r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b"),
+    re.compile(r"\bbearer\s+[A-Za-z0-9._-]{20,}\b", re.I),
     re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
 ]
 

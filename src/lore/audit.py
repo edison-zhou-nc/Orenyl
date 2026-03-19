@@ -11,13 +11,15 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from . import env_vars
+
 
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _db_path() -> str:
-    return os.environ.get("LORE_AUDIT_DB_PATH", "lore_audit.db")
+    return os.environ.get(env_vars.AUDIT_DB_PATH, "lore_audit.db")
 
 
 _LOCK = threading.RLock()
