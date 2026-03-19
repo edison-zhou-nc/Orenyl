@@ -84,3 +84,29 @@ def test_run_scale_populates_corpus_without_streaming_derivation(monkeypatch):
     assert isinstance(result["delete_and_recompute_ms"], float)
     assert len(FakeEngine.last_instance.db.fact_ids) == 5
     assert len(FakeEngine.last_instance.db.edge_pairs) == 5
+
+
+def test_baseline_artifact_metrics_uses_run_scale_output(monkeypatch):
+    def fake_run_scale(n_events: int) -> dict:
+        assert n_events == 1000
+        return {
+            "events": 1000,
+            "insert_and_derive_single_event_ms": 123.4,
+            "retrieve_context_pack_ms": 56.7,
+            "delete_and_recompute_ms": 89.0,
+            "deletion_verified": True,
+            "context_pack_items": 42,
+        }
+
+    monkeypatch.setattr(run_benchmarks, "run_scale", fake_run_scale)
+
+    result = run_benchmarks.baseline_artifact_metrics(1000)
+
+    assert result == {
+        "event_count": 1000,
+        "store_seconds": 0.1234,
+        "retrieve_seconds": 0.0567,
+        "delete_seconds": 0.089,
+        "health_fact_count": 42,
+        "deletion_verified": True,
+    }
