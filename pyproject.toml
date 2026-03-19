@@ -3,14 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lore"
+name = "lore-mcp"
 version = "1.0.0"
-description = "Lore governed memory"
+description = "Compliance-grade memory MCP server for AI agents with deterministic deletion and auditable lineage"
 readme = "README.md"
-license = "MIT"
+license = "Apache-2.0"
 authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
-keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage"]
+keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage", "gdpr", "ai-agent", "context-protocol"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
@@ -23,7 +23,7 @@ dependencies = [
   "mcp==1.26.0",
   "cryptography==46.0.5",
   "argon2-cffi==25.1.0",
-  "PyJWT[crypto]==2.11.0",
+  "PyJWT[crypto]==2.12.0",
   "httpx==0.28.1",
 ]
 
@@ -31,6 +31,7 @@ dependencies = [
 Homepage = "https://github.com/edison-zhou-nc/Lore"
 Repository = "https://github.com/edison-zhou-nc/Lore"
 Changelog = "https://github.com/edison-zhou-nc/Lore/blob/main/CHANGELOG.md"
+Issues = "https://github.com/edison-zhou-nc/Lore/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -59,3 +60,24 @@ target-version = ["py312"]
 testpaths = ["tests"]
 norecursedirs = [".git", ".venv", ".tmp_pytest_local", "tests/.tmp", "tests/.pytest_tmp", "tests/pytest_tmp_*"]
 markers = ["perf: deterministic performance smoke gates"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/lore"]
+omit = ["**/tests/**", "**/schema.sql"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

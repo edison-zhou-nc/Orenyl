@@ -20,12 +20,23 @@ jobs:
           python -m pip install -r requirements-dev.lock
           python -m pip install --no-deps -e .
           python -m pip install build
+          python -m pip install "mypy==1.15.0"
+          python -m pip install pytest-cov
+          python -m pip install bandit pip-audit
       - name: Ruff lint (correctness + SQLi guardrails)
         run: |
           python -m ruff check . --select F,B
           python -m ruff check src --select S105,S324,S603,S607,S608
-      - name: Run unit + integration tests
-        run: python -m pytest tests/unit tests/integration -q
+      - name: Security scan (bandit)
+        run: python -m bandit -r src/lore -ll -q
+      - name: Dependency audit - production (pip-audit)
+        run: python -m pip_audit -r requirements.lock --disable-pip
+      - name: Dependency audit - dev tools (pip-audit)
+        run: python -m pip_audit -r requirements-dev.lock --disable-pip
+      - name: Type check (mypy)
+        run: python -m mypy src/lore --config-file pyproject.toml
+      - name: Run unit + integration tests with coverage
+        run: python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80
       - name: Run GA health and perf gates
         run: |
           python -m pytest \

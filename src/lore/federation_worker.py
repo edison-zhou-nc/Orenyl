@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from .db import Database
 from .federation import SyncEnvelope, incoming_wins_lww
@@ -79,11 +79,11 @@ class FederationWorker:
             status="applied",
             limit=1000,
         )
-        matching = [
-            row["payload"]
-            for row in applied_rows
-            if isinstance(row.get("payload"), dict) and row["payload"].get("item_id") == item_id
-        ]
+        matching: list[dict[str, Any]] = []
+        for row in applied_rows:
+            payload = row.get("payload")
+            if isinstance(payload, dict) and payload.get("item_id") == item_id:
+                matching.append(cast(dict[str, Any], payload))
         if not matching:
             return None
         matching.sort(
