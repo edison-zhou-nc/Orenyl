@@ -32,7 +32,7 @@ Or from source:
 ```bash
 git clone https://github.com/edison-zhou-nc/Lore.git
 cd Lore
-pip install -e .
+python -m pip install -e .
 python -m pip install -r requirements-dev.txt
 ```
 

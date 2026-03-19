@@ -6,7 +6,7 @@ Architectural decisions are documented as ADRs in [docs/ADR.md](docs/ADR.md). Si
 
 ## Maintainers
 
-The project is maintained by the Lore Maintainers. The current primary maintainer is the repository owner, [Edison Zhou](https://github.com/edison-zhou-nc), who has final decision authority on releases and architectural direction.
+The project is currently maintained by the repository owner, [Edison Zhou](https://github.com/edison-zhou-nc), who has final decision authority on releases and architectural direction. Additional maintainers may be added by the current maintainer as the project grows.
 
 ## Code of Conduct
 
