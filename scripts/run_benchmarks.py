@@ -86,6 +86,18 @@ def run_scale(n_events: int) -> dict:
     }
 
 
+def baseline_artifact_metrics(n_events: int) -> dict[str, float | int | bool]:
+    result = run_scale(n_events)
+    return {
+        "event_count": int(result["events"]),
+        "store_seconds": round(float(result["insert_and_derive_single_event_ms"]) / 1000.0, 4),
+        "retrieve_seconds": round(float(result["retrieve_context_pack_ms"]) / 1000.0, 4),
+        "delete_seconds": round(float(result["delete_and_recompute_ms"]) / 1000.0, 4),
+        "health_fact_count": int(result["context_pack_items"]),
+        "deletion_verified": bool(result["deletion_verified"]),
+    }
+
+
 def main() -> None:
     scales = [1_000, 10_000, 100_000]
     results = []
