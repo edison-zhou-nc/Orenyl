@@ -16,11 +16,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Build release artifacts
+      - name: Install release verification dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install build
+          python -m pip install -r requirements.txt -r requirements-dev.txt
+          python -m pip install -e .
+      - name: Run Ruff checks
+        run: python -m ruff check . --select F,B
+      - name: Run mypy
+        run: python -m mypy src/lore --config-file pyproject.toml
+      - name: Run unit and integration tests with coverage
+        run: python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80
+      - name: Build release artifacts
+        run: |
           python -m build
+      - name: Smoke import built wheel
+        run: |
+          python -m venv .venv-smoke
+          . .venv-smoke/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+          python -c "import lore, lore.server"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

@@ -2,26 +2,34 @@
 
 ## Release candidate
 
-1. Bump package metadata to `1.0.0rc1`.
-2. Run targeted packaging, decomposition, docs, health, and perf gates.
-3. Build wheel and sdist artifacts.
-4. Smoke import the built package.
+1. Bump package metadata to the next RC tag.
+2. Run the focused launch-readiness regression set.
+3. Run the full unit and integration suite with coverage.
+4. Run Ruff, mypy, package build, and built-wheel smoke import.
+5. Publish only after the release workflow reruns the same verification on the tag.
 
-## GA release
+## Public launch release
 
-1. Confirm all release docs are present and current.
-2. Run the full unit and integration suite.
-3. Run the GA gate tests, lint, format, and build commands.
-4. Promote the release metadata from the current RC to `1.0.0`.
-5. Tag and publish artifacts.
+1. Confirm launch docs are current and product claims match the shipped onboarding path.
+2. Verify local development mode and authenticated production mode are both documented correctly.
+3. Ensure the release workflow will rerun:
+   - `python -m ruff check . --select F,B`
+   - `python -m mypy src/lore --config-file pyproject.toml`
+   - `python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80`
+   - `python -m build`
+   - `python -c "import lore, lore.server"`
+4. Tag the release only after the branch is green locally and in CI.
+5. Publish artifacts from the gated release workflow.
 
 ## Current release state
 
-The current plan has completed the `1.0.0` promotion. The next release cycle should start with a new RC version rather than reusing `1.0.0rc1`.
+The repo is being hardened for a self-serve public launch. Until the release gate
+and public docs stay green together, treat tags as release candidates rather than
+enterprise-grade GA signals.
 
 ## Hotfix flow
 
 1. Branch from the latest release tag.
 2. Add a changelog entry for the fix.
-3. Run the smallest targeted regression plus packaging checks.
-4. Publish a patch release after validation.
+3. Run the smallest targeted regression plus Ruff, mypy, build, and smoke import checks that cover the touched area.
+4. Publish a patch release only after the release workflow reruns those checks on the tag.
