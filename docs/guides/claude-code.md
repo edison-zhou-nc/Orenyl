@@ -1,6 +1,6 @@
 # Lore with Claude Code
 
-Add Lore as an MCP server in Claude Code to give Claude persistent, compliance-grade memory.
+Add Lore as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
 
 ## Setup
 
@@ -25,6 +25,8 @@ Add to your project's `.mcp.json`:
 ## Verify
 
 Start Claude Code in your project directory. You should see `lore` listed as an available MCP server. Claude can now use all 14 Lore tools:
+
+This stdio setup is for local development only. Production deployment mode should use authenticated `streamable-http`.
 
 - `store_event` - remember something
 - `retrieve_context_pack` - recall relevant memory

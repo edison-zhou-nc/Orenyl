@@ -1,6 +1,6 @@
 # Quickstart: Lore in 5 Minutes
 
-Get compliance-grade AI agent memory running locally with zero configuration.
+Get Lore running locally in a documented self-serve development mode.
 
 ## Install
 
@@ -66,11 +66,13 @@ After deletion: 0 fact(s)
 
 ## Run as MCP Server
 
-For AI agent integration (Claude Code, OpenClaw, etc.):
+For AI agent integration (Claude Code, OpenClaw, etc.), use Lore's local development mode:
 
 ```bash
 LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m lore.server
 ```
+
+This stdio path is for development only and uses Lore's explicit local-dev auth bypass. Production deployment mode should use `streamable-http` with authenticated requests.
 
 See [Integration Guides](guides/) for client-specific configuration.
 
@@ -87,5 +89,5 @@ This is Lore's core guarantee: **if upstream data is deleted, downstream derivat
 ## Next Steps
 
 - [Claude Code Integration](guides/claude-code.md)
-- [OpenClaw Integration](guides/openclaw.md) *(coming soon)*
+- [OpenClaw Integration](guides/openclaw.md)
 - [MCP Tool Contract](MCP_TOOL_CONTRACTS.md) - full API reference

@@ -9,6 +9,9 @@ def test_ga_readiness() -> None:
     assert lore.__version__ == "1.0.0"
     assert len((REPO_ROOT / "src" / "lore" / "db.py").read_text().splitlines()) < 300
     assert len((REPO_ROOT / "src" / "lore" / "server.py").read_text().splitlines()) < 600
+    readme = (REPO_ROOT / "README.md").read_text()
+    assert "Zero-config start" not in readme
+    assert "works out of the box" not in readme
     for path in [
         "CHANGELOG.md",
         "docs/MIGRATION.md",

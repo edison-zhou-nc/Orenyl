@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows semantic versioning.
 
+## [Unreleased]
+
+### Added
+- Explicit local stdio development mode for self-serve onboarding and demos.
+
+### Changed
+- Clarified public launch messaging to distinguish local development from authenticated production deployment.
+- Aligned the MCP contract and onboarding docs with the live runtime behavior.
+
 ## [1.0.0] - 2026-03-16
 
 ### Added
