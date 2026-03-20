@@ -1,6 +1,7 @@
 import pytest
 
 from lore.auth import build_token_verifier_from_env
+from lore.config import auth_required_for_runtime, dev_stdio_mode_enabled
 
 
 def test_build_token_verifier_requires_issuer_for_rs256(monkeypatch):
@@ -44,3 +45,16 @@ def test_build_token_verifier_rejects_excessive_clock_skew(monkeypatch):
     monkeypatch.setenv("LORE_OIDC_CLOCK_SKEW_SECONDS", "3600")
     with pytest.raises(RuntimeError, match="LORE_OIDC_CLOCK_SKEW_SECONDS must be <= 300"):
         build_token_verifier_from_env()
+
+
+def test_dev_stdio_mode_disables_runtime_auth_requirement(monkeypatch):
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+
+    assert dev_stdio_mode_enabled() is True
+    assert auth_required_for_runtime() is False
+
+    monkeypatch.setenv("LORE_TRANSPORT", "streamable-http")
+
+    assert dev_stdio_mode_enabled() is False
+    assert auth_required_for_runtime() is True

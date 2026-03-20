@@ -19,6 +19,23 @@ from mcp.server.auth.provider import AccessToken
 from . import env_vars
 
 logger = logging.getLogger(__name__)
+ACTION_SCOPE_REQUIREMENTS = {
+    "store_event": "memory:write",
+    "retrieve_context_pack": "memory:read",
+    "delete_and_recompute": "memory:delete",
+    "audit_trace": "memory:read",
+    "list_events": "memory:read",
+    "export_domain": "memory:export",
+    "erase_subject_data": "memory:delete",
+    "export_subject_data": "memory:export",
+    "record_consent": "memory:write",
+    "generate_processing_record": "memory:export",
+    "audit_anomaly_scan": "memory:read",
+    "create_snapshot": "memory:write",
+    "verify_snapshot": "memory:read",
+    "restore_snapshot": "memory:delete",
+}
+RESTRICTED_EXPORT_SCOPE = "memory:export:restricted"
 
 
 class OIDCTokenVerifier:
@@ -233,31 +250,20 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
     )
 
 
+def all_authorization_scopes() -> list[str]:
+    return sorted({*ACTION_SCOPE_REQUIREMENTS.values(), RESTRICTED_EXPORT_SCOPE})
+
+
 def authorize_action(
     scopes: set[str] | Iterable[str],
     action: str,
     restricted: bool = False,
 ) -> None:
     scope_set = set(scopes)
-    required = {
-        "store_event": "memory:write",
-        "retrieve_context_pack": "memory:read",
-        "delete_and_recompute": "memory:delete",
-        "audit_trace": "memory:read",
-        "list_events": "memory:read",
-        "export_domain": "memory:export",
-        "erase_subject_data": "memory:delete",
-        "export_subject_data": "memory:export",
-        "record_consent": "memory:write",
-        "generate_processing_record": "memory:export",
-        "audit_anomaly_scan": "memory:read",
-        "create_snapshot": "memory:write",
-        "verify_snapshot": "memory:read",
-        "restore_snapshot": "memory:delete",
-    }.get(action)
+    required = ACTION_SCOPE_REQUIREMENTS.get(action)
 
     if required and required not in scope_set:
         raise PermissionError(f"missing_scope:{required}")
 
-    if action == "export_domain" and restricted and "memory:export:restricted" not in scope_set:
-        raise PermissionError("missing_scope:memory:export:restricted")
+    if action == "export_domain" and restricted and RESTRICTED_EXPORT_SCOPE not in scope_set:
+        raise PermissionError(f"missing_scope:{RESTRICTED_EXPORT_SCOPE}")

@@ -43,6 +43,22 @@ def test_call_tool_masks_token_verifier_non_runtime_error(monkeypatch):
     assert attempts["count"] == 1
 
 
+def test_call_tool_dev_stdio_bypasses_token_verifier_bootstrap(monkeypatch):
+    server._reset_runtime_state_for_tests()
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+
+    def _raise_misconfig():
+        raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
+
+    monkeypatch.setattr(server, "build_token_verifier_from_env", _raise_misconfig)
+    out = asyncio.run(server.call_tool("list_events", {}))
+
+    payload = json.loads(out[0].text)
+    assert payload["count"] == 0
+    assert payload["events"] == []
+
+
 def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
     class _AllowVerifier:
         async def verify_token(self, token: str):
