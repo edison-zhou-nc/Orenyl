@@ -30,3 +30,21 @@ def test_fastmcp_bridge_reuses_registered_tool_descriptions():
         assert bridged == registered
 
     asyncio.run(run())
+
+
+def test_fastmcp_bridge_exposes_export_domain_pagination_and_streaming_fields():
+    async def invoke_tool(name: str, args: dict[str, object]) -> dict[str, object]:
+        return {"name": name, "args": args}
+
+    async def run() -> None:
+        app = FastMCP("test")
+        register_fastmcp_tools(app, invoke_tool)
+        export_domain = next(tool for tool in await app.list_tools() if tool.name == "export_domain")
+        props = export_domain.inputSchema["properties"]
+
+        assert "page_size" in props
+        assert "cursor" in props
+        assert "stream" in props
+        assert "include_hashes" in props
+
+    asyncio.run(run())
