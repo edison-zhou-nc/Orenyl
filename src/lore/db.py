@@ -62,8 +62,10 @@ class Database(
         # Legacy artifact from early phase-4 draft; hash chain lives in audit DB.
         self.conn.execute("DROP TABLE IF EXISTS audit_hash_chain")
         # Ensure uniqueness is enforced for existing DBs upgraded prior to this index.
+        self.conn.execute("DROP INDEX IF EXISTS idx_facts_key_version_unique")
         self.conn.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(key, version)"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique "
+            "ON facts(tenant_id, key, version)"
         )
 
     def detect_schema_version(self) -> str:
@@ -207,6 +209,27 @@ class Database(
             self.conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_fact_embeddings_tenant_id "
                 "ON fact_embeddings(tenant_id)"
+            )
+
+        if "retrieval_logs" in tables:
+            retrieval_cols = {
+                row[1] for row in self.conn.execute("PRAGMA table_info(retrieval_logs)").fetchall()
+            }
+            if "tenant_id" not in retrieval_cols:
+                _safe_add_column("ALTER TABLE retrieval_logs ADD COLUMN tenant_id TEXT")
+            self.conn.execute(
+                "UPDATE retrieval_logs SET tenant_id = 'default' WHERE tenant_id IS NULL"
+            )
+            self.conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_retrieval_logs_tenant_ts "
+                "ON retrieval_logs(tenant_id, ts)"
+            )
+
+        if "facts" in tables:
+            self.conn.execute("DROP INDEX IF EXISTS idx_facts_key_version_unique")
+            self.conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique "
+                "ON facts(tenant_id, key, version)"
             )
 
         self.conn.commit()
