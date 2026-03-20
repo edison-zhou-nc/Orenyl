@@ -401,6 +401,7 @@ class ContextPackBuilder:
             query=query,
             context_pack=pack.to_json(),
             trace=json.dumps(trace.included),
+            tenant_id=tenant_id or "default",
         )
 
         return pack

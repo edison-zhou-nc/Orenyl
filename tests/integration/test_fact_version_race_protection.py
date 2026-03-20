@@ -16,7 +16,7 @@ def test_facts_unique_key_version_index_exists():
         row[2]
         for row in db.conn.execute("PRAGMA index_info(idx_facts_key_version_unique)").fetchall()
     ]
-    assert index_cols == ["key", "version"]
+    assert index_cols == ["tenant_id", "key", "version"]
 
 
 def test_concurrent_derivation_does_not_drop_fact_version(monkeypatch):

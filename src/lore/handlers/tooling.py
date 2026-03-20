@@ -203,7 +203,7 @@ _REGISTERED_TOOLS = (
     ),
     Tool(
         name="create_snapshot",
-        description="Create a DR snapshot of the current tenant database.",
+        description="Create a database-wide DR snapshot in single-tenant deployments.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -213,7 +213,7 @@ _REGISTERED_TOOLS = (
     ),
     Tool(
         name="verify_snapshot",
-        description="Verify snapshot integrity checksum.",
+        description="Verify a database-wide snapshot checksum in single-tenant deployments.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -224,7 +224,7 @@ _REGISTERED_TOOLS = (
     ),
     Tool(
         name="restore_snapshot",
-        description="Restore a previously captured DR snapshot.",
+        description="Restore a database-wide snapshot in single-tenant deployments.",
         inputSchema={
             "type": "object",
             "properties": {

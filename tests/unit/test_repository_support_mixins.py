@@ -19,11 +19,13 @@ def test_support_repositories_cover_sync_counts_and_retrieval_logs():
     assert db.sync_journal_count("tenant-support") == 1
 
     db.log_retrieval(
+        tenant_id="tenant-support",
         query="what changed",
         context_pack=json.dumps({"facts": []}),
         trace=json.dumps({"included": []}),
     )
-    logs = db.get_retrieval_logs(limit=1)
+    logs = db.get_retrieval_logs(limit=1, tenant_id="tenant-support")
     assert logs[0]["query"] == "what changed"
+    assert logs[0]["tenant_id"] == "tenant-support"
     assert logs[0]["context_pack"] == {"facts": []}
     assert logs[0]["trace"] == {"included": []}

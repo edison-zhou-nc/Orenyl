@@ -8,6 +8,7 @@ import sqlite3
 import uuid
 from pathlib import Path
 
+from .config import multi_tenant_enabled
 from .db import Database
 from .models import DRSnapshot
 
@@ -29,7 +30,13 @@ class DRService:
         self.db_path = Path(db_path)
         self.snapshot_dir = Path(snapshot_dir)
 
+    @staticmethod
+    def _ensure_single_tenant_mode() -> None:
+        if multi_tenant_enabled():
+            raise RuntimeError("single_tenant_mode_required_for_database_snapshots")
+
     def create_snapshot(self, label: str, tenant_id: str = "default") -> dict:
+        self._ensure_single_tenant_mode()
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
         snapshot_id = f"snapshot:{label}:{uuid.uuid4().hex[:12]}"
         snapshot_file = self.snapshot_dir / f"{snapshot_id.replace(':', '_')}.db"
@@ -69,6 +76,7 @@ class DRService:
         }
 
     def restore_snapshot(self, snapshot_id: str, tenant_id: str = "default") -> dict:
+        self._ensure_single_tenant_mode()
         snapshot = self.db.get_dr_snapshot(snapshot_id=snapshot_id, tenant_id=tenant_id)
         if snapshot is None:
             return {"ok": False, "error": "snapshot_not_found"}
