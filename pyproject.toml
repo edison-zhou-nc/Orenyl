@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lore-mcp"
 version = "1.0.0"
-description = "Compliance-grade memory MCP server for AI agents with deterministic deletion and auditable lineage"
+description = "Production-minded governed memory MCP server for AI agents with deterministic deletion and auditable lineage"
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Lore Maintainers" }]
 requires-python = ">=3.12"
 keywords = ["mcp", "memory", "agent-memory", "compliance", "lineage", "gdpr", "ai-agent", "context-protocol"]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
+  "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",

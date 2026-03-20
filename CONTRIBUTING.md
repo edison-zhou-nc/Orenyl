@@ -22,6 +22,16 @@ Run before opening a PR:
 python -m pytest -q
 ```
 
+## Validation Commands
+
+Run the launch-readiness checks before opening a PR:
+
+```bash
+python -m ruff check . --select F,B
+python -m mypy src/lore --config-file pyproject.toml
+python -m build
+```
+
 ## Code Style
 
 - Ruff + Black configuration lives in `pyproject.toml`.

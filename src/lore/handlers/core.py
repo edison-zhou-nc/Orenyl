@@ -126,7 +126,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
                     ),
                 )
             ]
-    sensitivity = args.get("sensitivity", "high")
+    sensitivity = args.get("sensitivity", "medium")
     plain_payload = payload
     encryption_material = _runtime_encryption_material()
     should_encrypt_payload = (
