@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from lore.db import Database
 from lore.disaster_recovery import DRService
 from lore.models import Event
@@ -58,3 +60,33 @@ def test_restore_snapshot_recovers_previous_db_state(tmp_path):
     reloaded = Database(str(db_path))
     assert reloaded.get_event("event:test:dr-restore-before") is not None
     assert reloaded.get_event("event:test:dr-restore-after") is None
+
+
+def test_snapshot_operations_are_blocked_in_multi_tenant_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+
+    with pytest.raises(RuntimeError, match="single_tenant_mode_required"):
+        dr.create_snapshot(label="blocked", tenant_id="tenant-a")
+
+
+def test_verify_snapshot_remains_available_in_multi_tenant_mode(tmp_path, monkeypatch):
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    db.insert_event(
+        Event(
+            id="event:test:dr-verify-multi",
+            type="note",
+            payload={"text": "before snapshot"},
+            domains=["general"],
+        )
+    )
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+    snapshot = dr.create_snapshot(label="verify-before-multi")
+
+    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+
+    verify = dr.verify_snapshot(snapshot["snapshot_id"])
+    assert verify["ok"] is True

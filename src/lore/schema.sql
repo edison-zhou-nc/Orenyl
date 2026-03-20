@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS tombstones (
 
 CREATE TABLE IF NOT EXISTS retrieval_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id TEXT NOT NULL DEFAULT 'default',
     query TEXT,                       -- what was asked
     context_pack TEXT NOT NULL,       -- JSON: the full context pack returned
     trace TEXT NOT NULL,              -- JSON: why each item was included
@@ -211,10 +212,11 @@ CREATE INDEX IF NOT EXISTS idx_events_agent_id ON events(agent_id);
 CREATE INDEX IF NOT EXISTS idx_events_session_id ON events(session_id);
 CREATE INDEX IF NOT EXISTS idx_events_tenant_id ON events(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_event_domains_domain ON event_domains(domain);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(key, version);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique ON facts(tenant_id, key, version);
 CREATE INDEX IF NOT EXISTS idx_facts_tenant_id ON facts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_edges_tenant_id ON edges(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_tombstones_tenant_id ON tombstones(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_retrieval_logs_tenant_ts ON retrieval_logs(tenant_id, ts);
 CREATE INDEX IF NOT EXISTS idx_event_embeddings_tenant_id ON event_embeddings(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_fact_embeddings_tenant_id ON fact_embeddings(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_event_embeddings_model_id ON event_embeddings(model_id);
