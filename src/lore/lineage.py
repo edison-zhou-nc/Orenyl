@@ -4,8 +4,8 @@ This is the entire thesis in one module.
 """
 
 from __future__ import annotations
-import sqlite3
 
+import sqlite3
 from typing import Any
 
 from .db import Database
@@ -18,6 +18,14 @@ class LineageEngine:
     def __init__(self, db: Database, extraction_runtime: Any | None = None):
         self.db = db
         self.extraction_runtime = extraction_runtime or NullExtractionRuntime()
+
+    @staticmethod
+    def _fact_id(output_key: str, version: int, tenant_id: str) -> str:
+        normalized_tenant = (tenant_id or "default").strip() or "default"
+        if normalized_tenant == "default":
+            return f"fact:{output_key}:v{version}"
+        safe_tenant = normalized_tenant.replace(":", "_")
+        return f"fact:{safe_tenant}:{output_key}:v{version}"
 
     def _resolve_rule_specs(self, event: dict | None) -> list[dict]:
         if not event:
@@ -92,7 +100,7 @@ class LineageEngine:
             try:
                 next_version = self.db.get_latest_version(output_key, tenant_id=tenant_id) + 1
                 fact = Fact(
-                    id=f"fact:{output_key}:v{next_version}",
+                    id=self._fact_id(output_key, next_version, tenant_id),
                     key=output_key,
                     value=value,
                     version=next_version,
@@ -394,6 +402,8 @@ class LineageEngine:
         if mode == "hard" and run_vacuum:
             self.db.run_vacuum()
             proof.checks["vacuum_ran"] = True
+        if proof.tombstoned:
+            self.db.delete_retrieval_logs(tenant_id=tenant_id or "default")
         proof.post_delete_check = dict(proof.checks)
 
         return proof

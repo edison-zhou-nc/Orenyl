@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402, I001
 """Lore Eval Harness - your credibility engine.
 
 Runs synthetic scenarios against the governed memory engine
@@ -103,7 +104,9 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                             card.failures.append({
                                 "step": i, "label": label,
                                 "error": f"Expected '{expected}' in retrieval but not found",
-                                "actual_items": [{"key": it["key"], "value": it["value"]} for it in items],
+                                "actual_items": [
+                                    {"key": it["key"], "value": it["value"]} for it in items
+                                ],
                             })
                             continue
 
@@ -120,7 +123,9 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                             card.failures.append({
                                 "step": i, "label": label,
                                 "error": f"'{unexpected}' should NOT be in retrieval but WAS found",
-                                "actual_items": [{"key": it["key"], "value": it["value"]} for it in items],
+                                "actual_items": [
+                                    {"key": it["key"], "value": it["value"]} for it in items
+                                ],
                             })
                             continue
 
@@ -137,7 +142,9 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                         card.failures.append({
                             "step": i, "label": label,
                             "error": f"No fact found with key '{target_key}'",
-                            "actual_items": [{"key": it["key"], "value": it["value"]} for it in items],
+                            "actual_items": [
+                                {"key": it["key"], "value": it["value"]} for it in items
+                            ],
                         })
                         continue
 
@@ -151,7 +158,10 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                         card.failed += 1
                         card.failures.append({
                             "step": i, "label": label,
-                            "error": f"Expected {target_key}.{target_field} = {expected_val}, got {actual_field_val}",
+                            "error": (
+                                f"Expected {target_key}.{target_field} = "
+                                f"{expected_val}, got {actual_field_val}"
+                            ),
                             "actual": actual_val,
                         })
                         continue
@@ -176,7 +186,10 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                     card.failed += 1
                     card.failures.append({
                         "step": i, "label": label,
-                        "error": f"No matching event found for type={event_type}, payload={payload_match}",
+                        "error": (
+                            f"No matching event found for type={event_type}, "
+                            f"payload={payload_match}"
+                        ),
                     })
                     continue
 
@@ -213,7 +226,10 @@ def run_scenario_file(filepath: Path) -> ScoreCard:
                     card.resurface_incidents += 1
                     card.failures.append({
                         "step": i, "label": label,
-                        "error": f"RESURFACE DETECTED: '{deleted_value}' found in context pack after deletion",
+                        "error": (
+                            f"RESURFACE DETECTED: '{deleted_value}' found in "
+                            "context pack after deletion"
+                        ),
                     })
                 else:
                     card.deletion_compliance_passed += 1
@@ -262,12 +278,11 @@ def run_phase1_precision_eval(
 
     # Ensure benchmark runs are isolated from process-wide provider caches.
     from lore import context_pack as context_pack_module
-    context_pack_module._embedding_provider = None
-    context_pack_module._vector_backend = None
+    context_pack_module._reset_runtime_state_for_tests()
 
     hits = 0
     for idx, case in enumerate(cases, start=1):
-        context_pack_module._vector_backend = None
+        context_pack_module._reset_runtime_state_for_tests()
         db = Database(":memory:")
         engine = LineageEngine(db)
         pack_builder = ContextPackBuilder(db)
@@ -317,7 +332,10 @@ def print_scoreboard(cards: list[ScoreCard]):
         print(f"\n  {status}  {card.scenario_file}")
         print(f"         Steps: {card.passed}/{card.total_steps} passed")
         if card.deletion_compliance_tests > 0:
-            print(f"         Deletion compliance: {card.deletion_compliance_passed}/{card.deletion_compliance_tests}")
+            print(
+                "         Deletion compliance: "
+                f"{card.deletion_compliance_passed}/{card.deletion_compliance_tests}"
+            )
         if card.resurface_incidents > 0:
             print(f"         WARN Resurface incidents: {card.resurface_incidents}")
         if card.failures:
