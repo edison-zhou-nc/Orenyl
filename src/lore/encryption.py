@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from . import env_vars
 
 logger = logging.getLogger(__name__)
+_INSECURE_DEV_SALTS: dict[str, bytes] = {}
 
 
 @dataclass(frozen=True)
@@ -50,12 +51,13 @@ def _decode_salt(var_name: str) -> bytes:
     allow_insecure_dev_salt = _read_env(env_vars.ALLOW_INSECURE_DEV_SALT) == "1"
     if not allow_insecure_dev_salt:
         raise RuntimeError(f"{var_name} is required when passphrase is configured")
+    salt = _INSECURE_DEV_SALTS.setdefault(var_name, os.urandom(16))
     logger.warning(
-        "INSECURE DEV SALT ACTIVE: Using hardcoded fallback salt. "
+        "INSECURE DEV SALT ACTIVE: Using process-local fallback salt. "
         "This is NOT safe for production. Set %s to a base64-encoded random salt.",
         var_name,
     )
-    return b"lore-default-salt!"
+    return salt
 
 
 def resolve_runtime_keyring() -> RuntimeKeyring:

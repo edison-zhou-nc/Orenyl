@@ -34,3 +34,13 @@ def test_rate_limiter_resets_after_window():
     assert limiter.allow("tenant-a") is False
     time.sleep(0.15)
     assert limiter.allow("tenant-a") is True
+
+
+def test_rate_limiter_prunes_stale_tenant_buckets():
+    limiter = RateLimiter(max_requests=1, window_seconds=0.05)
+
+    assert limiter.allow("tenant-a") is True
+    time.sleep(0.08)
+    assert limiter.allow("tenant-b") is True
+
+    assert "tenant-a" not in limiter._buckets

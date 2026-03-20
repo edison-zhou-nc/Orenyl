@@ -24,6 +24,7 @@ env/
 *.db-wal
 dist/
 dist_task1/
+dist_fix/
 lore_snapshots/
 .coverage
 .coverage.*

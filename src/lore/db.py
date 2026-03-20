@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -32,6 +33,7 @@ class Database(
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self._in_transaction = False
+        self._transaction_lock = threading.RLock()
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.execute("PRAGMA foreign_keys=ON")
@@ -39,19 +41,20 @@ class Database(
 
     @contextmanager
     def transaction(self):
-        if self._in_transaction:
-            yield
-            return
-        self._in_transaction = True
-        self.conn.execute("BEGIN")
-        try:
-            yield
-            self.conn.commit()
-        except Exception:
-            self.conn.rollback()
-            raise
-        finally:
-            self._in_transaction = False
+        with self._transaction_lock:
+            if self._in_transaction:
+                yield
+                return
+            self._in_transaction = True
+            self.conn.execute("BEGIN")
+            try:
+                yield
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+            finally:
+                self._in_transaction = False
 
     def _init_schema(self):
         # Bring legacy v1 tables up to minimum shape before executing schema script

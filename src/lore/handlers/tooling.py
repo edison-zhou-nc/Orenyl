@@ -34,7 +34,7 @@ _REGISTERED_TOOLS = (
                 "sensitivity": {
                     "type": "string",
                     "enum": ["low", "medium", "high", "restricted"],
-                    "default": "high",
+                    "default": "medium",
                 },
                 "consent_source": {"type": "string", "default": "implicit"},
                 "expires_at": {"type": "string"},
@@ -260,7 +260,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         content: str = "",
         type: str = "note",
         payload: dict[str, Any] | None = None,
-        sensitivity: str = "high",
+        sensitivity: str = "medium",
         consent_source: str = "implicit",
         expires_at: str = "",
         metadata: dict[str, Any] | None = None,
