@@ -363,10 +363,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 def run_ttl_sweep(delete_mode: str = "soft") -> dict[str, Any]:
     now = now_iso()
-    expired = db.get_expired_events(now)
+    get_expired_events_global = getattr(db, "get_expired_events_global", None)
+    if callable(get_expired_events_global):
+        expired = get_expired_events_global(now)
+    else:
+        expired = db.get_expired_events(now)
     processed: list[str] = []
     for event in expired:
-        engine.delete_and_recompute(event["id"], "event", reason="ttl_expired", mode=delete_mode)
+        engine.delete_and_recompute(
+            event["id"],
+            "event",
+            reason="ttl_expired",
+            mode=delete_mode,
+            tenant_id=str(event.get("tenant_id", "") or ""),
+        )
         processed.append(event["id"])
     logger.info(
         "ttl_sweep mode=%s scanned=%s deleted=%s",

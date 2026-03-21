@@ -12,3 +12,10 @@ def test_release_workflow_runs_verification_before_publish() -> None:
     assert "python -m pytest tests/unit tests/integration -q --cov=src/lore" in workflow
     assert "python -m build" in workflow
     assert "import lore, lore.server" in workflow
+
+
+def test_dev_requirements_include_release_verification_tools() -> None:
+    requirements_dev = (REPO_ROOT / "requirements-dev.txt").read_text()
+
+    assert "mypy==" in requirements_dev
+    assert "build==" in requirements_dev

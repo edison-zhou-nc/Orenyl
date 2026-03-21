@@ -1,4 +1,3 @@
-import os
 import sys
 import shutil
 import uuid
@@ -8,8 +7,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
-# Keep tests importable in isolated runs that do not set OIDC env vars.
-os.environ.setdefault("LORE_OIDC_ISSUER", "https://issuer.example")
 
 
 @pytest.fixture
