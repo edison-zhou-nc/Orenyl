@@ -400,6 +400,17 @@ class EventMixin(BaseMixin):
         ).fetchall()
         return [self._hydrate_event_row(row) for row in rows]
 
+    def get_expired_events_global(self, now_iso_ts: str) -> list[dict]:
+        rows = self.conn.execute(
+            """SELECT * FROM events
+               WHERE deleted_at IS NULL
+                 AND expires_at IS NOT NULL
+                 AND expires_at <= ?
+               ORDER BY expires_at ASC""",
+            (now_iso_ts,),
+        ).fetchall()
+        return [self._hydrate_event_row(row) for row in rows]
+
     def soft_delete_event(self, event_id: str, deleted_at: str, tenant_id: str = "") -> bool:
         cur = self.conn.execute(
             """UPDATE events
