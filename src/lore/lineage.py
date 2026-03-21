@@ -23,6 +23,8 @@ class LineageEngine:
     def _fact_id(output_key: str, version: int, tenant_id: str) -> str:
         normalized_tenant = (tenant_id or "default").strip() or "default"
         if normalized_tenant == "default":
+            # Preserve the original v1/default-tenant fact IDs so existing
+            # databases and exported references do not churn on upgrade.
             return f"fact:{output_key}:v{version}"
         safe_tenant = normalized_tenant.replace(":", "_")
         return f"fact:{safe_tenant}:{output_key}:v{version}"
