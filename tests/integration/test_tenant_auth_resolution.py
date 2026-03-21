@@ -50,6 +50,24 @@ def test_request_without_tenant_claim_is_denied_when_multi_tenant_enabled(monkey
         )
 
 
+def test_request_tenant_arg_is_denied_without_tenant_claim(monkeypatch):
+    _reset(monkeypatch)
+    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+
+    with pytest.raises(PermissionError, match="tenant_scope_violation"):
+        asyncio.run(
+            server.call_tool(
+                "retrieve_context_pack",
+                {
+                    "_auth_token": "without-tenant",
+                    "tenant_id": "tenant-a",
+                    "domain": "general",
+                    "query": "",
+                },
+            )
+        )
+
+
 def test_request_with_tenant_claim_succeeds_when_multi_tenant_enabled(monkeypatch):
     _reset(monkeypatch)
     monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")

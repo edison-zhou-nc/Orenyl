@@ -74,17 +74,21 @@ class EventMixin(BaseMixin):
             return None
         return self._hydrate_event_row(row)
 
-    def find_event_by_content_hash(self, content_hash: str) -> dict | None:
+    def find_event_by_content_hash(self, content_hash: str, tenant_id: str = "") -> dict | None:
         if not content_hash:
             return None
+        tenant_id = self._require_tenant_scope(tenant_id)
         row = self.conn.execute(
-            "SELECT id FROM events WHERE content_hash = ? "
-            "AND deleted_at IS NULL ORDER BY ts DESC LIMIT 1",
-            (content_hash,),
+            """SELECT id FROM events
+               WHERE content_hash = ?
+                 AND deleted_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+               ORDER BY ts DESC LIMIT 1""",
+            (content_hash, tenant_id, tenant_id),
         ).fetchone()
         if row is None:
             return None
-        return self.get_event(row["id"])
+        return self.get_event(row["id"], tenant_id=tenant_id)
 
     def get_active_events(self, event_type: str | None = None, tenant_id: str = "") -> list[dict]:
         if event_type:
@@ -148,14 +152,23 @@ class EventMixin(BaseMixin):
         ).fetchall()
         return [self._hydrate_event_row(row) for row in rows]
 
-    def get_all_events(self, event_type: str | None = None) -> list[dict]:
+    def get_all_events(self, event_type: str | None = None, tenant_id: str = "") -> list[dict]:
+        tenant_id = self._require_tenant_scope(tenant_id)
         if event_type:
             rows = self.conn.execute(
-                "SELECT * FROM events WHERE type = ? ORDER BY ts",
-                (event_type,),
+                """SELECT * FROM events
+                   WHERE type = ?
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (event_type, tenant_id, tenant_id),
             ).fetchall()
         else:
-            rows = self.conn.execute("SELECT * FROM events ORDER BY ts").fetchall()
+            rows = self.conn.execute(
+                """SELECT * FROM events
+                   WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   ORDER BY ts""",
+                (tenant_id, tenant_id),
+            ).fetchall()
         return [self._hydrate_event_row(row) for row in rows]
 
     def get_active_events_by_domains(self, domains: list[str], tenant_id: str = "") -> list[dict]:
@@ -374,14 +387,16 @@ class EventMixin(BaseMixin):
         value = row[0] if row is not None else None
         return str(value) if value is not None else None
 
-    def get_expired_events(self, now_iso_ts: str) -> list[dict]:
+    def get_expired_events(self, now_iso_ts: str, tenant_id: str = "") -> list[dict]:
+        tenant_id = self._require_tenant_scope(tenant_id)
         rows = self.conn.execute(
             """SELECT * FROM events
                WHERE deleted_at IS NULL
                  AND expires_at IS NOT NULL
                  AND expires_at <= ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
                ORDER BY expires_at ASC""",
-            (now_iso_ts,),
+            (now_iso_ts, tenant_id, tenant_id),
         ).fetchall()
         return [self._hydrate_event_row(row) for row in rows]
 
@@ -416,18 +431,32 @@ class EventMixin(BaseMixin):
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def update_event_payload(self, event_id: str, payload: dict[str, Any]) -> bool:
+    def update_event_payload(self, event_id: str, payload: dict[str, Any], tenant_id: str = "") -> bool:
+        tenant_id = self._require_tenant_scope(tenant_id)
         cur = self.conn.execute(
-            "UPDATE events SET payload = ? WHERE id = ?",
-            (json.dumps(payload), event_id),
+            """UPDATE events
+               SET payload = ?
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (json.dumps(payload), event_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def update_event_retention(self, event_id: str, tier: str, archived_at: str | None) -> bool:
+    def update_event_retention(
+        self,
+        event_id: str,
+        tier: str,
+        archived_at: str | None,
+        tenant_id: str = "",
+    ) -> bool:
+        tenant_id = self._require_tenant_scope(tenant_id)
         cur = self.conn.execute(
-            "UPDATE events SET retention_tier = ?, archived_at = ? WHERE id = ?",
-            (tier, archived_at, event_id),
+            """UPDATE events
+               SET retention_tier = ?, archived_at = ?
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (tier, archived_at, event_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount > 0
