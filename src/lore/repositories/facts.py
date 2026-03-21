@@ -234,31 +234,46 @@ class FactMixin(BaseMixin):
         ).fetchall()
         return [self._hydrate_fact_row(row) for row in rows]
 
-    def list_current_facts_by_rule_family(self, rule_family: str, version: str) -> list[dict]:
+    def list_current_facts_by_rule_family(
+        self,
+        rule_family: str,
+        version: str,
+        tenant_id: str = "",
+    ) -> list[dict]:
+        tenant_id = self._require_tenant_scope(tenant_id)
         rows = self.conn.execute(
             """SELECT * FROM facts
                WHERE invalidated_at IS NULL
                  AND rule_id = ?
-                 AND rule_version = ?""",
-            (rule_family, version),
+                 AND rule_version = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (rule_family, version, tenant_id, tenant_id),
         ).fetchall()
         return [self._hydrate_fact_row(row) for row in rows]
 
-    def update_fact_rule_version(self, fact_id: str, to_version: str) -> bool:
+    def update_fact_rule_version(self, fact_id: str, to_version: str, tenant_id: str = "") -> bool:
+        tenant_id = self._require_tenant_scope(tenant_id)
         cur = self.conn.execute(
-            "UPDATE facts SET rule_version = ? WHERE id = ?",
-            (to_version, fact_id),
+            """UPDATE facts
+               SET rule_version = ?
+               WHERE id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (to_version, fact_id, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def mark_facts_stale(self, fact_ids: list[str]) -> int:
+    def mark_facts_stale(self, fact_ids: list[str], tenant_id: str = "") -> int:
         if not fact_ids:
             return 0
+        tenant_id = self._require_tenant_scope(tenant_id)
         fact_ids_json = json.dumps(fact_ids)
         cur = self.conn.execute(
-            "UPDATE facts SET stale = 1 WHERE id IN (SELECT value FROM json_each(?))",
-            (fact_ids_json,),
+            """UPDATE facts
+               SET stale = 1
+               WHERE id IN (SELECT value FROM json_each(?))
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (fact_ids_json, tenant_id, tenant_id),
         )
         self._maybe_commit()
         return cur.rowcount

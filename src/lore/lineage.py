@@ -282,7 +282,7 @@ class LineageEngine:
                 downstream_ids = self.db.get_downstream_facts(target_id, tenant_id=tenant_id)
 
             # Step 3: Invalidate downstream facts
-            stale_marked_count = self.db.mark_facts_stale(downstream_ids)
+            stale_marked_count = self.db.mark_facts_stale(downstream_ids, tenant_id=tenant_id)
             for fact_id in downstream_ids:
                 was_invalidated = self.db.invalidate_fact(
                     fact_id,

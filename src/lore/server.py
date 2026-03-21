@@ -49,6 +49,7 @@ from .policy import (
     PolicyEngine,
     agent_permissions_enabled,
     policy_shadow_mode_enabled,
+    validate_policy_configuration,
 )
 from .rate_limit import RateLimiter
 from .tenant import (
@@ -222,6 +223,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             raise PermissionError("rate_limited")
         tenant_token = set_current_tenant_context(tenant_context)
         if agent_permissions_enabled():
+            try:
+                validate_policy_configuration()
+            except RuntimeError as exc:
+                logger.error("server_misconfigured tool=%s error=%s", name, exc)
+                raise PermissionError("server_misconfigured") from exc
             policy = PolicyEngine(db, shadow_mode=policy_shadow_mode_enabled())
             principal_agent = access.client_id
             if name == "retrieve_context_pack":
@@ -436,6 +442,11 @@ async def run_stdio_server() -> None:
 def main():
     mode = get_transport_mode()
     validate_transport_mode(mode)
+    try:
+        validate_policy_configuration()
+    except RuntimeError as exc:
+        logger.error("server_misconfigured error=%s", exc)
+        raise SystemExit(1) from exc
     if auth_required_for_runtime():
         try:
             _get_token_verifier()

@@ -149,3 +149,25 @@ def test_call_tool_uses_env_var_registry_to_pass_through_runtime_errors(monkeypa
     payload = json.loads(out[0].text)
     assert payload["ok"] is False
     assert payload["error"]["message"] == "CUSTOM_ENV is required"
+
+
+def test_call_tool_masks_policy_shadow_mode_misconfiguration(monkeypatch):
+    class _AllowVerifier:
+        async def verify_token(self, token: str):
+            if token == "allow":
+                return AccessToken(
+                    token=token,
+                    client_id="agent-a",
+                    scopes=["memory:read"],
+                    resource="tenant-a",
+                )
+            return None
+
+    server._reset_runtime_state_for_tests()
+    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
+    monkeypatch.setenv("LORE_POLICY_SHADOW_MODE", "1")
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowVerifier())
+
+    with pytest.raises(PermissionError, match="server_misconfigured"):
+        asyncio.run(server.call_tool("list_events", {"_auth_token": "allow", "domain": "general"}))

@@ -6,6 +6,7 @@ import logging
 import os
 
 from . import env_vars
+from .config import multi_tenant_enabled
 from .db import Database
 from .models import now_iso
 
@@ -85,3 +86,11 @@ def agent_permissions_enabled() -> bool:
 
 def policy_shadow_mode_enabled() -> bool:
     return os.environ.get(env_vars.POLICY_SHADOW_MODE, "0").strip() == "1"
+
+
+def validate_policy_configuration() -> None:
+    if agent_permissions_enabled() and policy_shadow_mode_enabled() and multi_tenant_enabled():
+        raise RuntimeError(
+            f"{env_vars.POLICY_SHADOW_MODE} cannot be enabled with "
+            f"{env_vars.ENABLE_AGENT_PERMISSIONS}=1 when multi-tenant mode is active"
+        )
