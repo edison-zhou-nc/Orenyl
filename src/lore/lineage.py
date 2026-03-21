@@ -402,8 +402,18 @@ class LineageEngine:
         if mode == "hard" and run_vacuum:
             self.db.run_vacuum()
             proof.checks["vacuum_ran"] = True
-        if proof.tombstoned:
-            self.db.delete_retrieval_logs(tenant_id=tenant_id or "default")
+        if proof.tombstoned and mode == "hard":
+            referenced_ids = sorted(
+                {
+                    *proof.tombstoned,
+                    *downstream_ids,
+                    *proof.invalidated_facts,
+                }
+            )
+            self.db.delete_retrieval_logs_for_lineage(
+                referenced_ids=referenced_ids,
+                tenant_id=tenant_id or "default",
+            )
         proof.post_delete_check = dict(proof.checks)
 
         return proof

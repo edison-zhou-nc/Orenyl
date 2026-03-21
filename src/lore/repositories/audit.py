@@ -8,6 +8,38 @@ from ._base import BaseMixin
 
 
 class AuditMixin(BaseMixin):
+    @staticmethod
+    def _retrieval_log_references_lineage(
+        context_pack_raw: str,
+        trace_raw: str,
+        referenced_ids: set[str],
+    ) -> bool:
+        try:
+            context_pack = json.loads(context_pack_raw)
+        except (TypeError, ValueError):
+            context_pack = {}
+        try:
+            trace = json.loads(trace_raw)
+        except (TypeError, ValueError):
+            trace = []
+
+        for item in context_pack.get("items", []):
+            if str(item.get("id", "")) in referenced_ids:
+                return True
+            provenance = item.get("provenance") or {}
+            derived_from = {str(item_id) for item_id in provenance.get("derived_from", [])}
+            if derived_from & referenced_ids:
+                return True
+
+        for entry in trace:
+            if str(entry.get("item_id", "")) in referenced_ids:
+                return True
+            lineage = {str(item_id) for item_id in entry.get("lineage", [])}
+            if lineage & referenced_ids:
+                return True
+
+        return False
+
     def log_retrieval(
         self,
         query: str,
@@ -45,6 +77,40 @@ class AuditMixin(BaseMixin):
             """DELETE FROM retrieval_logs
                WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
             (tenant_id, tenant_id),
+        )
+        self._maybe_commit()
+        return cur.rowcount
+
+    def delete_retrieval_logs_for_lineage(
+        self,
+        referenced_ids: list[str],
+        tenant_id: str = "",
+    ) -> int:
+        references = {str(item_id) for item_id in referenced_ids if str(item_id).strip()}
+        if not references:
+            return 0
+
+        rows = self.conn.execute(
+            """SELECT id, context_pack, trace FROM retrieval_logs
+               WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (tenant_id, tenant_id),
+        ).fetchall()
+        delete_ids = [
+            int(row["id"])
+            for row in rows
+            if self._retrieval_log_references_lineage(
+                str(row["context_pack"]),
+                str(row["trace"]),
+                references,
+            )
+        ]
+        if not delete_ids:
+            return 0
+
+        placeholders = ", ".join("?" for _ in delete_ids)
+        cur = self.conn.execute(
+            f"DELETE FROM retrieval_logs WHERE id IN ({placeholders})",
+            delete_ids,
         )
         self._maybe_commit()
         return cur.rowcount

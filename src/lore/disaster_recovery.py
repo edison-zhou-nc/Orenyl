@@ -60,6 +60,9 @@ class DRService:
         }
 
     def verify_snapshot(self, snapshot_id: str, tenant_id: str = "default") -> dict:
+        # Verification remains available in multi-tenant mode because it only
+        # checks an already-recorded snapshot artifact and does not mutate or
+        # materialize a database-wide backup.
         snapshot = self.db.get_dr_snapshot(snapshot_id=snapshot_id, tenant_id=tenant_id)
         if snapshot is None:
             return {"ok": False, "error": "snapshot_not_found"}
