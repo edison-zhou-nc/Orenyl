@@ -18,6 +18,35 @@ from .repositories.lineage import LineageMixin
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
+class LockedConnection(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._op_lock = threading.RLock()
+
+    def set_operation_lock(self, lock: threading.RLock) -> None:
+        self._op_lock = lock
+
+    def execute(self, *args, **kwargs):
+        with self._op_lock:
+            return super().execute(*args, **kwargs)
+
+    def executemany(self, *args, **kwargs):
+        with self._op_lock:
+            return super().executemany(*args, **kwargs)
+
+    def executescript(self, *args, **kwargs):
+        with self._op_lock:
+            return super().executescript(*args, **kwargs)
+
+    def commit(self):
+        with self._op_lock:
+            return super().commit()
+
+    def rollback(self):
+        with self._op_lock:
+            return super().rollback()
+
+
 class Database(
     EventMixin,
     FactMixin,
@@ -30,10 +59,15 @@ class Database(
     """Database shell that preserves the public API through mixin composition."""
 
     def __init__(self, db_path: str = ":memory:"):
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._transaction_lock = threading.RLock()
+        self.conn = sqlite3.connect(
+            db_path,
+            check_same_thread=False,
+            factory=LockedConnection,
+        )
+        self.conn.set_operation_lock(self._transaction_lock)
         self.conn.row_factory = sqlite3.Row
         self._in_transaction = False
-        self._transaction_lock = threading.RLock()
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.execute("PRAGMA foreign_keys=ON")

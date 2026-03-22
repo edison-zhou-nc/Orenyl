@@ -261,6 +261,45 @@ def test_transaction_serializes_cross_thread_access():
     assert db.conn.events == ["BEGIN", "COMMIT", "BEGIN", "COMMIT"]
 
 
+def test_connection_execute_blocks_while_transaction_is_open():
+    db = Database(":memory:")
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_entered = threading.Event()
+    errors: list[BaseException] = []
+
+    def _first() -> None:
+        try:
+            with db.transaction():
+                first_entered.set()
+                release_first.wait(timeout=1)
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    def _second() -> None:
+        try:
+            first_entered.wait(timeout=1)
+            db.conn.execute("SELECT 1").fetchone()
+            second_entered.set()
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    t1 = threading.Thread(target=_first)
+    t2 = threading.Thread(target=_second)
+    t1.start()
+    assert first_entered.wait(timeout=1)
+    t2.start()
+
+    assert second_entered.wait(timeout=0.05) is False
+
+    release_first.set()
+    t1.join(timeout=1)
+    t2.join(timeout=1)
+
+    assert errors == []
+    assert second_entered.is_set()
+
+
 def test_batch_parent_and_event_fetch_helpers():
     db = Database(":memory:")
     event = Event(
