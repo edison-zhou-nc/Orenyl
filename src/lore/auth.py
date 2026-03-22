@@ -229,11 +229,8 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
     )
     normalized_algorithms = allowed_algorithms or ("RS256",)
     issuer = os.environ.get(env_vars.OIDC_ISSUER, "").strip()
-    if not issuer and (jwks_url or any(alg.startswith("RS") for alg in normalized_algorithms)):
-        raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
-    # Backward-compatible fallback for HS-only deployments without an issuer env var.
     if not issuer:
-        issuer = "https://issuer.example"
+        raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
     return OIDCTokenVerifier(
         issuer=issuer,
         audience=os.environ.get(env_vars.OIDC_AUDIENCE, "lore"),

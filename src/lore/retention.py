@@ -58,6 +58,7 @@ def apply_retention_to_db(
     policies: dict[str, dict[str, int]],
     tenant_id: str = "",
 ) -> dict[str, int]:
+    tenant_id = db._require_tenant_scope(tenant_id)
     events = db.get_active_events(tenant_id=tenant_id)
     evaluated = apply_retention_policies(events, now_ts=now_ts, policies=policies)
     archived = 0

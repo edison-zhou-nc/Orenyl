@@ -16,6 +16,7 @@ def rotate_encrypted_payloads(
     tenant_id: str = "",
 ) -> dict[str, int]:
     """Re-encrypt high/restricted event payload envelopes to active key version."""
+    tenant_id = db._require_tenant_scope(tenant_id)
     keyring = resolve_runtime_keyring()
     active_version = keyring.active_version
     active_key = keyring.keys[active_version]

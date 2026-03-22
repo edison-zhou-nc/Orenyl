@@ -28,10 +28,8 @@ from .auth import (
 from .compliance import ComplianceService
 from .config import auth_required_for_runtime, read_only_mode_enabled
 from .consent import ConsentService
+from . import context_pack as context_pack_module
 from .context_pack import ContextPackBuilder
-from .context_pack import (
-    _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests,
-)
 from .db import Database
 from .disaster_recovery import DRService
 from .embedding_provider import build_embedding_provider_from_env
@@ -138,7 +136,7 @@ def _reset_runtime_state_for_tests() -> None:
         _DEFAULT_SALT_WARNING_EMITTED = False
         _federation_worker = None
         _rate_limiter = RateLimiter()
-    reset_context_pack_runtime_state_for_tests()
+    context_pack_module._reset_runtime_state_for_tests()
     reset_metrics_for_tests()
 
 

@@ -207,6 +207,8 @@ class LineageEngine:
         4. Re-derive from remaining active events
         5. Return proof of everything that happened
         """
+        if target_type not in {"event", "fact"}:
+            raise ValueError("invalid_target_type")
         ts = now_iso()
         proof = DeleteProof(
             target_id=target_id,

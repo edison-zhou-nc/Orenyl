@@ -14,8 +14,13 @@ from .. import __version__ as lore_version
 from .. import audit
 from .. import env_vars
 from ..auth import authorize_action
-from ..config import multi_tenant_enabled, semantic_dedup_threshold_for_domains
+from ..config import (
+    compliance_strict_mode_enabled,
+    multi_tenant_enabled,
+    semantic_dedup_threshold_for_domains,
+)
 from ..content_hash import check_duplicate, compute_content_hash
+from ..consent import ConsentService
 from ..context_pack import backfill_missing_fact_embeddings
 from ..encryption import encrypt_content
 from ..metrics import inc_tool_call, observe_latency, render_prometheus
@@ -42,6 +47,35 @@ from ._deps import (
 )
 
 logger = logging.getLogger(__name__)
+ALLOWED_SENSITIVITY_LEVELS = {"low", "medium", "high", "restricted"}
+
+
+def _subject_id_for_event(event: dict | None) -> str:
+    return str((event or {}).get("metadata", {}).get("subject_id", "")).strip()
+
+
+def _withdrawn_subject_ids(events: list[dict], tenant_id: str) -> set[str]:
+    if not compliance_strict_mode_enabled():
+        return set()
+    subject_ids = sorted({_subject_id_for_event(event) for event in events if event})
+    subject_ids = [subject_id for subject_id in subject_ids if subject_id]
+    if not subject_ids:
+        return set()
+    consent_service = ConsentService(get_db())
+    return {
+        subject_id
+        for subject_id in subject_ids
+        if not consent_service.is_processing_allowed(
+            subject_id=subject_id,
+            purpose="retrieval",
+            tenant_id=tenant_id,
+        )
+    }
+
+
+def _event_visible_under_consent(event: dict, withdrawn_subject_ids: set[str]) -> bool:
+    subject_id = _subject_id_for_event(event)
+    return not subject_id or subject_id not in withdrawn_subject_ids
 
 
 async def handle_store_event(args: dict) -> list[TextContent]:
@@ -127,6 +161,13 @@ async def handle_store_event(args: dict) -> list[TextContent]:
                 )
             ]
     sensitivity = args.get("sensitivity", "medium")
+    if str(sensitivity or "").lower() not in ALLOWED_SENSITIVITY_LEVELS:
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"stored": False, "reason": "invalid_sensitivity"}, indent=2),
+            )
+        ]
     plain_payload = payload
     encryption_material = _runtime_encryption_material()
     should_encrypt_payload = (
@@ -134,7 +175,8 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     )
     event_payload = plain_payload
     if should_encrypt_payload:
-        assert encryption_material is not None
+        if encryption_material is None:
+            raise RuntimeError("encryption_material_unavailable")
         runtime_key, runtime_salt, key_version = encryption_material
         plaintext = content or json.dumps(plain_payload, sort_keys=True)
         event_payload = {
@@ -329,18 +371,32 @@ async def handle_list_events(args: dict) -> list[TextContent]:
         args.get("limit", 50), default=50, maximum=get_max_list_events_limit()
     )
     domain_filter = [] if domain == "general" else [domain]
-    total_count = db.count_events_by_domains(
-        domain_filter,
-        include_tombstoned=include_tombstoned,
-        tenant_id=args.get("_auth_tenant_id", ""),
-    )
-    window = db.list_events_page(
-        domains=domain_filter,
-        include_tombstoned=include_tombstoned,
-        limit=limit,
-        offset=offset,
-        tenant_id=args.get("_auth_tenant_id", ""),
-    )
+    tenant_id = args.get("_auth_tenant_id", "")
+    if compliance_strict_mode_enabled():
+        events = db.get_events_by_domains(
+            domain_filter,
+            include_tombstoned=include_tombstoned,
+            tenant_id=tenant_id,
+        )
+        withdrawn_ids = _withdrawn_subject_ids(events, tenant_id=tenant_id)
+        visible_events = [
+            event for event in events if _event_visible_under_consent(event, withdrawn_ids)
+        ]
+        total_count = len(visible_events)
+        window = visible_events[offset : offset + limit]
+    else:
+        total_count = db.count_events_by_domains(
+            domain_filter,
+            include_tombstoned=include_tombstoned,
+            tenant_id=tenant_id,
+        )
+        window = db.list_events_page(
+            domains=domain_filter,
+            include_tombstoned=include_tombstoned,
+            limit=limit,
+            offset=offset,
+            tenant_id=tenant_id,
+        )
     logger.info(
         "list_events request_id=%s domain=%s offset=%s limit=%s include_tombstoned=%s",
         args.get("_request_id", ""),
@@ -386,6 +442,21 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
         }
     )
     parent_events = db.get_events_by_ids(parent_event_ids, tenant_id=tenant_id)
+    withdrawn_ids = _withdrawn_subject_ids(
+        [*events, *[event for event in parent_events.values() if event is not None]],
+        tenant_id=tenant_id,
+    )
+    if withdrawn_ids:
+        events = [event for event in events if _event_visible_under_consent(event, withdrawn_ids)]
+        facts = [
+            fact
+            for fact in facts
+            if all(
+                _event_visible_under_consent(parent_events.get(parent["parent_id"]), withdrawn_ids)
+                for parent in parents_by_fact.get(fact["id"], [])
+                if parent.get("parent_type") == "event"
+            )
+        ]
     restricted = []
     for fact in facts:
         parents = parents_by_fact.get(fact["id"], [])
