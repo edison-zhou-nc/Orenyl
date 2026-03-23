@@ -10,7 +10,13 @@ The project is currently maintained by the repository owner, [Edison Zhou](https
 
 ## Code of Conduct
 
-This project follows the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). Be respectful, constructive, and inclusive.
+This project follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). Be respectful,
+constructive, and inclusive.
+
+## Security Reporting
+
+Sensitive security issues should be reported privately per
+[SECURITY.md](SECURITY.md), not filed as public GitHub issues.
 
 ## Contributing
 

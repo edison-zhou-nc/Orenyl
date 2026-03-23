@@ -56,8 +56,10 @@ def apply_retention_to_db(
     db: Database,
     now_ts: str,
     policies: dict[str, dict[str, int]],
+    tenant_id: str = "",
 ) -> dict[str, int]:
-    events = db.get_active_events()
+    tenant_id = db._require_tenant_scope(tenant_id)
+    events = db.get_active_events(tenant_id=tenant_id)
     evaluated = apply_retention_policies(events, now_ts=now_ts, policies=policies)
     archived = 0
     deleted = 0
@@ -66,12 +68,17 @@ def apply_retention_to_db(
         event_id = event["id"]
         target_tier = evaluated["tiers"][event_id]
         if target_tier == "delete":
-            if db.soft_delete_event(event_id, now_ts):
+            if db.soft_delete_event(event_id, now_ts, tenant_id=tenant_id):
                 deleted += 1
                 updated += 1
             continue
         archived_at = now_ts if target_tier == "archive" else None
-        if db.update_event_retention(event_id, target_tier, archived_at):
+        if db.update_event_retention(
+            event_id,
+            target_tier,
+            archived_at,
+            tenant_id=tenant_id,
+        ):
             if target_tier == "archive":
                 archived += 1
             updated += 1

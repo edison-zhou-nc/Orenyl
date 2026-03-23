@@ -1,4 +1,5 @@
 import pytest
+from pathlib import Path
 
 from lore import context_pack as context_pack_module
 from lore import server
@@ -57,3 +58,10 @@ def test_get_token_verifier_caches_build_runtime_error(monkeypatch):
 
     assert attempts["count"] == 1
     assert isinstance(server._token_verifier_error, RuntimeError)
+
+
+def test_server_does_not_alias_context_pack_test_reset_helper_at_import_time():
+    repo_root = Path(__file__).resolve().parents[2]
+    source = (repo_root / "src" / "lore" / "server.py").read_text(encoding="utf-8")
+
+    assert "_reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests" not in source

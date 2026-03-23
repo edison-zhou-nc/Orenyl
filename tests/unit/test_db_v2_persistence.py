@@ -1,4 +1,5 @@
 import sqlite3
+import threading
 from pathlib import Path
 
 import pytest
@@ -201,6 +202,102 @@ def test_insert_edge_rejects_duplicate_lineage_edge():
 
     with pytest.raises(sqlite3.IntegrityError):
         db.insert_edge(edge)
+
+
+def test_transaction_serializes_cross_thread_access():
+    class _FakeConn:
+        def __init__(self) -> None:
+            self.events: list[str] = []
+
+        def execute(self, sql: str):
+            self.events.append(sql)
+
+        def commit(self) -> None:
+            self.events.append("COMMIT")
+
+        def rollback(self) -> None:
+            self.events.append("ROLLBACK")
+
+    db = Database.__new__(Database)
+    db.conn = _FakeConn()
+    db._in_transaction = False
+    db._transaction_lock = threading.RLock()
+
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_entered = threading.Event()
+    errors: list[BaseException] = []
+
+    def _first() -> None:
+        try:
+            with db.transaction():
+                first_entered.set()
+                release_first.wait(timeout=1)
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    def _second() -> None:
+        try:
+            first_entered.wait(timeout=1)
+            with db.transaction():
+                second_entered.set()
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    t1 = threading.Thread(target=_first)
+    t2 = threading.Thread(target=_second)
+    t1.start()
+    assert first_entered.wait(timeout=1)
+    t2.start()
+
+    assert second_entered.wait(timeout=0.05) is False
+
+    release_first.set()
+    t1.join(timeout=1)
+    t2.join(timeout=1)
+
+    assert errors == []
+    assert second_entered.is_set()
+    assert db.conn.events == ["BEGIN", "COMMIT", "BEGIN", "COMMIT"]
+
+
+def test_connection_execute_blocks_while_transaction_is_open():
+    db = Database(":memory:")
+    first_entered = threading.Event()
+    release_first = threading.Event()
+    second_entered = threading.Event()
+    errors: list[BaseException] = []
+
+    def _first() -> None:
+        try:
+            with db.transaction():
+                first_entered.set()
+                release_first.wait(timeout=1)
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    def _second() -> None:
+        try:
+            first_entered.wait(timeout=1)
+            db.conn.execute("SELECT 1").fetchone()
+            second_entered.set()
+        except BaseException as exc:  # pragma: no cover - assertion path
+            errors.append(exc)
+
+    t1 = threading.Thread(target=_first)
+    t2 = threading.Thread(target=_second)
+    t1.start()
+    assert first_entered.wait(timeout=1)
+    t2.start()
+
+    assert second_entered.wait(timeout=0.05) is False
+
+    release_first.set()
+    t1.join(timeout=1)
+    t2.join(timeout=1)
+
+    assert errors == []
+    assert second_entered.is_set()
 
 
 def test_batch_parent_and_event_fetch_helpers():

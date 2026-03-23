@@ -43,6 +43,22 @@ def test_call_tool_masks_token_verifier_non_runtime_error(monkeypatch):
     assert attempts["count"] == 1
 
 
+def test_call_tool_dev_stdio_bypasses_token_verifier_bootstrap(monkeypatch):
+    server._reset_runtime_state_for_tests()
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+
+    def _raise_misconfig():
+        raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
+
+    monkeypatch.setattr(server, "build_token_verifier_from_env", _raise_misconfig)
+    out = asyncio.run(server.call_tool("list_events", {}))
+
+    payload = json.loads(out[0].text)
+    assert payload["count"] == 0
+    assert payload["events"] == []
+
+
 def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
     class _AllowVerifier:
         async def verify_token(self, token: str):
@@ -133,3 +149,25 @@ def test_call_tool_uses_env_var_registry_to_pass_through_runtime_errors(monkeypa
     payload = json.loads(out[0].text)
     assert payload["ok"] is False
     assert payload["error"]["message"] == "CUSTOM_ENV is required"
+
+
+def test_call_tool_masks_policy_shadow_mode_misconfiguration(monkeypatch):
+    class _AllowVerifier:
+        async def verify_token(self, token: str):
+            if token == "allow":
+                return AccessToken(
+                    token=token,
+                    client_id="agent-a",
+                    scopes=["memory:read"],
+                    resource="tenant-a",
+                )
+            return None
+
+    server._reset_runtime_state_for_tests()
+    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
+    monkeypatch.setenv("LORE_POLICY_SHADOW_MODE", "1")
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowVerifier())
+
+    with pytest.raises(PermissionError, match="server_misconfigured"):
+        asyncio.run(server.call_tool("list_events", {"_auth_token": "allow", "domain": "general"}))

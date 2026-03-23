@@ -90,3 +90,12 @@ def test_verify_snapshot_remains_available_in_multi_tenant_mode(tmp_path, monkey
 
     verify = dr.verify_snapshot(snapshot["snapshot_id"])
     assert verify["ok"] is True
+
+
+def test_snapshot_rejects_path_traversal_label(tmp_path):
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+
+    with pytest.raises(RuntimeError, match="invalid_snapshot_label"):
+        dr.create_snapshot(label="..\\..\\escape")

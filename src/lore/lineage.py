@@ -23,6 +23,8 @@ class LineageEngine:
     def _fact_id(output_key: str, version: int, tenant_id: str) -> str:
         normalized_tenant = (tenant_id or "default").strip() or "default"
         if normalized_tenant == "default":
+            # Preserve the original v1/default-tenant fact IDs so existing
+            # databases and exported references do not churn on upgrade.
             return f"fact:{output_key}:v{version}"
         safe_tenant = normalized_tenant.replace(":", "_")
         return f"fact:{safe_tenant}:{output_key}:v{version}"
@@ -205,6 +207,8 @@ class LineageEngine:
         4. Re-derive from remaining active events
         5. Return proof of everything that happened
         """
+        if target_type not in {"event", "fact"}:
+            raise ValueError("invalid_target_type")
         ts = now_iso()
         proof = DeleteProof(
             target_id=target_id,
@@ -282,7 +286,7 @@ class LineageEngine:
                 downstream_ids = self.db.get_downstream_facts(target_id, tenant_id=tenant_id)
 
             # Step 3: Invalidate downstream facts
-            stale_marked_count = self.db.mark_facts_stale(downstream_ids)
+            stale_marked_count = self.db.mark_facts_stale(downstream_ids, tenant_id=tenant_id)
             for fact_id in downstream_ids:
                 was_invalidated = self.db.invalidate_fact(
                     fact_id,
@@ -402,8 +406,18 @@ class LineageEngine:
         if mode == "hard" and run_vacuum:
             self.db.run_vacuum()
             proof.checks["vacuum_ran"] = True
-        if proof.tombstoned:
-            self.db.delete_retrieval_logs(tenant_id=tenant_id or "default")
+        if proof.tombstoned and mode == "hard":
+            referenced_ids = sorted(
+                {
+                    *proof.tombstoned,
+                    *downstream_ids,
+                    *proof.invalidated_facts,
+                }
+            )
+            self.db.delete_retrieval_logs_for_lineage(
+                referenced_ids=referenced_ids,
+                tenant_id=tenant_id or "default",
+            )
         proof.post_delete_check = dict(proof.checks)
 
         return proof

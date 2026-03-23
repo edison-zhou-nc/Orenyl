@@ -1,6 +1,6 @@
 # MCP Tool Contracts
 
-Lore currently exposes 14 MCP-dispatched tools. All tool calls require a valid auth token through the active server transport, and server-side authorization is enforced per tool.
+Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_TRANSPORT=stdio` with `LORE_ALLOW_STDIO_DEV=1`), tool calls run under the explicit local-dev auth bypass. In authenticated transports, tool calls require a valid auth token and server-side authorization is enforced per tool.
 
 ## Common expectations
 
@@ -75,7 +75,7 @@ Lore currently exposes 14 MCP-dispatched tools. All tool calls require a valid a
 
 ### `audit_anomaly_scan`
 - Schema: accepts `window_minutes` and `limit`.
-- Auth: requires `memory:export`.
+- Auth: requires `memory:read`.
 - Side effects: reads audit history and returns anomaly candidates.
 - Sample response: `{"ok": true, "window_minutes": 60, "alerts": []}`.
 

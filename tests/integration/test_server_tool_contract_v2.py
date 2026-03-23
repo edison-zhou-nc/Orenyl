@@ -22,3 +22,22 @@ def test_server_exposes_required_tools():
         "verify_snapshot",
         "restore_snapshot",
     }
+
+
+def test_export_domain_schema_exposes_pagination_and_streaming_fields():
+    tools = asyncio.run(list_tools())
+    export_domain = next(tool for tool in tools if tool.name == "export_domain")
+    props = export_domain.inputSchema["properties"]
+
+    assert "page_size" in props
+    assert "cursor" in props
+    assert "stream" in props
+    assert "include_hashes" in props
+
+
+def test_store_event_schema_defaults_sensitivity_to_medium():
+    tools = asyncio.run(list_tools())
+    store_event = next(tool for tool in tools if tool.name == "store_event")
+    props = store_event.inputSchema["properties"]
+
+    assert props["sensitivity"]["default"] == "medium"

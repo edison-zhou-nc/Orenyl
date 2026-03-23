@@ -7,9 +7,15 @@ from lore import audit
 from lore import server
 
 
+class _DenyVerifier:
+    async def verify_token(self, token: str):
+        return None
+
+
 def test_authz_deny_writes_audit_record(monkeypatch):
     audit.clear_events()
     monkeypatch.delenv("LORE_AUTH_REQUIRED", raising=False)
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _DenyVerifier())
 
     with pytest.raises(PermissionError, match="unauthorized"):
         asyncio.run(server.call_tool("list_events", {}))
@@ -23,6 +29,7 @@ def test_authz_deny_writes_audit_record(monkeypatch):
 def test_authz_deny_writes_request_id(monkeypatch):
     audit.clear_events()
     monkeypatch.delenv("LORE_AUTH_REQUIRED", raising=False)
+    monkeypatch.setattr(server, "_get_token_verifier", lambda: _DenyVerifier())
 
     with pytest.raises(PermissionError, match="unauthorized"):
         asyncio.run(server.call_tool("list_events", {"_request_id": "req-123"}))

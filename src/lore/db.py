@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -17,6 +18,35 @@ from .repositories.lineage import LineageMixin
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
+class LockedConnection(sqlite3.Connection):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._op_lock = threading.RLock()
+
+    def set_operation_lock(self, lock: threading.RLock) -> None:
+        self._op_lock = lock
+
+    def execute(self, *args, **kwargs):
+        with self._op_lock:
+            return super().execute(*args, **kwargs)
+
+    def executemany(self, *args, **kwargs):
+        with self._op_lock:
+            return super().executemany(*args, **kwargs)
+
+    def executescript(self, *args, **kwargs):
+        with self._op_lock:
+            return super().executescript(*args, **kwargs)
+
+    def commit(self):
+        with self._op_lock:
+            return super().commit()
+
+    def rollback(self):
+        with self._op_lock:
+            return super().rollback()
+
+
 class Database(
     EventMixin,
     FactMixin,
@@ -29,7 +59,13 @@ class Database(
     """Database shell that preserves the public API through mixin composition."""
 
     def __init__(self, db_path: str = ":memory:"):
-        self.conn = sqlite3.connect(db_path, check_same_thread=False)
+        self._transaction_lock = threading.RLock()
+        self.conn = sqlite3.connect(
+            db_path,
+            check_same_thread=False,
+            factory=LockedConnection,
+        )
+        self.conn.set_operation_lock(self._transaction_lock)
         self.conn.row_factory = sqlite3.Row
         self._in_transaction = False
         self.conn.execute("PRAGMA journal_mode=WAL")
@@ -39,19 +75,20 @@ class Database(
 
     @contextmanager
     def transaction(self):
-        if self._in_transaction:
-            yield
-            return
-        self._in_transaction = True
-        self.conn.execute("BEGIN")
-        try:
-            yield
-            self.conn.commit()
-        except Exception:
-            self.conn.rollback()
-            raise
-        finally:
-            self._in_transaction = False
+        with self._transaction_lock:
+            if self._in_transaction:
+                yield
+                return
+            self._in_transaction = True
+            self.conn.execute("BEGIN")
+            try:
+                yield
+                self.conn.commit()
+            except Exception:
+                self.conn.rollback()
+                raise
+            finally:
+                self._in_transaction = False
 
     def _init_schema(self):
         # Bring legacy v1 tables up to minimum shape before executing schema script
