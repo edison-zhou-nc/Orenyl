@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import shutil
 import sqlite3
 import uuid
@@ -24,6 +25,16 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+_SNAPSHOT_LABEL_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def _sanitize_snapshot_label(label: str) -> str:
+    normalized = str(label or "").strip()
+    if not normalized or not _SNAPSHOT_LABEL_RE.fullmatch(normalized):
+        raise RuntimeError("invalid_snapshot_label")
+    return normalized
+
+
 class DRService:
     def __init__(self, db: Database, db_path: str, snapshot_dir: str):
         self.db = db
@@ -38,7 +49,8 @@ class DRService:
     def create_snapshot(self, label: str, tenant_id: str = "default") -> dict:
         self._ensure_single_tenant_mode()
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
-        snapshot_id = f"snapshot:{label}:{uuid.uuid4().hex[:12]}"
+        snapshot_label = _sanitize_snapshot_label(label)
+        snapshot_id = f"snapshot:{snapshot_label}:{uuid.uuid4().hex[:12]}"
         snapshot_file = self.snapshot_dir / f"{snapshot_id.replace(':', '_')}.db"
         self.db.conn.execute("PRAGMA wal_checkpoint(FULL)")
         self.db.conn.commit()
@@ -60,6 +72,9 @@ class DRService:
         }
 
     def verify_snapshot(self, snapshot_id: str, tenant_id: str = "default") -> dict:
+        # Verification remains available in multi-tenant mode because it only
+        # checks an already-recorded snapshot artifact and does not mutate or
+        # materialize a database-wide backup.
         snapshot = self.db.get_dr_snapshot(snapshot_id=snapshot_id, tenant_id=tenant_id)
         if snapshot is None:
             return {"ok": False, "error": "snapshot_not_found"}

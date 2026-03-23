@@ -34,7 +34,7 @@ _REGISTERED_TOOLS = (
                 "sensitivity": {
                     "type": "string",
                     "enum": ["low", "medium", "high", "restricted"],
-                    "default": "high",
+                    "default": "medium",
                 },
                 "consent_source": {"type": "string", "default": "implicit"},
                 "expires_at": {"type": "string"},
@@ -137,6 +137,10 @@ _REGISTERED_TOOLS = (
                     "default": "json",
                 },
                 "confirm_restricted": {"type": "boolean", "default": False},
+                "page_size": {"type": "integer", "default": 0},
+                "cursor": {"type": "string", "default": ""},
+                "stream": {"type": "boolean", "default": False},
+                "include_hashes": {"type": "boolean", "default": False},
             },
             "required": ["domain"],
         },
@@ -256,7 +260,7 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         content: str = "",
         type: str = "note",
         payload: dict[str, Any] | None = None,
-        sensitivity: str = "high",
+        sensitivity: str = "medium",
         consent_source: str = "implicit",
         expires_at: str = "",
         metadata: dict[str, Any] | None = None,
@@ -369,6 +373,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
         domain: str,
         format: str = "json",
         confirm_restricted: bool = False,
+        page_size: int = 0,
+        cursor: str = "",
+        stream: bool = False,
+        include_hashes: bool = False,
         auth_token: str = "",
         request_id: str = "",
     ) -> Any:
@@ -376,6 +384,10 @@ def register_fastmcp_tools(server: FastMCP, invoke_tool: InvokeTool) -> None:
             "domain": domain,
             "format": format,
             "confirm_restricted": confirm_restricted,
+            "page_size": page_size,
+            "cursor": cursor,
+            "stream": stream,
+            "include_hashes": include_hashes,
         }
         _maybe_add_auth(args, auth_token, request_id)
         return await invoke_tool("export_domain", args)

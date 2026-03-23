@@ -24,12 +24,18 @@ class RateLimiter:
         self._buckets: dict[str, list[float]] = {}
         self._lock = threading.Lock()
 
+    def _prune_locked(self, cutoff: float) -> None:
+        for tenant_id, bucket in list(self._buckets.items()):
+            bucket[:] = [ts for ts in bucket if ts > cutoff]
+            if not bucket:
+                del self._buckets[tenant_id]
+
     def allow(self, tenant_id: str) -> bool:
         now = time.monotonic()
         cutoff = now - self.window_seconds
         with self._lock:
+            self._prune_locked(cutoff)
             bucket = self._buckets.setdefault(tenant_id, [])
-            bucket[:] = [ts for ts in bucket if ts > cutoff]
             if len(bucket) >= self.max_requests:
                 return False
             bucket.append(now)

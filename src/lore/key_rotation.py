@@ -10,8 +10,13 @@ from .encryption import decrypt_content, encrypt_content, resolve_runtime_keyrin
 logger = logging.getLogger(__name__)
 
 
-def rotate_encrypted_payloads(db: Database, skip_missing_keys: bool = False) -> dict[str, int]:
+def rotate_encrypted_payloads(
+    db: Database,
+    skip_missing_keys: bool = False,
+    tenant_id: str = "",
+) -> dict[str, int]:
     """Re-encrypt high/restricted event payload envelopes to active key version."""
+    tenant_id = db._require_tenant_scope(tenant_id)
     keyring = resolve_runtime_keyring()
     active_version = keyring.active_version
     active_key = keyring.keys[active_version]
@@ -19,7 +24,7 @@ def rotate_encrypted_payloads(db: Database, skip_missing_keys: bool = False) -> 
     scanned = 0
     rotated = 0
     skipped_missing_keys = 0
-    for event in db.get_active_events():
+    for event in db.get_active_events(tenant_id=tenant_id):
         payload = event.get("payload") or {}
         if not payload.get("_encrypted"):
             continue
@@ -46,6 +51,6 @@ def rotate_encrypted_payloads(db: Database, skip_missing_keys: bool = False) -> 
             salt=active_key.salt,
             key_version=active_version,
         )
-        db.update_event_payload(event["id"], payload)
+        db.update_event_payload(event["id"], payload, tenant_id=tenant_id)
         rotated += 1
     return {"scanned": scanned, "rotated": rotated, "skipped_missing_keys": skipped_missing_keys}

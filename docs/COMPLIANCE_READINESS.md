@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document summarizes the current GA readiness posture for privacy, auditability, and governed-memory operations.
+This document summarizes Lore's public-launch posture for privacy, auditability, and governed-memory operations.
 
 ## GDPR-aligned coverage
 
@@ -33,3 +33,4 @@ This document summarizes the current GA readiness posture for privacy, auditabil
 - SOC 2 evidence collection is not yet automated.
 - Change management, key-management operations, and incident response runbooks need fuller operator packaging.
 - Third-party vendor and infrastructure controls remain deployment-specific rather than product-enforced.
+- Lore is not yet externally certified as an enterprise compliance product.

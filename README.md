@@ -7,11 +7,13 @@
 
 ![Lore social preview](docs/assets/lore_social_preview.png)
 
-Compliance-grade memory MCP server for AI agents, with deterministic deletion and auditable lineage.
+production-minded governed memory MCP server for AI agents, with deterministic deletion and auditable lineage.
 
 Lore gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification proof.
 
 **Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
+
+Lore is ready for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Lore is not yet externally certified or enterprise-complete.
 
 ## Why Lore
 
@@ -19,7 +21,7 @@ Lore gives agents durable memory without losing control: every derived fact is t
 - **Deletion guarantees** - cascade invalidation plus recompute plus verification proof
 - **Compliance-oriented** - GDPR Article 17/20/30, audit traces, sensitivity controls
 - **MCP-native** - stable 14-tool contract for agent integration
-- **Zero-config start** - works out of the box with SQLite plus local embeddings
+- **Local-first onboarding** - explicit stdio development mode for self-serve setup and demos
 
 ## Install
 
@@ -54,12 +56,14 @@ Lore stores:
 
 Core invariant: if upstream data is deleted, downstream derivations must not resurface.
 
-## Quickstart (MCP Integrators)
+## Local development mode
 
-1. Start Lore server:
+Use this mode for self-serve evaluation, local MCP clients, and demos. It is development only.
+
+1. Start Lore in local stdio mode:
 
 ```bash
-python -m lore.server
+LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m lore.server
 ```
 
 2. Configure your MCP client:
@@ -80,11 +84,22 @@ python -m lore.server
 }
 ```
 
+This mode uses Lore's explicit local-dev auth bypass so you do not need external OIDC setup for local evaluation.
+
 3. Basic flow:
 - `store_event`
 - `retrieve_context_pack`
 - `delete_and_recompute`
 - `audit_trace`
+
+## Production deployment mode
+
+Use `streamable-http` with authenticated bearer tokens for real deployments.
+
+1. Set `LORE_TRANSPORT=streamable-http`.
+2. Configure OIDC or HS256 verification settings.
+3. Start `python -m lore.server`.
+4. Treat stdio mode as development only.
 
 ## MCP Tool Contract (v2)
 
@@ -94,6 +109,7 @@ python -m lore.server
 4. `audit_trace(item_id, include_source_events=False)`
 5. `list_events(domain, limit=50, offset=0, include_tombstoned=False)`
 6. `export_domain(domain, format=json|markdown|timeline, confirm_restricted=False)`
+   - also supports `page_size`, `cursor`, `stream`, and `include_hashes`
 7. `erase_subject_data(subject_id, mode=hard|soft, reason=subject_erasure)`
 8. `export_subject_data(subject_id)`
 9. `record_consent(subject_id, status, purpose?, legal_basis?, source?, metadata?)`
@@ -137,7 +153,8 @@ Notes:
 
 ## Security Notes
 
-- AuthZ is scope-based per tool action.
+- Local stdio development mode uses an explicit local-dev auth bypass.
+- AuthZ is scope-based per tool action in authenticated transports.
 - Security decisions are audit-logged (allow/deny + request correlation).
 - High/restricted payload encryption is fail-closed when passphrase is set without salt.
 - Deletion proof includes resurface-prevention checks (`deletion_verified`).
@@ -186,7 +203,8 @@ LORE_ENABLE_PHASE3_LOAD_TEST=1 LORE_PHASE3_LOAD_EVENTS=1000000 python -m pytest 
 
 ## Contributing
 
-See `CONTRIBUTING.md`.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md).
 
 ## License
 

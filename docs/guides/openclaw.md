@@ -1,6 +1,6 @@
 # Lore with OpenClaw
 
-Add Lore as an MCP server in OpenClaw to give your AI agent persistent, compliance-grade memory.
+Add Lore as an MCP server in OpenClaw to give your AI agent persistent, production-minded governed memory.
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ Add Lore as an MCP server in OpenClaw's configuration:
 
 `LORE_ALLOW_STDIO_DEV=1` disables Lore's production guard for stdio transport, so keep that setting for local development only.
 
-Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory with compliance guarantees.
+Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory with governed deletion and audit guarantees.
 
 ## What OpenClaw Gets
 

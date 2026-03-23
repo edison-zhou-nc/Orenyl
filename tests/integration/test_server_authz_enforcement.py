@@ -62,6 +62,17 @@ def _reset_server_state(monkeypatch):
     monkeypatch.setattr(server, "_get_token_verifier", lambda: verifier)
 
 
+def _reset_local_dev_state(monkeypatch):
+    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    fresh_db = Database(":memory:")
+    monkeypatch.setattr(server, "db", fresh_db)
+    monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
+    monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(fresh_db))
+    server._reset_runtime_state_for_tests()
+
+
 def test_store_event_persists_resolved_tenant_id(monkeypatch):
     _reset_server_state(monkeypatch)
 
@@ -84,6 +95,30 @@ def test_store_event_persists_resolved_tenant_id(monkeypatch):
 
     assert row is not None
     assert row["tenant_id"] == "tenant-a"
+
+
+def test_store_event_defaults_sensitivity_to_medium(monkeypatch):
+    _reset_server_state(monkeypatch)
+
+    out = asyncio.run(
+        server.call_tool(
+            "store_event",
+            {
+                "_auth_token": "tenant-a",
+                "domains": ["general"],
+                "type": "note",
+                "payload": {"text": "hello"},
+            },
+        )
+    )
+    payload = json.loads(out[0].text)
+    row = server.db.conn.execute(
+        "SELECT sensitivity FROM events WHERE id = ?",
+        (payload["event_id"],),
+    ).fetchone()
+
+    assert row is not None
+    assert row["sensitivity"] == "medium"
 
 
 def test_delete_and_recompute_cannot_cross_tenants(monkeypatch):
@@ -149,6 +184,24 @@ def test_call_tool_denies_when_no_token(monkeypatch):
         asyncio.run(server.call_tool("list_events", {}))
 
     assert any(e["result"] == "deny" and e["action"] == "list_events" for e in audit.get_events())
+
+
+def test_call_tool_allows_dev_stdio_without_token(monkeypatch):
+    _reset_local_dev_state(monkeypatch)
+    audit.clear_events()
+
+    out = asyncio.run(server.call_tool("list_events", {}))
+    payload = json.loads(out[0].text)
+
+    assert payload["count"] == 0
+    assert payload["events"] == []
+    assert any(
+        e["result"] == "allow"
+        and e["action"] == "list_events"
+        and e["principal_id"] == "local-dev"
+        and e["details"].get("auth_mode") == "dev-stdio"
+        for e in audit.get_events()
+    )
 
 
 def test_delete_and_recompute_requires_delete_scope(monkeypatch):

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document summarizes the GA security posture of Lore's current release candidate and the checks that are enforced in CI.
+This document summarizes Lore's public-launch security posture and the checks that are enforced in CI.
 
 ## Auth coverage
 
@@ -34,3 +34,4 @@ This document summarizes the GA security posture of Lore's current release candi
 - External penetration testing is still pending.
 - Secret scanning and dependency-vulnerability reporting are not yet documented as separate release gates.
 - Formal threat modeling for operator deployments should be added before broader enterprise rollout.
+- Lore is not yet externally certified or independently validated as an enterprise security product.

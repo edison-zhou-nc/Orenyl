@@ -25,6 +25,27 @@ def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
     server.validate_transport_mode(server.get_transport_mode())
 
 
+def test_main_skips_token_bootstrap_in_dev_stdio_mode(monkeypatch):
+    called = {"stdio": False}
+
+    async def _fake_run_stdio_server():
+        called["stdio"] = True
+
+    def _raise_if_called():
+        raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
+
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+    monkeypatch.setattr(server, "_get_token_verifier", _raise_if_called)
+    monkeypatch.setattr(server, "run_stdio_server", _fake_run_stdio_server)
+
+    server.main()
+
+    assert called["stdio"] is True
+
+
 def test_streamable_http_server_registers_expected_tools():
     fast = server.build_fastmcp_server()
     names = {tool.name for tool in asyncio.run(fast.list_tools())}

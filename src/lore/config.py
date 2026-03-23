@@ -52,6 +52,17 @@ def multi_tenant_enabled() -> bool:
     return os.environ.get(env_vars.ENABLE_MULTI_TENANT, "0").strip() == "1"
 
 
+def dev_stdio_mode_enabled() -> bool:
+    return (
+        os.environ.get(env_vars.TRANSPORT, "streamable-http").strip().lower() == "stdio"
+        and os.environ.get(env_vars.ALLOW_STDIO_DEV, "0").strip() == "1"
+    )
+
+
+def auth_required_for_runtime() -> bool:
+    return not dev_stdio_mode_enabled()
+
+
 def vector_backend_name() -> str:
     return os.environ.get(env_vars.VECTOR_BACKEND, "local").strip().lower() or "local"
 

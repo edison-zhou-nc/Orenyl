@@ -11,6 +11,7 @@ import threading
 from typing import Any
 
 from mcp.server import Server
+from mcp.server.auth.provider import AccessToken
 from mcp.server.fastmcp import FastMCP
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -19,17 +20,16 @@ from . import audit
 from . import env_vars
 from .auth import (
     OIDCTokenVerifier,
+    all_authorization_scopes,
     authorize_action,
     build_token_verifier_from_env,
     extract_auth_token,
 )
 from .compliance import ComplianceService
-from .config import read_only_mode_enabled
+from .config import auth_required_for_runtime, read_only_mode_enabled
 from .consent import ConsentService
+from . import context_pack as context_pack_module
 from .context_pack import ContextPackBuilder
-from .context_pack import (
-    _reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests,
-)
 from .db import Database
 from .disaster_recovery import DRService
 from .embedding_provider import build_embedding_provider_from_env
@@ -47,6 +47,7 @@ from .policy import (
     PolicyEngine,
     agent_permissions_enabled,
     policy_shadow_mode_enabled,
+    validate_policy_configuration,
 )
 from .rate_limit import RateLimiter
 from .tenant import (
@@ -135,7 +136,7 @@ def _reset_runtime_state_for_tests() -> None:
         _DEFAULT_SALT_WARNING_EMITTED = False
         _federation_worker = None
         _rate_limiter = RateLimiter()
-    reset_context_pack_runtime_state_for_tests()
+    context_pack_module._reset_runtime_state_for_tests()
     reset_metrics_for_tests()
 
 
@@ -173,20 +174,30 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         args = dict(arguments or {})
         request_id = _resolve_request_id(args)
         args["_request_id"] = request_id
-        token = extract_auth_token(args)
-        try:
-            access = await _get_token_verifier().verify_token(token)
-        except (RuntimeError, ValueError) as exc:
-            logger.error("server_misconfigured tool=%s error=%s", name, exc)
-            raise PermissionError("server_misconfigured") from exc
-        if access is None:
-            audit.log_security_event(
-                name,
-                "deny",
-                request_id=request_id,
-                details={"reason": "unauthorized"},
+        auth_details: dict[str, Any] = {}
+        if auth_required_for_runtime():
+            token = extract_auth_token(args)
+            try:
+                access = await _get_token_verifier().verify_token(token)
+            except (RuntimeError, ValueError) as exc:
+                logger.error("server_misconfigured tool=%s error=%s", name, exc)
+                raise PermissionError("server_misconfigured") from exc
+            if access is None:
+                audit.log_security_event(
+                    name,
+                    "deny",
+                    request_id=request_id,
+                    details={"reason": "unauthorized"},
+                )
+                raise PermissionError("unauthorized")
+        else:
+            access = AccessToken(
+                token="",
+                client_id="local-dev",
+                scopes=all_authorization_scopes(),
+                resource=None,
             )
-            raise PermissionError("unauthorized")
+            auth_details["auth_mode"] = "dev-stdio"
         try:
             authorize_action(set(access.scopes), name)
         except PermissionError as exc:
@@ -210,6 +221,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             raise PermissionError("rate_limited")
         tenant_token = set_current_tenant_context(tenant_context)
         if agent_permissions_enabled():
+            try:
+                validate_policy_configuration()
+            except RuntimeError as exc:
+                logger.error("server_misconfigured tool=%s error=%s", name, exc)
+                raise PermissionError("server_misconfigured") from exc
             policy = PolicyEngine(db, shadow_mode=policy_shadow_mode_enabled())
             principal_agent = access.client_id
             if name == "retrieve_context_pack":
@@ -280,6 +296,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             "allow",
             principal_id=access.client_id,
             request_id=request_id,
+            details=auth_details,
         )
         if read_only_mode_enabled() and name not in READ_ONLY_SAFE_TOOLS:
             raise RuntimeError(f"{env_vars.READ_ONLY_MODE} enabled")
@@ -344,10 +361,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
 def run_ttl_sweep(delete_mode: str = "soft") -> dict[str, Any]:
     now = now_iso()
-    expired = db.get_expired_events(now)
+    get_expired_events_global = getattr(db, "get_expired_events_global", None)
+    if callable(get_expired_events_global):
+        expired = get_expired_events_global(now)
+    else:
+        expired = db.get_expired_events(now)
     processed: list[str] = []
     for event in expired:
-        engine.delete_and_recompute(event["id"], "event", reason="ttl_expired", mode=delete_mode)
+        engine.delete_and_recompute(
+            event["id"],
+            "event",
+            reason="ttl_expired",
+            mode=delete_mode,
+            tenant_id=str(event.get("tenant_id", "") or ""),
+        )
         processed.append(event["id"])
     logger.info(
         "ttl_sweep mode=%s scanned=%s deleted=%s",
@@ -421,13 +448,19 @@ async def run_stdio_server() -> None:
 
 
 def main():
-    try:
-        _get_token_verifier()
-    except (RuntimeError, ValueError) as exc:
-        logger.error("server_misconfigured error=%s", exc)
-        raise SystemExit(1) from exc
     mode = get_transport_mode()
     validate_transport_mode(mode)
+    try:
+        validate_policy_configuration()
+    except RuntimeError as exc:
+        logger.error("server_misconfigured error=%s", exc)
+        raise SystemExit(1) from exc
+    if auth_required_for_runtime():
+        try:
+            _get_token_verifier()
+        except (RuntimeError, ValueError) as exc:
+            logger.error("server_misconfigured error=%s", exc)
+            raise SystemExit(1) from exc
     if mode == "stdio":
         asyncio.run(run_stdio_server())
         return

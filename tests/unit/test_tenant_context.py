@@ -54,6 +54,12 @@ def test_resolve_tenant_context_requires_tenant_when_enabled():
             resolve_tenant_context(claims={"sub": "user-3"}, args={})
 
 
+def test_resolve_tenant_context_rejects_request_tenant_without_claim():
+    with _env("LORE_ENABLE_MULTI_TENANT", "1"):
+        with pytest.raises(PermissionError, match="tenant_scope_violation"):
+            resolve_tenant_context(claims={"sub": "user-4"}, args={"tenant_id": "tenant-a"})
+
+
 def test_tenant_context_contextvar_round_trip():
     assert get_current_tenant_context() is None
     context = TenantContext(tenant_id="tenant-z", user_id="user-z", agent_id="", session_id="")
