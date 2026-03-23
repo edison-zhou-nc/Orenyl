@@ -107,10 +107,11 @@ class AuditMixin(BaseMixin):
         if not delete_ids:
             return 0
 
-        placeholders = ", ".join("?" for _ in delete_ids)
+        delete_ids_json = json.dumps(delete_ids)
         cur = self.conn.execute(
-            f"DELETE FROM retrieval_logs WHERE id IN ({placeholders})",
-            delete_ids,
+            """DELETE FROM retrieval_logs
+               WHERE id IN (SELECT value FROM json_each(?))""",
+            (delete_ids_json,),
         )
         self._maybe_commit()
         return cur.rowcount
