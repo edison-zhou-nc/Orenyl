@@ -140,7 +140,10 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
     global DB_PATH, MAX_CONTEXT_PACK_LIMIT, MAX_LIST_EVENTS_LIMIT
     global db, engine, pack_builder, _federation_worker
     old_db = db
-    DB_PATH = db_path or os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+    resolved_db_path = db_path if db_path is not None else os.environ.get(
+        env_vars.DB_PATH, "lore_memory.db"
+    )
+    DB_PATH = resolved_db_path
     MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
     MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"))
     db = Database(DB_PATH)
