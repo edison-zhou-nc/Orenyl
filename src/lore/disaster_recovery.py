@@ -25,7 +25,7 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-_SNAPSHOT_LABEL_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+_SNAPSHOT_LABEL_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 def _sanitize_snapshot_label(label: str) -> str:

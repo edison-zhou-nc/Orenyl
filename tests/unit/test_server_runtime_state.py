@@ -3,7 +3,11 @@ from pathlib import Path
 
 from lore import context_pack as context_pack_module
 from lore import server
+from lore.context_pack import ContextPackBuilder
+from lore.db import Database
 from lore.lazy import Lazy
+from lore.lineage import LineageEngine
+from lore.models import Event
 
 
 def test_reset_runtime_state_clears_verifier_and_salt_warning(monkeypatch):
@@ -60,8 +64,25 @@ def test_get_token_verifier_caches_build_runtime_error(monkeypatch):
     assert isinstance(server._token_verifier_error, RuntimeError)
 
 
-def test_server_does_not_alias_context_pack_test_reset_helper_at_import_time():
-    repo_root = Path(__file__).resolve().parents[2]
-    source = (repo_root / "src" / "lore" / "server.py").read_text(encoding="utf-8")
+def test_rebind_runtime_state_for_tests_rebinds_database_path_from_env(monkeypatch, tmp_path):
+    seeded_db = tmp_path / "seeded.db"
+    fresh_db = tmp_path / "fresh.db"
 
-    assert "_reset_runtime_state_for_tests as reset_context_pack_runtime_state_for_tests" not in source
+    seeded = Database(str(seeded_db))
+    seeded.insert_event(Event(id="event:test:seeded", type="note", payload={"text": "seeded"}))
+    monkeypatch.setattr(server, "db", seeded)
+    monkeypatch.setattr(server, "engine", LineageEngine(seeded))
+    monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(seeded))
+    monkeypatch.setattr(server, "DB_PATH", str(seeded_db))
+    monkeypatch.setenv("LORE_DB_PATH", str(fresh_db))
+
+    server._rebind_runtime_state_for_tests()
+
+    payload = server.db.get_active_events()
+    assert payload == []
+
+
+def test_server_does_not_alias_context_pack_test_reset_helper_at_import_time():
+    import lore.server as server_module
+
+    assert not hasattr(server_module, "reset_context_pack_runtime_state_for_tests")

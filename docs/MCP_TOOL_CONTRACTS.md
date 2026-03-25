@@ -39,18 +39,22 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 
 ### `list_events`
 - Schema: accepts `domain`, `limit`, `offset`, and `include_tombstoned`.
+- Defaults: `limit` defaults to `50`, `offset` defaults to `0`, `domain` defaults to `general`.
 - Auth: requires `memory:read`.
 - Side effects: reads paginated event history and emits metrics.
 - Sample response: `{"total_count": 1, "count": 1, "events": [...]}`.
 
 ### `export_domain`
 - Schema: requires `domain`; accepts `format`, `confirm_restricted`, `page_size`, `cursor`, `stream`, and `include_hashes`.
+- Defaults: `format` defaults to `json`, `stream` defaults to `false`, `page_size` defaults to `0`.
 - Auth: requires `memory:export`; restricted exports additionally require the restricted export capability.
 - Side effects: reads events, facts, lineage edges, and may emit restricted-access audit denials.
+- Pagination note: when `page_size`, `cursor`, or `stream` are requested, the handler performs a full server-side load of all events and facts before slicing. Domains with more than 10,000 events return `{"error": "export_domain_too_large_for_pagination"}` instead.
 - Sample response: `{"domain": "general", "events": [], "facts": [], "edges": [], "summary": "..."}`.
 
 ### `erase_subject_data`
 - Schema: requires `subject_id`; accepts `mode` and `reason`.
+- Defaults: `mode` defaults to `hard`, `reason` defaults to `subject_erasure`.
 - Auth: requires `memory:delete`.
 - Side effects: cascades subject-linked deletion and returns verification output.
 - Sample response: `{"ok": true, "deleted_event_count": 1, "deletion_verified": true}`.
@@ -63,6 +67,7 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 
 ### `record_consent`
 - Schema: requires `subject_id` and `status`; accepts `purpose`, `legal_basis`, `source`, and `metadata`.
+- Defaults: `purpose` defaults to `retrieval`, `legal_basis` defaults to an empty string, `source` defaults to `user`.
 - Auth: requires `memory:write`.
 - Side effects: writes a consent record and updates compliance state.
 - Sample response: `{"ok": true, "record_id": "consent:..."}`.
@@ -75,12 +80,14 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 
 ### `audit_anomaly_scan`
 - Schema: accepts `window_minutes` and `limit`.
+- Defaults: `window_minutes` defaults to `60`, `limit` defaults to `500`.
 - Auth: requires `memory:read`.
 - Side effects: reads audit history and returns anomaly candidates.
 - Sample response: `{"ok": true, "window_minutes": 60, "alerts": []}`.
 
 ### `create_snapshot`
 - Schema: accepts `label`.
+- Defaults: `label` defaults to `manual`.
 - Auth: requires `memory:write`.
 - Side effects: creates a snapshot file and records DR metadata in the database.
 - Sample response: `{"ok": true, "snapshot_id": "snapshot:manual:...", "checksum": "..."}`.

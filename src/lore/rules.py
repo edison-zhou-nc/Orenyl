@@ -6,9 +6,11 @@ Rules are pure functions: same events → same facts. Always.
 
 from __future__ import annotations
 
-from .domain_registry import CORE_DOMAINS
-from .base_rule import DerivationRule
 from typing import Any
+
+from .base_rule import DerivationRule
+from .domain_registry import CORE_DOMAINS
+from .summary_rule import DomainSummaryRule
 
 
 class MedicationActiveRule(DerivationRule):
@@ -112,9 +114,6 @@ class DietPreferenceRule(DerivationRule):
             "since": latest_ts if latest_value else None,
         }
 
-
-# Registry: all rules the engine knows about
-from .summary_rule import DomainSummaryRule
 
 _summary_rule = DomainSummaryRule()
 

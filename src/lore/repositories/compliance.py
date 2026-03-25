@@ -111,10 +111,16 @@ class ComplianceMixin(BaseMixin):
                FROM (SELECT value AS subject_id FROM json_each(?)) x""",
             (purpose, tenant_id, tenant_id, subject_ids_json),
         ).fetchall()
+        # Exclude subjects whose latest consent status is not an explicit allow.
+        # This mirrors ConsentService.is_processing_allowed: any status outside
+        # {granted, allow, allowed} (case-insensitive) is treated as not processable.
+        # A missing record (None) is treated as allowed per default-permit policy.
+        _allowed = {"granted", "allow", "allowed"}
         return {
             str(row["subject_id"])
             for row in rows
-            if str(row["latest_status"] or "").lower() == "withdrawn"
+            if row["latest_status"] is not None
+            and str(row["latest_status"]).lower() not in _allowed
         }
 
     def list_consent_purposes(self, tenant_id: str = "") -> list[dict[str, str]]:

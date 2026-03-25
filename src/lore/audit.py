@@ -35,6 +35,11 @@ def _conn() -> sqlite3.Connection:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA busy_timeout=5000")
+        # foreign_keys=ON is safe here: the only FK is security_audit_chain.event_id →
+        # security_audit_events(id) ON DELETE CASCADE. Insertion order is always safe
+        # (event row written before chain row in log_security_event). Deletion is handled
+        # automatically by CASCADE; clear_events() deletes chain rows first as additional
+        # belt-and-suspenders, not as a requirement.
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute(
             """CREATE TABLE IF NOT EXISTS security_audit_events (
