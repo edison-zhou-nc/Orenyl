@@ -148,6 +148,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
     )
     event_payload = plain_payload
     if should_encrypt_payload:
+        assert encryption_material is not None
         runtime_key, runtime_salt, key_version = encryption_material
         plaintext = content or json.dumps(plain_payload, sort_keys=True)
         event_payload = {
