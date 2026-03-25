@@ -1,6 +1,7 @@
 import base64
 
 import pytest
+from cryptography.exceptions import InvalidTag
 
 from lore.encryption import decrypt_content, encrypt_content, generate_key
 
@@ -19,7 +20,7 @@ def test_decrypt_rejects_wrong_key():
     wrong_key = generate_key("wrong-passphrase", salt)
     payload = encrypt_content("hello", key, salt=salt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         decrypt_content(payload, wrong_key)
 
 
@@ -31,7 +32,7 @@ def test_decrypt_rejects_tampered_ciphertext():
     ciphertext[-1] ^= 0x01
     tampered_payload = dict(payload, ciphertext=base64.b64encode(ciphertext).decode("ascii"))
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidTag):
         decrypt_content(tampered_payload, key)
 
 
@@ -41,7 +42,7 @@ def test_decrypt_rejects_missing_nonce():
     payload = encrypt_content("hello", key, salt=salt)
     payload.pop("nonce")
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError, match="malformed_ciphertext"):
         decrypt_content(payload, key)
 
 
