@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 
 from lore import context_pack as context_pack_module
 from lore import server
