@@ -55,3 +55,18 @@ def test_mcp_tool_contract_doc_covers_export_domain_streaming_and_correct_audit_
     audit_section = doc.split("### `audit_anomaly_scan`", 1)[1].split("\n### `", 1)[0]
     assert "memory:read" in audit_section
     assert "memory:export" not in audit_section
+
+
+def test_mcp_tool_contract_doc_mentions_key_defaults() -> None:
+    doc = (REPO_ROOT / "docs" / "MCP_TOOL_CONTRACTS.md").read_text()
+
+    assert '`limit` defaults to `50`' in doc
+    assert '`offset` defaults to `0`' in doc
+    assert '`format` defaults to `json`' in doc
+    assert '`stream` defaults to `false`' in doc
+    assert '`mode` defaults to `hard`' in doc
+    assert '`reason` defaults to `subject_erasure`' in doc
+    assert '`purpose` defaults to `retrieval`' in doc
+    assert '`label` defaults to `manual`' in doc
+    assert '`window_minutes` defaults to `60`' in doc
+    assert '`limit` defaults to `500`' in doc

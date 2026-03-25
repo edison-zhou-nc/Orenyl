@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/lore-mcp)](https://pypi.org/project/lore-mcp/)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ![Lore social preview](docs/assets/lore_social_preview.png)
@@ -110,6 +110,7 @@ Use `streamable-http` with authenticated bearer tokens for real deployments.
 5. `list_events(domain, limit=50, offset=0, include_tombstoned=False)`
 6. `export_domain(domain, format=json|markdown|timeline, confirm_restricted=False)`
    - also supports `page_size`, `cursor`, `stream`, and `include_hashes`
+   - pagination/streaming performs a full server-side load before slicing; domains with more than 10,000 events return `{"error": "export_domain_too_large_for_pagination"}`
 7. `erase_subject_data(subject_id, mode=hard|soft, reason=subject_erasure)`
 8. `export_subject_data(subject_id)`
 9. `record_consent(subject_id, status, purpose?, legal_basis?, source?, metadata?)`
@@ -124,20 +125,32 @@ Use `streamable-http` with authenticated bearer tokens for real deployments.
 | Variable | Default | Purpose |
 |---|---|---|
 | `LORE_DB_PATH` | `lore_memory.db` | SQLite database path |
+| `LORE_AUDIT_DB_PATH` | `lore_audit.db` | SQLite audit log database path |
+| `LORE_DR_SNAPSHOT_DIR` | `lore_snapshots` | Directory used for disaster recovery snapshots |
 | `LORE_TRANSPORT` | `streamable-http` | Server transport mode |
 | `LORE_ALLOW_STDIO_DEV` | `0` | Allow stdio transport in dev |
 | `LORE_MAX_CONTEXT_PACK_LIMIT` | `100` | Upper bound for context retrieval |
 | `LORE_MAX_LIST_EVENTS_LIMIT` | `200` | Upper bound for list_events |
+| `LORE_READ_ONLY_MODE` | `0` | Reject mutating tools while keeping read-safe tools available |
+| `LORE_RATE_LIMIT_RPM` | `100` | Per-tenant request budget; `0` disables rate limiting |
+| `LORE_COMPLIANCE_STRICT_MODE` | `1` | Tighten compliance behavior for restricted or incomplete requests |
+| `LORE_ENABLE_MULTI_TENANT` | `0` | Enable tenant-aware request resolution and isolation checks |
+| `LORE_ENABLE_AGENT_PERMISSIONS` | `0` | Enforce domain-scoped policy checks for authenticated agents |
+| `LORE_POLICY_SHADOW_MODE` | `0` | Log policy denies without enforcing them; unsafe with some agent-permission combinations |
 | `LORE_ENABLE_SEMANTIC_DEDUP` | `0` | Enable semantic duplicate suppression |
 | `LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT` | `0.92` | Default cosine threshold for semantic dedup |
 | `LORE_SEMANTIC_DEDUP_THRESHOLD_<DOMAIN>` | unset | Domain-specific dedup threshold override (example: `..._HEALTH`) |
 | `LORE_MIN_FACT_CONFIDENCE` | `0.7` | Minimum confidence required for facts in context packs |
 | `LORE_EMBEDDING_PROVIDER` | `hash-local` | Embedding provider (`hash-local` or `openai`) |
+| `LORE_VECTOR_BACKEND` | `local` | Vector storage backend (`local`, `sqlite`, or `pgvector`) |
+| `LORE_PGVECTOR_DSN` | unset | PostgreSQL DSN used when `LORE_VECTOR_BACKEND=pgvector` |
 | `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider only (ignored for `openai`) |
 | `LORE_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
 | `LORE_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
+| `LORE_EMBEDDING_TIMEOUT_SECONDS` | `10` | Timeout before retrieval falls back when embeddings stall |
 | `LORE_ENCRYPTION_PASSPHRASE` | unset | Enables encryption for high/restricted payloads |
 | `LORE_ENCRYPTION_SALT` | unset | Base64 salt for key derivation |
+| `LORE_ENCRYPTION_KEY_VERSION` | `v1` | Active encryption key version stamped onto encrypted payloads |
 | `LORE_ALLOW_INSECURE_DEV_SALT` | `0` | Dev-only fallback when salt is unset |
 | `LORE_TTL_DELETE_MODE` | `soft` | TTL cleanup deletion mode |
 | `LORE_TTL_SWEEP_INTERVAL_SECONDS` | `3600` | TTL sweep interval |
@@ -146,10 +159,14 @@ Use `streamable-http` with authenticated bearer tokens for real deployments.
 | `LORE_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms; default requires issuer config |
 | `LORE_OIDC_HS256_SECRET` | unset | HS256 verifier secret (required when `HS256` is enabled) |
 | `LORE_OIDC_JWKS_URL` | unset | JWKS endpoint for RS256 verification |
+| `LORE_OIDC_JWKS_CACHE_TTL_SECONDS` | `300` | JWKS cache lifetime for RS256 verification |
+| `LORE_OIDC_CLOCK_SKEW_SECONDS` | `30` | Allowed token clock skew in seconds |
+| `LORE_FEDERATION_NODE_ID` | `node-local` | Stable node identifier for federation journals and conflict resolution |
 
 Notes:
 - With default `LORE_OIDC_ALLOWED_ALGS=RS256`, startup requires `LORE_OIDC_ISSUER` (and typically `LORE_OIDC_JWKS_URL`).
 - HS256-only deployments should explicitly set `LORE_OIDC_ALLOWED_ALGS=HS256`, `LORE_OIDC_HS256_SECRET`, and `LORE_OIDC_ISSUER`.
+- Multi-version key rotation can use `LORE_ENCRYPTION_PASSPHRASE_<VERSION>` and `LORE_ENCRYPTION_SALT_<VERSION>` alongside `LORE_ENCRYPTION_KEY_VERSION`.
 
 ## Security Notes
 

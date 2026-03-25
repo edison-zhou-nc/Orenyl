@@ -23,8 +23,20 @@ def test_compliance_repository_round_trips_tombstones_consent_and_snapshots():
             status="withdrawn",
         )
     )
+    db.insert_consent_record(
+        ConsentRecord(
+            tenant_id="default",
+            subject_id="user:denied",
+            purpose="retrieval",
+            status="denied",
+        )
+    )
     assert db.latest_consent_status("user:consent", "retrieval") == "withdrawn"
-    assert db.withdrawn_subject_ids(["user:consent", "user:other"], "retrieval") == {"user:consent"}
+    # withdrawn_subject_ids excludes any status not in {granted, allow, allowed},
+    # not just 'withdrawn' — mirrors ConsentService.is_processing_allowed semantics.
+    assert db.withdrawn_subject_ids(
+        ["user:consent", "user:denied", "user:other"], "retrieval"
+    ) == {"user:consent", "user:denied"}
 
     request = SubjectRequest(
         request_id="req:test:repo-c1",

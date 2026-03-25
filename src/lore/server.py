@@ -16,8 +16,8 @@ from mcp.server.fastmcp import FastMCP
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-from . import audit
-from . import env_vars
+from . import audit, env_vars
+from . import context_pack as context_pack_module
 from .auth import (
     OIDCTokenVerifier,
     all_authorization_scopes,
@@ -26,9 +26,8 @@ from .auth import (
     extract_auth_token,
 )
 from .compliance import ComplianceService
-from .config import auth_required_for_runtime, read_only_mode_enabled
+from .config import auth_required_for_runtime, multi_tenant_enabled, read_only_mode_enabled
 from .consent import ConsentService
-from . import context_pack as context_pack_module
 from .context_pack import ContextPackBuilder
 from .db import Database
 from .disaster_recovery import DRService
@@ -122,8 +121,34 @@ def _get_embedding_provider():
     return _embedding_provider_lazy.value
 
 
+def _warn_on_risky_policy_configuration() -> None:
+    if (
+        agent_permissions_enabled()
+        and policy_shadow_mode_enabled()
+        and not multi_tenant_enabled()
+    ):
+        logger.warning(
+            "policy_shadow_mode_active agent_permissions_enabled=true multi_tenant_enabled=false"
+        )
+
+
 def _misconfig_error_markers() -> tuple[str, ...]:
     return env_vars.all_names() + env_vars.all_prefixes()
+
+
+def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
+    global DB_PATH, MAX_CONTEXT_PACK_LIMIT, MAX_LIST_EVENTS_LIMIT
+    global db, engine, pack_builder, _federation_worker
+    old_db = db
+    DB_PATH = db_path or os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+    MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
+    MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"))
+    db = Database(DB_PATH)
+    engine = LineageEngine(db)
+    pack_builder = ContextPackBuilder(db)
+    _federation_worker = None
+    with contextlib.suppress(Exception):
+        old_db.close()
 
 
 def _reset_runtime_state_for_tests() -> None:
@@ -347,7 +372,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         )
         error_payload: dict[str, Any] = {
             "ok": False,
-            "error": {"type": type(e).__name__, "message": safe_error},
+            "error": {"type": "internal_error", "message": safe_error},
         }
         if name == "store_event":
             error_payload["stored"] = False
@@ -450,6 +475,7 @@ async def run_stdio_server() -> None:
 def main():
     mode = get_transport_mode()
     validate_transport_mode(mode)
+    _warn_on_risky_policy_configuration()
     try:
         validate_policy_configuration()
     except RuntimeError as exc:

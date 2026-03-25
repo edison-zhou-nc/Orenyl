@@ -442,7 +442,9 @@ class EventMixin(BaseMixin):
         self._maybe_commit()
         return cur.rowcount > 0
 
-    def update_event_payload(self, event_id: str, payload: dict[str, Any], tenant_id: str = "") -> bool:
+    def update_event_payload(
+        self, event_id: str, payload: dict[str, Any], tenant_id: str = ""
+    ) -> bool:
         tenant_id = self._require_tenant_scope(tenant_id)
         cur = self.conn.execute(
             """UPDATE events

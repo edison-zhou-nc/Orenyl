@@ -174,6 +174,84 @@ class FactMixin(BaseMixin):
                 result.append(data)
         return result
 
+    def get_restricted_fact_ids_for_export_domain(
+        self,
+        domain: str,
+        tenant_id: str = "",
+    ) -> list[str]:
+        if domain and domain != "general":
+            rows = self.conn.execute(
+                """SELECT DISTINCT f.id
+                   FROM facts f
+                   WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
+                     AND EXISTS (
+                         SELECT 1
+                         FROM edges e
+                         JOIN event_domains ed ON ed.event_id = e.parent_id
+                         JOIN events ev ON ev.id = e.parent_id
+                         WHERE e.child_id = f.id
+                           AND e.parent_type = 'event'
+                           AND ed.domain = ?
+                           AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
+                     )
+                     AND EXISTS (
+                         SELECT 1
+                         FROM edges e2
+                         JOIN events ev2 ON ev2.id = e2.parent_id
+                         WHERE e2.child_id = f.id
+                           AND e2.parent_type = 'event'
+                           AND LOWER(COALESCE(ev2.sensitivity, '')) = 'restricted'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
+                     )
+                   ORDER BY f.id""",
+                (
+                    tenant_id,
+                    tenant_id,
+                    domain,
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                ),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                """SELECT DISTINCT f.id
+                   FROM facts f
+                   WHERE f.invalidated_at IS NULL
+                     AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
+                     AND EXISTS (
+                         SELECT 1
+                         FROM edges e
+                         JOIN events ev ON ev.id = e.parent_id
+                         WHERE e.child_id = f.id
+                           AND e.parent_type = 'event'
+                           AND ev.archived_at IS NULL
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
+                     )
+                     AND EXISTS (
+                         SELECT 1
+                         FROM edges e2
+                         JOIN events ev2 ON ev2.id = e2.parent_id
+                         WHERE e2.child_id = f.id
+                           AND e2.parent_type = 'event'
+                           AND LOWER(COALESCE(ev2.sensitivity, '')) = 'restricted'
+                           AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
+                     )
+                   ORDER BY f.id""",
+                (
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                    tenant_id,
+                ),
+            ).fetchall()
+        return [str(row["id"]) for row in rows]
+
     def get_fact(self, fact_id: str, tenant_id: str = "") -> dict | None:
         row = self.conn.execute(
             """SELECT * FROM facts

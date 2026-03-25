@@ -2,6 +2,8 @@ import asyncio
 import hashlib
 import json
 
+import pytest
+
 from lore import server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
@@ -94,3 +96,71 @@ def test_export_domain_stream_jsonl_includes_chunk_hash(monkeypatch):
     )
     expected = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     assert hash_records[0]["sha256"] == expected
+
+
+def test_export_domain_pagination_guard_fails_fast_before_materialization(monkeypatch):
+    db = Database(":memory:")
+    _reset_server(monkeypatch, db)
+
+    monkeypatch.setattr(
+        db,
+        "get_restricted_fact_ids_for_export_domain",
+        lambda domain, tenant_id="": [],
+        raising=False,
+    )
+    monkeypatch.setattr(db, "get_event_count", lambda domain="general", tenant_id="": 10001)
+    monkeypatch.setattr(
+        db,
+        "get_active_events_by_domains",
+        lambda *args, **kwargs: pytest.fail("should not materialize events before guard"),
+    )
+    monkeypatch.setattr(
+        db,
+        "get_active_events",
+        lambda *args, **kwargs: pytest.fail("should not materialize events before guard"),
+    )
+    monkeypatch.setattr(
+        db,
+        "get_current_facts_by_domain",
+        lambda *args, **kwargs: pytest.fail("should not materialize facts before guard"),
+    )
+
+    out = asyncio.run(
+        server.handle_export_domain(
+            {
+                "domain": "preferences",
+                "format": "json",
+                "page_size": 10,
+            }
+        )
+    )
+    payload = json.loads(out[0].text)
+
+    assert payload == {
+        "error": "export_domain_too_large_for_pagination",
+        "event_count": 10001,
+    }
+
+
+def test_export_domain_invalid_cursor_returns_stable_tool_error(monkeypatch):
+    db = Database(":memory:")
+    _reset_server(monkeypatch, db)
+    _seed_export_data(db)
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    server._reset_runtime_state_for_tests()
+
+    out = asyncio.run(
+        server.call_tool(
+            "export_domain",
+            {
+                "domain": "preferences",
+                "format": "json",
+                "page_size": 2,
+                "cursor": "not-base64",
+            },
+        )
+    )
+    payload = json.loads(out[0].text)
+
+    assert payload["error"] == "invalid_cursor"

@@ -99,3 +99,28 @@ def test_snapshot_rejects_path_traversal_label(tmp_path):
 
     with pytest.raises(RuntimeError, match="invalid_snapshot_label"):
         dr.create_snapshot(label="..\\..\\escape")
+
+
+def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
+    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+
+    snapshot = dr.create_snapshot(label="v1.0")
+    assert snapshot["ok"] is True
+    assert "v1.0" in snapshot["snapshot_id"]
+
+    snapshot2 = dr.create_snapshot(label="2026-03-24")
+    assert snapshot2["ok"] is True
+    assert "2026-03-24" in snapshot2["snapshot_id"]
+
+
+def test_snapshot_rejects_forward_slash_traversal_label(tmp_path, monkeypatch):
+    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+
+    with pytest.raises(RuntimeError, match="invalid_snapshot_label"):
+        dr.create_snapshot(label="../../escape")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from .embeddings import cosine_similarity
@@ -52,7 +52,7 @@ def check_semantic_duplicate(
         candidate_embedding = provider.embed_text(content)
     except Exception:
         return False, None
-    threshold_ts = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).strftime(
+    threshold_ts = (datetime.now(UTC) - timedelta(hours=window_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
     rows = db.get_recent_events_in_domains(domains, threshold_ts, tenant_id=tenant_id)
@@ -73,7 +73,8 @@ def check_semantic_duplicate(
                 )
             elif existing_model != str(provider.provider_id):
                 logger.warning(
-                    "semantic_dedup_embedding_model_mismatch event_id=%s stored_model=%s provider=%s",
+                    "semantic_dedup_embedding_model_mismatch "
+                    "event_id=%s stored_model=%s provider=%s",
                     event.get("id"),
                     existing_model,
                     provider.provider_id,
@@ -81,7 +82,8 @@ def check_semantic_duplicate(
                 existing_embedding = None
             elif len(existing_embedding) != len(candidate_embedding):
                 logger.warning(
-                    "semantic_dedup_embedding_dim_mismatch event_id=%s stored_dim=%s candidate_dim=%s",
+                    "semantic_dedup_embedding_dim_mismatch "
+                    "event_id=%s stored_dim=%s candidate_dim=%s",
                     event.get("id"),
                     len(existing_embedding),
                     len(candidate_embedding),

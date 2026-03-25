@@ -1,6 +1,7 @@
 import asyncio
 import pytest
 from lore import server
+from lore.handlers import core as core_handlers
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
@@ -45,3 +46,22 @@ def test_export_domain_restricted_requires_scope_even_without_auth_fields(monkey
 
     with pytest.raises(PermissionError, match="forbidden"):
         asyncio.run(server.handle_export_domain({"domain": "health", "format": "json"}))
+
+
+def test_export_domain_does_not_apply_retrieval_consent_filtering(monkeypatch):
+    # export_domain is an admin/DSAR surface; retrieval-consent scoping applies only to
+    # retrieve_context, not to history/export paths. Events are returned regardless of
+    # subject consent status or strict-mode setting.
+    db = Database(":memory:")
+    _reset_server(monkeypatch, db)
+    ev = Event(
+        id="event:test:export:no-strict",
+        type="diet_preference",
+        payload={"value": "vegan"},
+        domains=["health"],
+    )
+    db.insert_event(ev)
+
+    out = asyncio.run(server.handle_export_domain({"domain": "health", "format": "json"}))
+
+    assert '"domain": "health"' in out[0].text
