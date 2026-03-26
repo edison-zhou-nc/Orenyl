@@ -58,3 +58,14 @@ def test_dev_stdio_mode_disables_runtime_auth_requirement(monkeypatch):
 
     assert dev_stdio_mode_enabled() is False
     assert auth_required_for_runtime() is True
+
+
+def test_build_token_verifier_warns_on_mixed_hs256_and_rs256(caplog, monkeypatch):
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256,RS256")
+    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", "super-secret")
+
+    build_token_verifier_from_env()
+
+    assert any("mixed_hs256_rs256" in record.message for record in caplog.records)

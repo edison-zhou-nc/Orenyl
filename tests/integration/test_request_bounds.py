@@ -70,3 +70,33 @@ def test_list_events_uses_db_pagination_path(monkeypatch):
     assert payload["total_count"] == 5
     assert payload["count"] == 2
     assert len(payload["events"]) == 2
+
+
+def test_list_events_strict_mode_uses_sql_pagination_path(monkeypatch):
+    monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
+    fresh_db = Database(":memory:")
+    monkeypatch.setattr(server, "db", fresh_db)
+    monkeypatch.setattr(server, "MAX_LIST_EVENTS_LIMIT", 2)
+
+    for i in range(5):
+        fresh_db.insert_event(
+            Event(
+                id=f"event:test:strict-paged:{i}",
+                type="note",
+                payload={"i": i},
+                domains=["general"],
+            )
+        )
+
+    def fail_full_scan(*args, **kwargs):
+        raise AssertionError("full_scan_not_allowed")
+
+    monkeypatch.setattr(fresh_db, "get_events_by_domains", fail_full_scan)
+    monkeypatch.setattr(fresh_db, "get_active_events", fail_full_scan)
+
+    out = asyncio.run(server.handle_list_events({"domain": "general", "limit": 50, "offset": 1}))
+    payload = json.loads(out[0].text)
+
+    assert payload["total_count"] == 5
+    assert payload["count"] == 2
+    assert len(payload["events"]) == 2

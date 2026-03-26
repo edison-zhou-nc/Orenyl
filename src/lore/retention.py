@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .db import Database
 
 
 def _parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(timezone.utc)
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
 
 
 def _age_days(ts: str, now_ts: str) -> int:

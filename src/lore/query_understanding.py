@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 
-
 _DOMAIN_KEYWORDS = {
     "health": {"med", "meds", "medication", "medications", "dose", "prescription"},
     "career": {"role", "promotion", "job", "manager"},

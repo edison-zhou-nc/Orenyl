@@ -49,7 +49,9 @@ def test_withdrawn_consent_excludes_subject_facts_from_retrieval(monkeypatch):
     assert len(after.facts) == 0
 
 
-def test_withdrawn_consent_excludes_subject_events_from_list_events(monkeypatch):
+def test_withdrawn_consent_does_not_suppress_events_from_list_events(monkeypatch):
+    # list_events is an admin/history surface; retrieval-consent filtering applies only
+    # to retrieve_context. Withdrawn consent must not hide events from admin views.
     monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
@@ -75,11 +77,13 @@ def test_withdrawn_consent_excludes_subject_events_from_list_events(monkeypatch)
     out = asyncio.run(server.handle_list_events({"domain": "health"}))
     payload = json.loads(out[0].text)
 
-    assert payload["count"] == 0
-    assert payload["events"] == []
+    assert payload["count"] == 1
+    assert payload["events"][0]["id"] == "event:test:consent-list-u123"
 
 
-def test_withdrawn_consent_excludes_subject_data_from_export_domain(monkeypatch):
+def test_withdrawn_consent_does_not_suppress_events_from_export_domain(monkeypatch):
+    # export_domain is an admin/DSAR surface; retrieval-consent filtering applies only
+    # to retrieve_context. Withdrawn consent must not hide events from export views.
     monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
@@ -105,6 +109,5 @@ def test_withdrawn_consent_excludes_subject_data_from_export_domain(monkeypatch)
     out = asyncio.run(server.handle_export_domain({"domain": "health", "format": "json"}))
     payload = json.loads(out[0].text)
 
-    assert payload["events"] == []
-    assert payload["facts"] == []
-    assert payload["edges"] == []
+    assert len(payload["events"]) == 1
+    assert payload["events"][0]["id"] == "event:test:consent-export-u123"

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -25,7 +25,7 @@ def check_duplicate(
         return False
     # Dedup window is based on event occurrence time (events.ts), not insertion time.
     # This preserves deterministic replay behavior but can be affected by backdated events.
-    threshold = (datetime.now(timezone.utc) - timedelta(hours=window_hours)).strftime(
+    threshold = (datetime.now(UTC) - timedelta(hours=window_hours)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
     domains_json = json.dumps(domains)

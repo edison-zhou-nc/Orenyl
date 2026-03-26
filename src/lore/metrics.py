@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 import threading
-
+from collections import defaultdict
 
 _COUNTERS: dict[tuple[str, ...], int] = defaultdict(int)
 _LATENCIES: dict[str, list[float]] = defaultdict(list)
