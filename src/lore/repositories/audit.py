@@ -72,15 +72,6 @@ class AuditMixin(BaseMixin):
             result.append(data)
         return result
 
-    def delete_retrieval_logs(self, tenant_id: str = "") -> int:
-        cur = self.conn.execute(
-            """DELETE FROM retrieval_logs
-               WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
-            (tenant_id, tenant_id),
-        )
-        self._maybe_commit()
-        return cur.rowcount
-
     def delete_retrieval_logs_for_lineage(
         self,
         referenced_ids: list[str],

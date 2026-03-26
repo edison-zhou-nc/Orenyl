@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 import os
 from dataclasses import dataclass
@@ -116,8 +117,11 @@ def decrypt_content(payload: dict, key: bytes) -> str:
         raise ValueError("unsupported_algorithm")
     if payload.get("kdf") != "argon2id":
         raise ValueError("unsupported_kdf")
-    nonce = base64.b64decode(payload["nonce"])
-    ciphertext = base64.b64decode(payload["ciphertext"])
+    try:
+        nonce = base64.b64decode(payload["nonce"], validate=True)
+        ciphertext = base64.b64decode(payload["ciphertext"], validate=True)
+    except (KeyError, ValueError, binascii.Error) as exc:
+        raise ValueError("malformed_ciphertext") from exc
     aesgcm = AESGCM(key)
     plaintext = aesgcm.decrypt(nonce, ciphertext, None)
     return plaintext.decode("utf-8")

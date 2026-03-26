@@ -16,8 +16,9 @@ def rank_items(
     recency_order: list[str] | None,
     importance: dict[str, float] | None = None,
 ) -> list[dict]:
-    # When vector_order is absent, vector contribution remains 0.0 and weights are not renormalized.
-    # This keeps fallback scoring conservative and stable until vector signals are explicitly provided.
+    # When vector_order is absent, vector contribution remains 0.0
+    # and weights are not renormalized. This keeps fallback scoring
+    # conservative until vector signals are explicitly provided.
     importance = importance or {}
     keyword_scores = _rrf_score(keyword_order)
     vector_scores = _rrf_score(vector_order)

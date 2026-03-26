@@ -85,7 +85,7 @@ def test_call_tool_domain_runtime_error_is_not_remapped(monkeypatch):
     )
     payload = json.loads(out[0].text)
     assert payload["stored"] is False
-    assert payload["error"]["type"] == "RuntimeError"
+    assert payload["error"]["type"] == "internal_error"
     assert "server_misconfigured" not in payload["error"]["message"]
     assert f"{env_vars.ENCRYPTION_SALT} is required" in payload["error"]["message"]
 
@@ -116,7 +116,7 @@ def test_call_tool_sanitizes_non_config_internal_errors(monkeypatch):
 
     payload = json.loads(out[0].text)
     assert payload["ok"] is False
-    assert payload["error"]["type"] == "RuntimeError"
+    assert payload["error"]["type"] == "internal_error"
     assert payload["error"]["message"] == "internal_error; see server logs"
 
 

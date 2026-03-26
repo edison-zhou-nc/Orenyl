@@ -15,6 +15,9 @@ SENSITIVE_PATTERNS = [
     re.compile(r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\b"),
     re.compile(r"\bbearer\s+[A-Za-z0-9._-]{20,}\b", re.I),
     re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
+    re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I),
+    re.compile(r"\b(?:\+?\d{1,2}[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?){2}\d{4}\b"),
+    re.compile(r"\b(?:postgres(?:ql)?|mysql|redis|mongodb):\/\/\S+:\S+@\S+\/\S+\b", re.I),
 ]
 
 # Heuristic phrase filters. These are intentionally conservative and can miss

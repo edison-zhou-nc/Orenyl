@@ -4,8 +4,7 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import audit
-from lore import server
+from lore import audit, server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
@@ -237,6 +236,45 @@ def test_export_domain_restricted_requires_stronger_scope(monkeypatch):
                 {
                     "domain": "health",
                     "format": "json",
+                    "confirm_restricted": True,
+                    "_auth_token": "export",
+                },
+            )
+        )
+
+
+def test_export_domain_restricted_pagination_checks_scope_before_size_guard(monkeypatch):
+    _reset_server_state(monkeypatch)
+    monkeypatch.setattr(
+        server.db,
+        "get_restricted_fact_ids_for_export_domain",
+        lambda domain, tenant_id="": ["fact:test:restricted"],
+        raising=False,
+    )
+    monkeypatch.setattr(
+        server.db,
+        "get_event_count",
+        lambda domain="general", tenant_id="": 10001,
+    )
+    monkeypatch.setattr(
+        server.db,
+        "get_active_events_by_domains",
+        lambda *args, **kwargs: pytest.fail("should not materialize events before auth checks"),
+    )
+    monkeypatch.setattr(
+        server.db,
+        "get_current_facts_by_domain",
+        lambda *args, **kwargs: pytest.fail("should not materialize facts before auth checks"),
+    )
+
+    with pytest.raises(PermissionError, match="forbidden"):
+        asyncio.run(
+            server.call_tool(
+                "export_domain",
+                {
+                    "domain": "health",
+                    "format": "json",
+                    "page_size": 1,
                     "confirm_restricted": True,
                     "_auth_token": "export",
                 },
