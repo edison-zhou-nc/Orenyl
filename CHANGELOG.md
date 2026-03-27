@@ -21,7 +21,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 
 ### Changed
 - Promoted package metadata from `1.0.0rc1` to `1.0.0`.
-- Updated project classifiers to reflect production/stable release status.
+- Updated project metadata and repository URLs for public launch.
 
 ## [1.0.0rc1] - 2026-03-16
 
