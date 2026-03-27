@@ -26,7 +26,7 @@ from .auth import (
     extract_auth_token,
 )
 from .compliance import ComplianceService
-from .config import auth_required_for_runtime, multi_tenant_enabled, read_only_mode_enabled
+from .config import auth_required_for_runtime, read_only_mode_enabled
 from .consent import ConsentService
 from .context_pack import ContextPackBuilder
 from .db import Database
@@ -119,17 +119,6 @@ def _get_token_verifier() -> OIDCTokenVerifier:
 
 def _get_embedding_provider():
     return _embedding_provider_lazy.value
-
-
-def _warn_on_risky_policy_configuration() -> None:
-    if (
-        agent_permissions_enabled()
-        and policy_shadow_mode_enabled()
-        and not multi_tenant_enabled()
-    ):
-        logger.warning(
-            "policy_shadow_mode_active agent_permissions_enabled=true multi_tenant_enabled=false"
-        )
 
 
 def _misconfig_error_markers() -> tuple[str, ...]:
@@ -478,7 +467,6 @@ async def run_stdio_server() -> None:
 def main():
     mode = get_transport_mode()
     validate_transport_mode(mode)
-    _warn_on_risky_policy_configuration()
     try:
         validate_policy_configuration()
     except RuntimeError as exc:
