@@ -4,8 +4,8 @@ import time
 
 import httpx
 import jwt
-from jwt.algorithms import RSAAlgorithm
 from cryptography.hazmat.primitives.asymmetric import rsa
+from jwt.algorithms import RSAAlgorithm
 
 from lore.auth import OIDCTokenVerifier
 

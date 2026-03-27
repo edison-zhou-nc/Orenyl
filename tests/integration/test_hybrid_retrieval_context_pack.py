@@ -1,5 +1,5 @@
-from lore.context_pack import ContextPackBuilder
 from lore import context_pack as context_pack_module
+from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
 from lore.models import Event

@@ -81,9 +81,24 @@ def main() -> int:
         print("Agent B stored team-beta memory about Kubernetes")
 
         print("\n--- Tenant isolation ---")
-        pack_alpha = builder.build(domain="work", query="payment", tenant_id="team-alpha", limit=10)
-        pack_beta = builder.build(domain="work", query="payment", tenant_id="team-beta", limit=10)
-        pack_beta_own = builder.build(domain="work", query="kubernetes", tenant_id="team-beta", limit=10)
+        pack_alpha = builder.build(
+            domain="work",
+            query="payment",
+            tenant_id="team-alpha",
+            limit=10,
+        )
+        pack_beta = builder.build(
+            domain="work",
+            query="payment",
+            tenant_id="team-beta",
+            limit=10,
+        )
+        pack_beta_own = builder.build(
+            domain="work",
+            query="kubernetes",
+            tenant_id="team-beta",
+            limit=10,
+        )
 
         alpha_text = " ".join(str(item["value"]) for item in pack_alpha.facts).lower()
         beta_payment_text = " ".join(str(item["value"]) for item in pack_beta.facts).lower()
@@ -100,7 +115,10 @@ def main() -> int:
         beta_isolated = "payment gateway" not in beta_payment_text
         beta_ok = "kubernetes" in beta_own_text
         if alpha_ok and beta_isolated and beta_ok:
-            print("\nTenant isolation confirmed when one tenant cannot retrieve the other tenant's content.")
+            print(
+                "\nTenant isolation confirmed when one tenant cannot retrieve "
+                "the other tenant's content."
+            )
             return 0
 
         print(

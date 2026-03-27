@@ -57,5 +57,7 @@ def test_call_tool_succeeds_when_rate_limiting_disabled(monkeypatch):
     )
 
     for _ in range(5):
-        result = asyncio.run(server.call_tool("list_events", {"_auth_token": "ok", "domain": "general"}))
+        result = asyncio.run(
+            server.call_tool("list_events", {"_auth_token": "ok", "domain": "general"})
+        )
         assert "events" in json.loads(result[0].text)
