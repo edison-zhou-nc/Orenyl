@@ -47,6 +47,30 @@ def test_archive_tier_excludes_from_context_pack_but_keeps_export(monkeypatch):
     assert any(item["id"] == ev.id for item in exported["events"])
 
 
+def test_archived_restricted_events_still_count_for_export_guard(monkeypatch):
+    db = Database(":memory:")
+    _reset_server(monkeypatch, db)
+    ev = Event(
+        id="event:test:retention-restricted",
+        type="med_started",
+        payload={"name": "metformin"},
+        domains=["health"],
+        sensitivity="restricted",
+        ts="2026-01-01T00:00:00Z",
+    )
+    db.insert_event(ev)
+    server.engine.derive_facts_for_event(db.get_event(ev.id))
+
+    retention.apply_retention_to_db(
+        db,
+        now_ts="2026-01-10T00:00:00Z",
+        policies={"health": {"warm_days": 1, "archive_days": 3, "delete_days": 99}},
+    )
+
+    assert db.get_event_count("health") == 1
+    assert db.get_restricted_fact_ids_for_export_domain("health") == []
+
+
 def test_retention_updated_count_does_not_increment_on_noop_delete(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
