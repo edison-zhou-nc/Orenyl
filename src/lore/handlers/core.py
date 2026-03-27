@@ -45,6 +45,7 @@ from ._deps import (
 
 logger = logging.getLogger(__name__)
 ALLOWED_SENSITIVITY_LEVELS = {"low", "medium", "high", "restricted"}
+MAX_EXPORT_DOMAIN_EVENTS = 10_000
 
 
 def _subject_id_for_event(event: dict | None) -> str:
@@ -416,7 +417,7 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
 
     if page_size > 0 or cursor or stream_mode:
         event_count = db.get_event_count(domain=domain, tenant_id=tenant_id)
-        if event_count > 10_000:
+        if event_count > MAX_EXPORT_DOMAIN_EVENTS:
             return [
                 TextContent(
                     type="text",

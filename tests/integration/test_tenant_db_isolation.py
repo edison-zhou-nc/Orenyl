@@ -7,7 +7,8 @@ def _seed_event(db: Database, event_id: str, tenant_id: str, domain: str = "heal
     db.conn.execute(
         """INSERT INTO events (
                id, type, payload, content_hash, sensitivity, consent_source, expires_at, metadata,
-               retention_tier, archived_at, agent_id, session_id, source, tenant_id, ts, valid_from, valid_to, created_at
+               retention_tier, archived_at, agent_id, session_id, source, tenant_id, ts,
+               valid_from, valid_to, created_at
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             event_id,
@@ -39,7 +40,8 @@ def _seed_fact(db: Database, fact_id: str, key: str, tenant_id: str) -> None:
     db.conn.execute(
         """INSERT INTO facts (
                id, key, value, transform_config, stale, importance, version,
-               rule_id, rule_version, confidence, model_id, tenant_id, valid_from, valid_to, created_at
+               rule_id, rule_version, confidence, model_id, tenant_id, valid_from,
+               valid_to, created_at
            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             fact_id,
@@ -68,11 +70,17 @@ def test_get_current_facts_by_domain_is_tenant_scoped():
     _seed_fact(db, "fact:tenant-a:f1", "tenant_a_key", "tenant-a")
     _seed_fact(db, "fact:tenant-b:f1", "tenant_b_key", "tenant-b")
     db.conn.execute(
-        "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')",
+        (
+            "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, "
+            "relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')"
+        ),
         ("tenant-a", "event:test:tenant:a", "fact:tenant-a:f1"),
     )
     db.conn.execute(
-        "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')",
+        (
+            "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, "
+            "relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')"
+        ),
         ("tenant-b", "event:test:tenant:b", "fact:tenant-b:f1"),
     )
     db.conn.commit()
@@ -99,11 +107,17 @@ def test_get_events_by_domains_is_tenant_scoped():
 def test_lineage_query_does_not_traverse_across_tenants():
     db = Database(":memory:")
     db.conn.execute(
-        "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')",
+        (
+            "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, "
+            "relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')"
+        ),
         ("tenant-a", "event:test:shared", "fact:tenant-a:1"),
     )
     db.conn.execute(
-        "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')",
+        (
+            "INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, "
+            "relation) VALUES (?, ?, 'event', ?, 'fact', 'derived_from')"
+        ),
         ("tenant-b", "event:test:shared", "fact:tenant-b:1"),
     )
     db.conn.commit()

@@ -23,9 +23,10 @@
 
 ## Current release state
 
-The repo is being hardened for a self-serve public launch. Until the release gate
-and public docs stay green together, treat tags as release candidates rather than
-enterprise-grade GA signals.
+Lore is a public Beta release on PyPI. The project is ready for self-serve local
+development, evaluation, and early production deployments with authenticated
+`streamable-http` transport. External security certification, penetration testing,
+and enterprise operator packaging are pending future work.
 
 ## Hotfix flow
 

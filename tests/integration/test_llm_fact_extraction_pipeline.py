@@ -1,7 +1,7 @@
 from lore.db import Database
+from lore.extraction_rule import ExtractionFact
 from lore.lineage import LineageEngine
 from lore.models import Event
-from lore.extraction_rule import ExtractionFact
 
 
 class _FakeExtractionRuntime:

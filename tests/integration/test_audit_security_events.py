@@ -1,10 +1,10 @@
 import asyncio
 import importlib
 import sqlite3
+
 import pytest
 
-from lore import audit
-from lore import server
+from lore import audit, server
 
 
 class _DenyVerifier:
