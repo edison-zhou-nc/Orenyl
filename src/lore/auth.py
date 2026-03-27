@@ -230,16 +230,13 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
     normalized_algorithms = allowed_algorithms or ("RS256",)
     issuer = os.environ.get(env_vars.OIDC_ISSUER, "").strip()
     hs256_secret = os.environ.get(env_vars.OIDC_HS256_SECRET, "")
-    if (
-        "HS256" in normalized_algorithms
-        and "RS256" in normalized_algorithms
-        and hs256_secret
-        and jwks_url
-    ):
+    if "HS256" in normalized_algorithms and "RS256" in normalized_algorithms:
         logger.warning(
             "mixed_hs256_rs256 allowed_algs=%s "
-            "hs256_secret_configured=true jwks_url_configured=true",
+            "hs256_secret_configured=%s jwks_url_configured=%s",
             ",".join(normalized_algorithms),
+            bool(hs256_secret),
+            bool(jwks_url),
         )
     if not issuer:
         raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
