@@ -28,6 +28,7 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     monkeypatch.setenv("LORE_DB_PATH", str(db_path))
     monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(audit_db_path))
     monkeypatch.setenv("LORE_DR_SNAPSHOT_DIR", str(snapshot_dir))
+    monkeypatch.setenv("LORE_TESTING_MODE", "1")
 
     server = sys.modules.get("lore.server")
     audit = sys.modules.get("lore.audit")
@@ -43,6 +44,7 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     try:
         yield
     finally:
+        monkeypatch.setenv("LORE_TESTING_MODE", "1")
         server = sys.modules.get("lore.server")
         audit = sys.modules.get("lore.audit")
         rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None

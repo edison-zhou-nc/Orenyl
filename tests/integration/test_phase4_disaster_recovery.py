@@ -116,6 +116,17 @@ def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
     assert "2026-03-24" in snapshot2["snapshot_id"]
 
 
+@pytest.mark.parametrize("label", [".", ".."])
+def test_snapshot_rejects_dot_only_labels(tmp_path, monkeypatch, label):
+    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    db_path = tmp_path / "lore.db"
+    db = Database(str(db_path))
+    dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
+
+    with pytest.raises(RuntimeError, match="invalid_snapshot_label"):
+        dr.create_snapshot(label=label)
+
+
 def test_snapshot_rejects_forward_slash_traversal_label(tmp_path, monkeypatch):
     monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
     db_path = tmp_path / "lore.db"

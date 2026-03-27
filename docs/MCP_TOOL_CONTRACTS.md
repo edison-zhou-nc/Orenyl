@@ -22,6 +22,7 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 ### `retrieve_context_pack`
 - Schema: accepts `domain`, `query`, `include_summary`, `max_sensitivity`, `limit`, `agent_id`, and `session_id`.
 - Auth: requires `memory:read`.
+- Consent note: retrieval surfaces apply retrieval-consent and strict-mode filtering before facts are returned.
 - Side effects: reads current facts, may query embeddings, records audit and metrics.
 - Sample response: `{"domain": "general", "facts": [], "summary": "...", "trace": {...}}`.
 
@@ -41,6 +42,7 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 - Schema: accepts `domain`, `limit`, `offset`, and `include_tombstoned`.
 - Defaults: `limit` defaults to `50`, `offset` defaults to `0`, `domain` defaults to `general`.
 - Auth: requires `memory:read`.
+- Consent note: admin/history surfaces do not apply retrieval-consent filtering.
 - Side effects: reads paginated event history and emits metrics.
 - Sample response: `{"total_count": 1, "count": 1, "events": [...]}`.
 
@@ -48,8 +50,9 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_T
 - Schema: requires `domain`; accepts `format`, `confirm_restricted`, `page_size`, `cursor`, `stream`, and `include_hashes`.
 - Defaults: `format` defaults to `json`, `stream` defaults to `false`, `page_size` defaults to `0`.
 - Auth: requires `memory:export`; restricted exports additionally require the restricted export capability.
+- Consent note: `export_domain` is an admin/DSAR surface and does not apply retrieval-consent filtering.
 - Side effects: reads events, facts, lineage edges, and may emit restricted-access audit denials.
-- Pagination note: when `page_size`, `cursor`, or `stream` are requested, the handler performs a full server-side load of all events and facts before slicing. Domains with more than 10,000 events return `{"error": "export_domain_too_large_for_pagination"}` instead.
+- Pagination note: when `page_size`, `cursor`, or `stream` are requested, the handler performs a full server-side load of all events and facts before slicing. Domains with more than 10,000 exported events, including archived-but-not-deleted records, return `{"error": "export_domain_too_large_for_pagination"}` instead.
 - Sample response: `{"domain": "general", "events": [], "facts": [], "edges": [], "summary": "..."}`.
 
 ### `erase_subject_data`

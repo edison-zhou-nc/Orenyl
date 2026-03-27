@@ -30,7 +30,11 @@ _SNAPSHOT_LABEL_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 def _sanitize_snapshot_label(label: str) -> str:
     normalized = str(label or "").strip()
-    if not normalized or not _SNAPSHOT_LABEL_RE.fullmatch(normalized):
+    if (
+        not normalized
+        or normalized in {".", ".."}
+        or not _SNAPSHOT_LABEL_RE.fullmatch(normalized)
+    ):
         raise RuntimeError("invalid_snapshot_label")
     return normalized
 

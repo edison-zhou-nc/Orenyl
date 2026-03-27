@@ -1,7 +1,7 @@
 import pytest
 
 from lore import context_pack as context_pack_module
-from lore import server
+from lore import env_vars, server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lazy import Lazy
@@ -81,7 +81,16 @@ def test_rebind_runtime_state_for_tests_rebinds_database_path_from_env(monkeypat
     assert payload == []
 
 
+def test_runtime_state_test_helpers_require_testing_mode(monkeypatch, tmp_path):
+    monkeypatch.delenv(env_vars.TESTING_MODE, raising=False)
+
+    with pytest.raises(RuntimeError, match=env_vars.TESTING_MODE):
+        server._rebind_runtime_state_for_tests(str(tmp_path / "guarded.db"))
+    with pytest.raises(RuntimeError, match=env_vars.TESTING_MODE):
+        server._reset_runtime_state_for_tests()
+
+
 def test_server_does_not_alias_context_pack_test_reset_helper_at_import_time():
     import lore.server as server_module
 
-    assert not hasattr(server_module, "reset_context_pack_runtime_state_for_tests")
+    assert "reset_context_pack_runtime_state_for_tests" not in vars(server_module)

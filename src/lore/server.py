@@ -125,7 +125,18 @@ def _misconfig_error_markers() -> tuple[str, ...]:
     return env_vars.all_names() + env_vars.all_prefixes()
 
 
+def _require_testing_mode() -> None:
+    if os.environ.get(env_vars.TESTING_MODE, "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        raise RuntimeError(f"{env_vars.TESTING_MODE}=1 is required for test-only helpers")
+
+
 def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
+    _require_testing_mode()
     global DB_PATH, MAX_CONTEXT_PACK_LIMIT, MAX_LIST_EVENTS_LIMIT
     global db, engine, pack_builder, _federation_worker
     old_db = db
@@ -144,6 +155,7 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
 
 
 def _reset_runtime_state_for_tests() -> None:
+    _require_testing_mode()
     global _token_verifier, _token_verifier_error
     global _DEFAULT_SALT_WARNING_EMITTED, _federation_worker, _rate_limiter
     with _token_verifier_lock:

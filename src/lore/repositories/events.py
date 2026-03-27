@@ -346,6 +346,9 @@ class EventMixin(BaseMixin):
         return [self._hydrate_event_row(row) for row in rows]
 
     def get_event_count(self, domain: str = "general", tenant_id: str = "") -> int:
+        # Archived events stay exportable on admin/DSAR surfaces, so the pagination
+        # guard for export_domain counts them here. Retrieval-facing restricted-fact
+        # lookups intentionally scope to non-archived events instead.
         if domain and domain != "general":
             row = self.conn.execute(
                 """SELECT COUNT(DISTINCT e.id)
