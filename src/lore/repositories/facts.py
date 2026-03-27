@@ -179,44 +179,44 @@ class FactMixin(BaseMixin):
         domain: str,
         tenant_id: str = "",
     ) -> list[str]:
-        domain_join = ""
-        domain_filter = ""
-        domain_params: tuple[str, ...] = ()
-        if domain and domain != "general":
-            domain_join = "JOIN event_domains ed ON ed.event_id = e.parent_id"
-            domain_filter = "AND ed.domain = ?"
-            domain_params = (domain,)
-
         rows = self.conn.execute(
-            f"""SELECT DISTINCT f.id
-                FROM facts f
-                WHERE f.invalidated_at IS NULL
-                  AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
-                  AND EXISTS (
-                      SELECT 1
-                      FROM edges e
-                      {domain_join}
-                      JOIN events ev ON ev.id = e.parent_id
-                      WHERE e.child_id = f.id
-                        AND e.parent_type = 'event'
-                        {domain_filter}
-                        AND ev.archived_at IS NULL
-                        AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
-                  )
-                  AND EXISTS (
-                      SELECT 1
-                      FROM edges e2
-                      JOIN events ev2 ON ev2.id = e2.parent_id
-                      WHERE e2.child_id = f.id
-                        AND e2.parent_type = 'event'
-                        AND LOWER(COALESCE(ev2.sensitivity, '')) = 'restricted'
-                        AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
-                  )
-                ORDER BY f.id""",
+            """SELECT DISTINCT f.id
+               FROM facts f
+               WHERE f.invalidated_at IS NULL
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(f.tenant_id, 'default') = ?)
+                 AND EXISTS (
+                     SELECT 1
+                     FROM edges e
+                     LEFT JOIN event_domains ed
+                       ON ed.event_id = e.parent_id
+                      AND ed.domain = ?
+                     JOIN events ev ON ev.id = e.parent_id
+                     WHERE e.child_id = f.id
+                       AND e.parent_type = 'event'
+                       AND (
+                           NULLIF(?, '') IS NULL
+                           OR ? = 'general'
+                           OR ed.domain IS NOT NULL
+                       )
+                       AND ev.archived_at IS NULL
+                       AND (NULLIF(?, '') IS NULL OR COALESCE(ev.tenant_id, 'default') = ?)
+                 )
+                 AND EXISTS (
+                     SELECT 1
+                     FROM edges e2
+                     JOIN events ev2 ON ev2.id = e2.parent_id
+                     WHERE e2.child_id = f.id
+                       AND e2.parent_type = 'event'
+                       AND LOWER(COALESCE(ev2.sensitivity, '')) = 'restricted'
+                       AND (NULLIF(?, '') IS NULL OR COALESCE(ev2.tenant_id, 'default') = ?)
+                 )
+               ORDER BY f.id""",
             (
                 tenant_id,
                 tenant_id,
-                *domain_params,
+                domain,
+                domain,
+                domain,
                 tenant_id,
                 tenant_id,
                 tenant_id,
