@@ -89,6 +89,12 @@ def policy_shadow_mode_enabled() -> bool:
 
 
 def validate_policy_configuration() -> None:
+    if policy_shadow_mode_enabled():
+        logger.warning(
+            "shadow_mode_active: policy denials will be logged but not enforced; "
+            "disable %s for production use",
+            env_vars.POLICY_SHADOW_MODE,
+        )
     if agent_permissions_enabled() and policy_shadow_mode_enabled() and multi_tenant_enabled():
         raise RuntimeError(
             f"{env_vars.POLICY_SHADOW_MODE} cannot be enabled with "

@@ -107,7 +107,10 @@ def test_insert_event_and_fact_persist_v2_fields_and_domains():
     db.insert_event(ev)
 
     row = db.conn.execute(
-        "SELECT content_hash, sensitivity, consent_source, expires_at, agent_id, session_id FROM events WHERE id = ?",
+        (
+            "SELECT content_hash, sensitivity, consent_source, expires_at, agent_id, "
+            "session_id FROM events WHERE id = ?"
+        ),
         (ev.id,),
     ).fetchone()
     assert tuple(row) == (

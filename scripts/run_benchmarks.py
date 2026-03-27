@@ -113,8 +113,10 @@ def main() -> None:
     print("| Operation | 1K events | 10K events | 100K events |")
     print("|-----------|-----------|------------|-------------|")
     print(
-        f"| insert + derive (single event) | {results[0]['insert_and_derive_single_event_ms']}ms | "
-        f"{results[1]['insert_and_derive_single_event_ms']}ms | {results[2]['insert_and_derive_single_event_ms']}ms |"
+        f"| insert + derive (single event) | "
+        f"{results[0]['insert_and_derive_single_event_ms']}ms | "
+        f"{results[1]['insert_and_derive_single_event_ms']}ms | "
+        f"{results[2]['insert_and_derive_single_event_ms']}ms |"
     )
     print(
         f"| retrieve_context_pack | {results[0]['retrieve_context_pack_ms']}ms | "

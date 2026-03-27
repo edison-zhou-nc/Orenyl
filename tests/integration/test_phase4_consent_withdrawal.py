@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 
+from lore import server
 from lore.consent import ConsentService
 from lore.context_pack import ContextPackBuilder
-from lore import server
 from lore.db import Database
 from lore.lineage import LineageEngine
 from lore.models import Event

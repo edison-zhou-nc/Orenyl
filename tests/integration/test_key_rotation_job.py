@@ -98,7 +98,10 @@ def test_rotation_job_requires_tenant_scope_in_multi_tenant_mode(monkeypatch):
     db = Database(":memory:")
     monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
     monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+    monkeypatch.setenv(
+        "LORE_ENCRYPTION_SALT",
+        base64.b64encode(b"0123456789abcdef").decode("ascii"),
+    )
 
     with pytest.raises(PermissionError, match="tenant_scope_required"):
         key_rotation.rotate_encrypted_payloads(db)

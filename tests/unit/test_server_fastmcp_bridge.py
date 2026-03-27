@@ -39,7 +39,9 @@ def test_fastmcp_bridge_exposes_export_domain_pagination_and_streaming_fields():
     async def run() -> None:
         app = FastMCP("test")
         register_fastmcp_tools(app, invoke_tool)
-        export_domain = next(tool for tool in await app.list_tools() if tool.name == "export_domain")
+        export_domain = next(
+            tool for tool in await app.list_tools() if tool.name == "export_domain"
+        )
         props = export_domain.inputSchema["properties"]
 
         assert "page_size" in props

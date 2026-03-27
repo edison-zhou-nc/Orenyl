@@ -69,3 +69,16 @@ def test_build_token_verifier_warns_on_mixed_hs256_and_rs256(caplog, monkeypatch
     build_token_verifier_from_env()
 
     assert any("mixed_hs256_rs256" in record.message for record in caplog.records)
+
+
+def test_build_token_verifier_warns_on_mixed_algorithms_without_both_key_sources(
+    caplog, monkeypatch
+):
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256,RS256")
+    monkeypatch.delenv("LORE_OIDC_HS256_SECRET", raising=False)
+
+    build_token_verifier_from_env()
+
+    assert any("mixed_hs256_rs256" in record.message for record in caplog.records)

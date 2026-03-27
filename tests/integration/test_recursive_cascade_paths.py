@@ -10,7 +10,14 @@ def test_delete_and_recompute_handles_recursive_downstream_chain():
     db.insert_event(root)
     fact_ids = ["fact:test:1", "fact:test:2", "fact:test:3"]
     for index, fact_id in enumerate(fact_ids, start=1):
-        db.insert_fact(Fact(id=fact_id, key=f"chain_{index}", value={"step": index}, rule_id="Rule@v1"))
+        db.insert_fact(
+            Fact(
+                id=fact_id,
+                key=f"chain_{index}",
+                value={"step": index},
+                rule_id="Rule@v1",
+            )
+        )
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:1"))
     db.insert_edge(Edge(parent_id="fact:test:1", parent_type="fact", child_id="fact:test:2"))
     db.insert_edge(Edge(parent_id="fact:test:2", parent_type="fact", child_id="fact:test:3"))
@@ -39,8 +46,12 @@ def test_get_downstream_facts_deduplicates_convergent_descendants():
     )
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:left"))
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:right"))
-    db.insert_edge(Edge(parent_id="fact:test:left", parent_type="fact", child_id="fact:test:shared"))
-    db.insert_edge(Edge(parent_id="fact:test:right", parent_type="fact", child_id="fact:test:shared"))
+    db.insert_edge(
+        Edge(parent_id="fact:test:left", parent_type="fact", child_id="fact:test:shared")
+    )
+    db.insert_edge(
+        Edge(parent_id="fact:test:right", parent_type="fact", child_id="fact:test:shared")
+    )
 
     assert db.get_downstream_facts(root.id) == [
         "fact:test:left",
@@ -102,3 +113,50 @@ def test_recursive_downstream_is_tenant_scoped():
         "fact:tenant-b:1",
         "fact:tenant-b:2",
     ]
+
+
+def test_cross_tenant_cascade_delete_does_not_leak_across_tenants():
+    db = Database(":memory:")
+    engine = LineageEngine(db)
+
+    for tenant in ("tenant-a", "tenant-b"):
+        root = Event(
+            id=f"event:{tenant}:root",
+            type="note",
+            payload={"tenant": tenant},
+            tenant_id=tenant,
+        )
+        db.insert_event(root)
+        child = Fact(
+            id=f"fact:{tenant}:child",
+            key="derived",
+            value={"from": tenant},
+            rule_id="Rule@v1",
+            tenant_id=tenant,
+        )
+        db.insert_fact(child)
+        db.insert_edge(
+            Edge(
+                parent_id=root.id,
+                parent_type="event",
+                child_id=child.id,
+                tenant_id=tenant,
+            )
+        )
+
+    proof_a = engine.delete_and_recompute(
+        "event:tenant-a:root",
+        "event",
+        reason="cross-tenant-test",
+    )
+
+    assert "fact:tenant-a:child" in proof_a.invalidated_facts
+    assert proof_a.checks["deletion_verified"] is True
+
+    tenant_b_facts = db.get_downstream_facts("event:tenant-b:root", tenant_id="tenant-b")
+    assert tenant_b_facts == ["fact:tenant-b:child"]
+    tenant_b_event = db.conn.execute(
+        "SELECT id FROM events WHERE id = ?",
+        ("event:tenant-b:root",),
+    ).fetchone()
+    assert tenant_b_event is not None

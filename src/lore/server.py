@@ -26,7 +26,7 @@ from .auth import (
     extract_auth_token,
 )
 from .compliance import ComplianceService
-from .config import auth_required_for_runtime, multi_tenant_enabled, read_only_mode_enabled
+from .config import auth_required_for_runtime, read_only_mode_enabled
 from .consent import ConsentService
 from .context_pack import ContextPackBuilder
 from .db import Database
@@ -121,22 +121,22 @@ def _get_embedding_provider():
     return _embedding_provider_lazy.value
 
 
-def _warn_on_risky_policy_configuration() -> None:
-    if (
-        agent_permissions_enabled()
-        and policy_shadow_mode_enabled()
-        and not multi_tenant_enabled()
-    ):
-        logger.warning(
-            "policy_shadow_mode_active agent_permissions_enabled=true multi_tenant_enabled=false"
-        )
-
-
 def _misconfig_error_markers() -> tuple[str, ...]:
     return env_vars.all_names() + env_vars.all_prefixes()
 
 
+def _require_testing_mode() -> None:
+    if os.environ.get(env_vars.TESTING_MODE, "").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        raise RuntimeError(f"{env_vars.TESTING_MODE}=1 is required for test-only helpers")
+
+
 def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
+    _require_testing_mode()
     global DB_PATH, MAX_CONTEXT_PACK_LIMIT, MAX_LIST_EVENTS_LIMIT
     global db, engine, pack_builder, _federation_worker
     old_db = db
@@ -155,6 +155,7 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
 
 
 def _reset_runtime_state_for_tests() -> None:
+    _require_testing_mode()
     global _token_verifier, _token_verifier_error
     global _DEFAULT_SALT_WARNING_EMITTED, _federation_worker, _rate_limiter
     with _token_verifier_lock:
@@ -478,7 +479,6 @@ async def run_stdio_server() -> None:
 def main():
     mode = get_transport_mode()
     validate_transport_mode(mode)
-    _warn_on_risky_policy_configuration()
     try:
         validate_policy_configuration()
     except RuntimeError as exc:

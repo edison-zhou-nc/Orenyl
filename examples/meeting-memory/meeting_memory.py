@@ -65,7 +65,10 @@ def main() -> None:
     print(f"Deletion verified: {proof.to_dict().get('checks', {}).get('deletion_verified')}")
 
     pack_after = builder.build(domain="work", query="API deadline", limit=10)
-    summary_after = next((item for item in pack_after.facts if item["key"] == "domain_summary"), None)
+    summary_after = next(
+        (item for item in pack_after.facts if item["key"] == "domain_summary"),
+        None,
+    )
     if summary_after is not None:
         print(f"Summary after deletion: {summary_after['value']}")
         print(
