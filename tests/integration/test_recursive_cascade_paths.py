@@ -10,7 +10,14 @@ def test_delete_and_recompute_handles_recursive_downstream_chain():
     db.insert_event(root)
     fact_ids = ["fact:test:1", "fact:test:2", "fact:test:3"]
     for index, fact_id in enumerate(fact_ids, start=1):
-        db.insert_fact(Fact(id=fact_id, key=f"chain_{index}", value={"step": index}, rule_id="Rule@v1"))
+        db.insert_fact(
+            Fact(
+                id=fact_id,
+                key=f"chain_{index}",
+                value={"step": index},
+                rule_id="Rule@v1",
+            )
+        )
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:1"))
     db.insert_edge(Edge(parent_id="fact:test:1", parent_type="fact", child_id="fact:test:2"))
     db.insert_edge(Edge(parent_id="fact:test:2", parent_type="fact", child_id="fact:test:3"))
@@ -39,8 +46,12 @@ def test_get_downstream_facts_deduplicates_convergent_descendants():
     )
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:left"))
     db.insert_edge(Edge(parent_id=root.id, parent_type="event", child_id="fact:test:right"))
-    db.insert_edge(Edge(parent_id="fact:test:left", parent_type="fact", child_id="fact:test:shared"))
-    db.insert_edge(Edge(parent_id="fact:test:right", parent_type="fact", child_id="fact:test:shared"))
+    db.insert_edge(
+        Edge(parent_id="fact:test:left", parent_type="fact", child_id="fact:test:shared")
+    )
+    db.insert_edge(
+        Edge(parent_id="fact:test:right", parent_type="fact", child_id="fact:test:shared")
+    )
 
     assert db.get_downstream_facts(root.id) == [
         "fact:test:left",

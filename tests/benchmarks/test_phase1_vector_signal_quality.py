@@ -1,5 +1,5 @@
-from scripts.run_eval import run_phase1_precision_eval
 from lore import context_pack as context_pack_module
+from scripts.run_eval import run_phase1_precision_eval
 
 
 class _SemanticTestProvider:

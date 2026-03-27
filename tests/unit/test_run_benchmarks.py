@@ -42,7 +42,7 @@ class FakeProof:
 
 
 class FakeEngine:
-    last_instance: "FakeEngine | None" = None
+    last_instance: FakeEngine | None = None
 
     def __init__(self, db) -> None:
         self.db = db
