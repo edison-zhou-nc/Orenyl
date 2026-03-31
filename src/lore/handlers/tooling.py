@@ -60,7 +60,7 @@ _REGISTERED_TOOLS = (
                 "include_summary": {"type": "boolean", "default": True},
                 "max_sensitivity": {
                     "type": "string",
-                    "enum": ["low", "medium", "high"],
+                    "enum": ["low", "medium", "high", "restricted"],
                     "default": "high",
                 },
                 "limit": {"type": "integer", "default": 50},

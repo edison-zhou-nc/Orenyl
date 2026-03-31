@@ -72,3 +72,39 @@ def test_openai_provider_retries_on_429(monkeypatch):
 
 def test_openai_provider_client_field_not_exposed_in_init():
     assert OpenAIEmbeddingProvider.__dataclass_fields__["_client"].init is False
+
+
+def test_openai_provider_close_closes_http_client():
+    class _Client:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    provider = OpenAIEmbeddingProvider(api_key="ok-key")
+    client = _Client()
+    provider._client = client
+
+    provider.close()
+
+    assert client.closed is True
+    assert provider._client is None
+
+
+def test_openai_provider_del_closes_http_client():
+    class _Client:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    provider = OpenAIEmbeddingProvider(api_key="ok-key")
+    client = _Client()
+    provider._client = client
+
+    provider.__del__()
+
+    assert client.closed is True
+    assert provider._client is None

@@ -6,7 +6,6 @@ import logging
 import os
 
 from . import env_vars
-from .config import multi_tenant_enabled
 from .db import Database
 from .models import now_iso
 
@@ -95,8 +94,8 @@ def validate_policy_configuration() -> None:
             "disable %s for production use",
             env_vars.POLICY_SHADOW_MODE,
         )
-    if agent_permissions_enabled() and policy_shadow_mode_enabled() and multi_tenant_enabled():
+    if agent_permissions_enabled() and policy_shadow_mode_enabled():
         raise RuntimeError(
-            f"{env_vars.POLICY_SHADOW_MODE} cannot be enabled with "
-            f"{env_vars.ENABLE_AGENT_PERMISSIONS}=1 when multi-tenant mode is active"
+            f"{env_vars.POLICY_SHADOW_MODE} cannot be enabled together with "
+            f"{env_vars.ENABLE_AGENT_PERMISSIONS}=1"
         )

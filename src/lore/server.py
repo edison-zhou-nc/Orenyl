@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import threading
+import time
 from typing import Any
 
 from mcp.server import Server
@@ -31,14 +32,12 @@ from .consent import ConsentService
 from .context_pack import ContextPackBuilder
 from .db import Database
 from .disaster_recovery import DRService
-from .embedding_provider import build_embedding_provider_from_env
 from .federation_worker import FederationWorker
 from .handlers import compliance as compliance_handlers
 from .handlers import core as core_handlers
 from .handlers import operations as operations_handlers
 from .handlers._common import _resolve_request_id
 from .handlers.tooling import list_registered_tools, register_fastmcp_tools
-from .lazy import Lazy
 from .lineage import LineageEngine
 from .metrics import reset_metrics_for_tests
 from .models import now_iso
@@ -54,6 +53,7 @@ from .tenant import (
     resolve_tenant_context,
     set_current_tenant_context,
 )
+from .runtime import get_embedding_provider
 
 DB_PATH = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
@@ -62,15 +62,17 @@ MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"
 db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
-_embedding_provider_lazy = Lazy(build_embedding_provider_from_env)
 
 app = Server("lore-governed-memory")
 logger = logging.getLogger(__name__)
 _DEFAULT_SALT_WARNING_EMITTED = False
 _token_verifier: OIDCTokenVerifier | None = None
 _token_verifier_error: Exception | None = None
+_token_verifier_error_at = 0.0
+_TOKEN_VERIFIER_ERROR_TTL = 60.0
 _token_verifier_lock = threading.Lock()
 _federation_worker: FederationWorker | None = None
+_federation_worker_lock = threading.Lock()
 _rate_limiter = RateLimiter()
 READ_ONLY_SAFE_TOOLS = {
     "retrieve_context_pack",
@@ -103,22 +105,28 @@ handle_restore_snapshot = operations_handlers.handle_restore_snapshot
 
 
 def _get_token_verifier() -> OIDCTokenVerifier:
-    global _token_verifier, _token_verifier_error
+    global _token_verifier, _token_verifier_error, _token_verifier_error_at
     with _token_verifier_lock:
         if _token_verifier is not None:
             return _token_verifier
         if _token_verifier_error is not None:
-            raise _token_verifier_error
+            if time.time() - _token_verifier_error_at < _TOKEN_VERIFIER_ERROR_TTL:
+                raise _token_verifier_error
+            _token_verifier_error = None
+            _token_verifier_error_at = 0.0
         try:
             _token_verifier = build_token_verifier_from_env()
         except (RuntimeError, ValueError) as exc:
             _token_verifier_error = exc
+            _token_verifier_error_at = time.time()
             raise
+        _token_verifier_error = None
+        _token_verifier_error_at = 0.0
         return _token_verifier
 
 
 def _get_embedding_provider():
-    return _embedding_provider_lazy.value
+    return get_embedding_provider()
 
 
 def _misconfig_error_markers() -> tuple[str, ...]:
@@ -138,7 +146,7 @@ def _require_testing_mode() -> None:
 def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
     _require_testing_mode()
     global DB_PATH, MAX_CONTEXT_PACK_LIMIT, MAX_LIST_EVENTS_LIMIT
-    global db, engine, pack_builder, _federation_worker
+    global db, engine, pack_builder
     old_db = db
     resolved_db_path = db_path if db_path is not None else os.environ.get(
         env_vars.DB_PATH, "lore_memory.db"
@@ -149,32 +157,38 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
     db = Database(DB_PATH)
     engine = LineageEngine(db)
     pack_builder = ContextPackBuilder(db)
-    _federation_worker = None
+    with _federation_worker_lock:
+        global _federation_worker
+        _federation_worker = None
+    context_pack_module._reset_runtime_state_for_tests()
     with contextlib.suppress(Exception):
         old_db.close()
 
 
 def _reset_runtime_state_for_tests() -> None:
     _require_testing_mode()
-    global _token_verifier, _token_verifier_error
-    global _DEFAULT_SALT_WARNING_EMITTED, _federation_worker, _rate_limiter
+    global _token_verifier, _token_verifier_error, _token_verifier_error_at
+    global _DEFAULT_SALT_WARNING_EMITTED, _rate_limiter
     with _token_verifier_lock:
         _token_verifier = None
         _token_verifier_error = None
-        _embedding_provider_lazy.reset()
+        _token_verifier_error_at = 0.0
         _DEFAULT_SALT_WARNING_EMITTED = False
-        _federation_worker = None
         _rate_limiter = RateLimiter()
+    with _federation_worker_lock:
+        global _federation_worker
+        _federation_worker = None
     context_pack_module._reset_runtime_state_for_tests()
     reset_metrics_for_tests()
 
 
 def _get_federation_worker() -> FederationWorker:
     global _federation_worker
-    if _federation_worker is None:
-        node_id = os.environ.get(env_vars.FEDERATION_NODE_ID, "").strip() or "node-local"
-        _federation_worker = FederationWorker(db=db, node_id=node_id)
-    return _federation_worker
+    with _federation_worker_lock:
+        if _federation_worker is None:
+            node_id = os.environ.get(env_vars.FEDERATION_NODE_ID, "").strip() or "node-local"
+            _federation_worker = FederationWorker(db=db, node_id=node_id)
+        return _federation_worker
 
 
 def _get_compliance_service() -> ComplianceService:

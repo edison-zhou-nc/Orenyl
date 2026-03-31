@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, cast
 
 _T = TypeVar("_T")
 _UNSET = object()
@@ -26,6 +26,8 @@ class Lazy(Generic[_T]):
                     self._value = self._factory()
         return self._value  # type: ignore[return-value]
 
-    def reset(self) -> None:
+    def reset(self) -> _T | None:
         with self._lock:
+            previous = None if self._value is _UNSET else cast(_T, self._value)
             self._value = _UNSET
+            return previous

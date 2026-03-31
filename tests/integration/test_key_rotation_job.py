@@ -27,9 +27,9 @@ def test_rotation_job_reencrypts_old_version_payloads(monkeypatch):
     salt_v2 = base64.b64encode(b"fedcba9876543210").decode("ascii")
 
     monkeypatch.setenv("LORE_ENCRYPTION_KEY_VERSION", "v1")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT_V1", salt_v1)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", salt_v1)
 
     out = asyncio.run(
@@ -47,7 +47,7 @@ def test_rotation_job_reencrypts_old_version_payloads(monkeypatch):
     assert stored["payload"]["ciphertext"]["key_version"] == "v1"
 
     monkeypatch.setenv("LORE_ENCRYPTION_KEY_VERSION", "v2")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V2", "pass-v2")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V2", "pass-v2-76543210")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT_V2", salt_v2)
     server._reset_runtime_state_for_tests()
 
@@ -69,9 +69,9 @@ def test_rotation_job_can_skip_missing_key_versions(monkeypatch):
 
     salt_v1 = base64.b64encode(b"0123456789abcdef").decode("ascii")
     monkeypatch.setenv("LORE_ENCRYPTION_KEY_VERSION", "v1")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT_V1", salt_v1)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", salt_v1)
 
     out = asyncio.run(
@@ -97,7 +97,7 @@ def test_rotation_job_can_skip_missing_key_versions(monkeypatch):
 def test_rotation_job_requires_tenant_scope_in_multi_tenant_mode(monkeypatch):
     db = Database(":memory:")
     monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1-01234567")
     monkeypatch.setenv(
         "LORE_ENCRYPTION_SALT",
         base64.b64encode(b"0123456789abcdef").decode("ascii"),
@@ -116,9 +116,9 @@ def test_rotation_job_only_rotates_requested_tenant(monkeypatch):
     salt_v2 = base64.b64encode(b"fedcba9876543210").decode("ascii")
 
     monkeypatch.setenv("LORE_ENCRYPTION_KEY_VERSION", "v1")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V1", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT_V1", salt_v1)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "pass-v1-01234567")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", salt_v1)
     keyring_v1 = resolve_runtime_keyring()
     active_v1 = keyring_v1.keys[keyring_v1.active_version]
@@ -145,7 +145,7 @@ def test_rotation_job_only_rotates_requested_tenant(monkeypatch):
         event_ids.append((tenant_id, event.id))
 
     monkeypatch.setenv("LORE_ENCRYPTION_KEY_VERSION", "v2")
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V2", "pass-v2")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE_V2", "pass-v2-76543210")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT_V2", salt_v2)
     server._reset_runtime_state_for_tests()
 

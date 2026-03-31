@@ -203,8 +203,10 @@ def test_insert_edge_rejects_duplicate_lineage_edge():
     )
     db.insert_edge(edge)
 
-    with pytest.raises(sqlite3.IntegrityError):
-        db.insert_edge(edge)
+    db.insert_edge(edge)
+
+    rows = db.get_children(edge.parent_id)
+    assert len(rows) == 1
 
 
 def test_transaction_serializes_cross_thread_access():
@@ -337,3 +339,22 @@ def test_batch_parent_and_event_fetch_helpers():
     events = db.get_events_by_ids([event.id])
     assert event.id in events
     assert events[event.id]["domains"] == ["health"]
+
+
+def test_fresh_database_records_schema_version():
+    db = Database(":memory:")
+
+    version = db.conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0]
+
+    assert version == 2
+
+
+def test_legacy_database_migration_records_schema_version(workspace_tmp_path):
+    db_path = workspace_tmp_path / "v1-with-version.sqlite"
+    _make_v1_db(db_path)
+
+    db = Database(str(db_path))
+
+    version = db.conn.execute("SELECT MAX(version) FROM schema_version").fetchone()[0]
+
+    assert version == 2

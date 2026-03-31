@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows semantic versioning.
 
-## [Unreleased]
+## [1.0.1] - Unreleased
 
 ### Added
 - Explicit local stdio development mode for self-serve onboarding and demos.

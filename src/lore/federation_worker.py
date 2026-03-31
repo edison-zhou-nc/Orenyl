@@ -71,29 +71,12 @@ class FederationWorker:
         )
 
     def _latest_applied_entry(self, tenant_id: str, item_id: str) -> dict[str, Any] | None:
-        # TODO: Replace this bounded scan with a targeted DB query/index on payload.item_id.
-        # Current Phase 3 scope keeps this simple for SQLite-backed single-node operation.
-        applied_rows = self.db.list_sync_journal_entries(
+        latest = self.db.get_latest_applied_journal_entry_by_item(
             tenant_id=tenant_id,
+            item_id=item_id,
             direction="inbound",
-            status="applied",
-            limit=1000,
         )
-        matching: list[dict[str, Any]] = []
-        for row in applied_rows:
-            payload = row.get("payload")
-            if isinstance(payload, dict) and payload.get("item_id") == item_id:
-                matching.append(cast(dict[str, Any], payload))
-        if not matching:
-            return None
-        matching.sort(
-            key=lambda payload: (
-                str(payload.get("updated_at", "")),
-                str(payload.get("node_id", "")),
-            ),
-            reverse=True,
-        )
-        return matching[0]
+        return cast(dict[str, Any] | None, latest)
 
     @staticmethod
     def _journal_payload(envelope: SyncEnvelope) -> dict[str, Any]:

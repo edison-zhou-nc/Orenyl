@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import threading
-from collections import defaultdict
+from collections import defaultdict, deque
 
 _COUNTERS: dict[tuple[str, ...], int] = defaultdict(int)
-_LATENCIES: dict[str, list[float]] = defaultdict(list)
+_MAX_LATENCY_OBSERVATIONS = 10_000
+_LATENCIES: dict[str, deque[float]] = defaultdict(
+    lambda: deque(maxlen=_MAX_LATENCY_OBSERVATIONS)
+)
 _LOCK = threading.Lock()
 
 
