@@ -1,7 +1,7 @@
 import asyncio
 import json
 
-from lore import context_pack as context_pack_module
+from lore import runtime
 from lore import server
 from lore.context_pack import ContextPackBuilder
 from lore.db import Database
@@ -26,7 +26,7 @@ class _FailingProvider:
 def test_store_event_survives_embedding_provider_failure(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setattr(server, "_embedding_provider_lazy", Lazy(lambda: _FailingProvider()))
+    monkeypatch.setattr(runtime, "_embedding_provider_lazy", Lazy(lambda: _FailingProvider()))
 
     result = asyncio.run(
         server.handle_store_event(
@@ -63,7 +63,7 @@ def test_context_pack_survives_vector_provider_failure(monkeypatch, caplog):
     db.insert_edge(Edge(parent_id=event.id, parent_type="event", child_id=fact.id))
 
     monkeypatch.setattr(
-        context_pack_module, "_embedding_provider_lazy", Lazy(lambda: _FailingProvider())
+        runtime, "_embedding_provider_lazy", Lazy(lambda: _FailingProvider())
     )
     pack = ContextPackBuilder(db).build(domain="health", query="seed", limit=5)
     assert pack.items

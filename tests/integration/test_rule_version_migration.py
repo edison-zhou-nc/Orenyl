@@ -1,12 +1,12 @@
 from lore.db import Database
 from lore.models import Fact
 from lore.rule_migration import migrate_rule_family
-from lore.rule_registry import RuleRegistry
+from lore.rule_registry import RuleVersionRegistry
 
 
 def test_migrate_rule_family_updates_fact_versions():
     db = Database(":memory:")
-    registry = RuleRegistry(db)
+    registry = RuleVersionRegistry(db)
     registry.register("MedicationActiveRule", "v1", active=True)
     registry.deactivate("MedicationActiveRule", "v1")
     registry.register("MedicationActiveRule", "v2", active=True)

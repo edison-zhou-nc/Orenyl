@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import logging
 import os
+import socket
 import threading
 import time
+from urllib.parse import urlparse
 from collections.abc import Iterable
 
 import httpx
@@ -149,7 +152,10 @@ class OIDCTokenVerifier:
             if not isinstance(jwks, dict):
                 jwks = {}
             self._jwks_cache = jwks
-            self._jwks_cache_expires_at = now + max(1, int(self.jwks_cache_ttl_seconds))
+            cache_ttl = max(1, int(self.jwks_cache_ttl_seconds))
+            if not jwks.get("keys"):
+                cache_ttl = min(30, cache_ttl)
+            self._jwks_cache_expires_at = now + cache_ttl
             return jwks
 
     async def _fetch_jwks(self) -> dict:
@@ -221,8 +227,57 @@ def _parse_int_env(
     return value
 
 
+def _reject_private_ip(host: str, raw_url: str) -> None:
+    ip = ipaddress.ip_address(host)
+    if (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    ):
+        raise RuntimeError(
+            f"jwks_url_private_ip_not_allowed: {env_vars.OIDC_JWKS_URL} "
+            f"must not resolve to private IP ({host})"
+        )
+
+
+def _validate_jwks_url(jwks_url: str) -> None:
+    parsed = urlparse(jwks_url)
+    if parsed.scheme != "https":
+        raise RuntimeError(
+            f"jwks_url_must_use_https: {env_vars.OIDC_JWKS_URL} must use "
+            f"https:// scheme, got {parsed.scheme or '<missing>'}://"
+        )
+    if not parsed.hostname:
+        raise RuntimeError(
+            f"jwks_url_must_use_https: {env_vars.OIDC_JWKS_URL} must include a host"
+        )
+
+    try:
+        _reject_private_ip(parsed.hostname, jwks_url)
+        return
+    except ValueError:
+        pass
+
+    try:
+        resolved = socket.getaddrinfo(parsed.hostname, None)
+    except socket.gaierror:
+        return
+
+    for _, _, _, _, addr in resolved:
+        host = addr[0]
+        if not isinstance(host, str):
+            continue
+        try:
+            _reject_private_ip(host, jwks_url)
+        except ValueError:
+            continue
+
+
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
-    jwks_url = os.environ.get(env_vars.OIDC_JWKS_URL, "")
+    jwks_url = os.environ.get(env_vars.OIDC_JWKS_URL, "").strip()
     allowed_algorithms_raw = os.environ.get(env_vars.OIDC_ALLOWED_ALGS, "RS256")
     allowed_algorithms = tuple(
         alg.strip().upper() for alg in allowed_algorithms_raw.split(",") if alg.strip()
@@ -231,13 +286,22 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
     issuer = os.environ.get(env_vars.OIDC_ISSUER, "").strip()
     hs256_secret = os.environ.get(env_vars.OIDC_HS256_SECRET, "")
     if "HS256" in normalized_algorithms and "RS256" in normalized_algorithms:
-        logger.warning(
-            "mixed_hs256_rs256 allowed_algs=%s "
-            "hs256_secret_configured=%s jwks_url_configured=%s",
-            ",".join(normalized_algorithms),
-            bool(hs256_secret),
-            bool(jwks_url),
+        raise RuntimeError(
+            "mixed_algorithms_not_allowed: configure either HS256 or RS256 in "
+            f"{env_vars.OIDC_ALLOWED_ALGS}, not both"
         )
+    if "HS256" in normalized_algorithms and len(hs256_secret) < 32:
+        raise RuntimeError(
+            f"hs256_secret_too_short: {env_vars.OIDC_HS256_SECRET} must be at least "
+            "32 bytes when HS256 is configured"
+        )
+    if "RS256" in normalized_algorithms and not jwks_url:
+        raise RuntimeError(
+            f"jwks_url_required: {env_vars.OIDC_JWKS_URL} must be set when "
+            "RS256 is in the allowed algorithms"
+        )
+    if jwks_url:
+        _validate_jwks_url(jwks_url)
     if not issuer:
         raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
     return OIDCTokenVerifier(

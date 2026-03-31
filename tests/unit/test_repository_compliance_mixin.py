@@ -1,4 +1,6 @@
 from lore.db import Database
+from lore.compliance import ComplianceService
+from lore.lineage import LineageEngine
 from lore.models import ConsentRecord, DRSnapshot, SubjectRequest, Tombstone
 
 
@@ -53,3 +55,39 @@ def test_compliance_repository_round_trips_tombstones_consent_and_snapshots():
     )
     assert db.insert_dr_snapshot(snapshot) == snapshot.snapshot_id
     assert db.get_dr_snapshot(snapshot.snapshot_id)["metadata"] == {"kind": "manual"}
+
+
+def test_erase_subject_data_cleans_consent_records_and_subject_requests():
+    db = Database(":memory:")
+    service = ComplianceService(db=db, engine=LineageEngine(db))
+
+    db.insert_consent_record(
+        ConsentRecord(
+            tenant_id="default",
+            subject_id="user:erase-me",
+            purpose="retrieval",
+            status="granted",
+        )
+    )
+    db.create_subject_request(
+        SubjectRequest(
+            request_id="req:test:erase-me",
+            tenant_id="default",
+            subject_id="user:erase-me",
+            request_type="erasure",
+        )
+    )
+
+    result = service.erase_subject_data(subject_id="user:erase-me", tenant_id="default")
+
+    assert result["ok"] is False
+    consent_count = db.conn.execute(
+        "SELECT COUNT(*) FROM consent_records WHERE subject_id = ?",
+        ("user:erase-me",),
+    ).fetchone()[0]
+    request_count = db.conn.execute(
+        "SELECT COUNT(*) FROM subject_requests WHERE subject_id = ?",
+        ("user:erase-me",),
+    ).fetchone()[0]
+    assert consent_count == 0
+    assert request_count == 1

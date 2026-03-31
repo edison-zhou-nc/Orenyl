@@ -1,13 +1,31 @@
+import socket
+
 import pytest
 
 from lore.auth import build_token_verifier_from_env
 from lore.config import auth_required_for_runtime, dev_stdio_mode_enabled
 
+_VALID_HS256_SECRET = "0123456789abcdef0123456789abcdef"
+
+
+def _set_valid_hs256_env(monkeypatch) -> None:
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", _VALID_HS256_SECRET)
+    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+
+
+def _set_valid_rs256_env(monkeypatch) -> None:
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "RS256")
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
+    monkeypatch.delenv("LORE_OIDC_HS256_SECRET", raising=False)
+
 
 def test_build_token_verifier_requires_issuer_for_rs256(monkeypatch):
     monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
     monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "RS256")
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
     with pytest.raises(RuntimeError, match="LORE_OIDC_ISSUER must be set"):
         build_token_verifier_from_env()
 
@@ -16,32 +34,27 @@ def test_build_token_verifier_requires_issuer_for_hs256(monkeypatch):
     monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
     monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
     monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", _VALID_HS256_SECRET)
     with pytest.raises(RuntimeError, match="LORE_OIDC_ISSUER must be set"):
         build_token_verifier_from_env()
 
 
 def test_build_token_verifier_rejects_non_integer_jwks_cache_ttl(monkeypatch):
-    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
-    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    _set_valid_hs256_env(monkeypatch)
     monkeypatch.setenv("LORE_OIDC_JWKS_CACHE_TTL_SECONDS", "not-an-int")
     with pytest.raises(RuntimeError, match="LORE_OIDC_JWKS_CACHE_TTL_SECONDS must be an integer"):
         build_token_verifier_from_env()
 
 
 def test_build_token_verifier_rejects_non_integer_clock_skew(monkeypatch):
-    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
-    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    _set_valid_hs256_env(monkeypatch)
     monkeypatch.setenv("LORE_OIDC_CLOCK_SKEW_SECONDS", "not-an-int")
     with pytest.raises(RuntimeError, match="LORE_OIDC_CLOCK_SKEW_SECONDS must be an integer"):
         build_token_verifier_from_env()
 
 
 def test_build_token_verifier_rejects_excessive_clock_skew(monkeypatch):
-    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
-    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    _set_valid_hs256_env(monkeypatch)
     monkeypatch.setenv("LORE_OIDC_CLOCK_SKEW_SECONDS", "3600")
     with pytest.raises(RuntimeError, match="LORE_OIDC_CLOCK_SKEW_SECONDS must be <= 300"):
         build_token_verifier_from_env()
@@ -60,25 +73,88 @@ def test_dev_stdio_mode_disables_runtime_auth_requirement(monkeypatch):
     assert auth_required_for_runtime() is True
 
 
-def test_build_token_verifier_warns_on_mixed_hs256_and_rs256(caplog, monkeypatch):
+def test_build_token_verifier_rejects_mixed_hs256_and_rs256(monkeypatch):
     monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
     monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
     monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256,RS256")
-    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", "super-secret")
+    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", _VALID_HS256_SECRET)
 
-    build_token_verifier_from_env()
+    with pytest.raises(RuntimeError, match="mixed_algorithms_not_allowed"):
+        build_token_verifier_from_env()
 
-    assert any("mixed_hs256_rs256" in record.message for record in caplog.records)
 
-
-def test_build_token_verifier_warns_on_mixed_algorithms_without_both_key_sources(
-    caplog, monkeypatch
-):
+def test_build_token_verifier_rejects_mixed_algorithms_without_both_key_sources(monkeypatch):
     monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
     monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://issuer.example/.well-known/jwks.json")
     monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256,RS256")
     monkeypatch.delenv("LORE_OIDC_HS256_SECRET", raising=False)
 
-    build_token_verifier_from_env()
+    with pytest.raises(RuntimeError, match="mixed_algorithms_not_allowed"):
+        build_token_verifier_from_env()
 
-    assert any("mixed_hs256_rs256" in record.message for record in caplog.records)
+
+def test_build_token_verifier_rejects_weak_hs256_secret(monkeypatch):
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "HS256")
+    monkeypatch.setenv("LORE_OIDC_HS256_SECRET", "short")
+    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+
+    with pytest.raises(RuntimeError, match="hs256_secret_too_short"):
+        build_token_verifier_from_env()
+
+
+def test_build_token_verifier_accepts_valid_hs256_secret(monkeypatch):
+    _set_valid_hs256_env(monkeypatch)
+
+    verifier = build_token_verifier_from_env()
+
+    assert verifier is not None
+    assert verifier.hs256_secret == _VALID_HS256_SECRET
+
+
+def test_build_token_verifier_requires_jwks_url_for_rs256(monkeypatch):
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "RS256")
+    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+    monkeypatch.delenv("LORE_OIDC_HS256_SECRET", raising=False)
+
+    with pytest.raises(RuntimeError, match="jwks_url_required"):
+        build_token_verifier_from_env()
+
+
+def test_build_token_verifier_requires_https_jwks_url(monkeypatch):
+    monkeypatch.setenv("LORE_OIDC_ISSUER", "https://issuer.example")
+    monkeypatch.setenv("LORE_OIDC_ALLOWED_ALGS", "RS256")
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "http://issuer.example/.well-known/jwks.json")
+    monkeypatch.delenv("LORE_OIDC_HS256_SECRET", raising=False)
+
+    with pytest.raises(RuntimeError, match="jwks_url_must_use_https"):
+        build_token_verifier_from_env()
+
+
+def test_build_token_verifier_rejects_private_jwks_ip(monkeypatch):
+    _set_valid_rs256_env(monkeypatch)
+    monkeypatch.setenv("LORE_OIDC_JWKS_URL", "https://169.254.169.254/jwks")
+
+    with pytest.raises(RuntimeError, match="jwks_url_private_ip_not_allowed"):
+        build_token_verifier_from_env()
+
+
+def test_build_token_verifier_rejects_private_jwks_dns_resolution(monkeypatch):
+    _set_valid_rs256_env(monkeypatch)
+
+    def _fake_getaddrinfo(*_args, **_kwargs):
+        return [(socket.AF_INET, None, None, "", ("127.0.0.1", 0))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", _fake_getaddrinfo)
+
+    with pytest.raises(RuntimeError, match="jwks_url_private_ip_not_allowed"):
+        build_token_verifier_from_env()
+
+
+def test_build_token_verifier_accepts_valid_jwks_url(monkeypatch):
+    _set_valid_rs256_env(monkeypatch)
+
+    verifier = build_token_verifier_from_env()
+
+    assert verifier.jwks_url == "https://issuer.example/.well-known/jwks.json"

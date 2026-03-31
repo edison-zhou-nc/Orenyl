@@ -50,6 +50,13 @@ class DRService:
         if multi_tenant_enabled():
             raise RuntimeError("single_tenant_mode_required_for_database_snapshots")
 
+    def _validate_storage_path(self, storage_uri: str) -> Path | None:
+        path = Path(str(storage_uri)).resolve()
+        snapshot_root = self.snapshot_dir.resolve()
+        if not path.is_relative_to(snapshot_root):
+            return None
+        return path
+
     def create_snapshot(self, label: str, tenant_id: str = "default") -> dict:
         self._ensure_single_tenant_mode()
         self.snapshot_dir.mkdir(parents=True, exist_ok=True)
@@ -71,7 +78,6 @@ class DRService:
         return {
             "ok": True,
             "snapshot_id": snapshot_id,
-            "storage_uri": str(snapshot_file),
             "checksum": checksum,
         }
 
@@ -82,7 +88,9 @@ class DRService:
         snapshot = self.db.get_dr_snapshot(snapshot_id=snapshot_id, tenant_id=tenant_id)
         if snapshot is None:
             return {"ok": False, "error": "snapshot_not_found"}
-        path = Path(str(snapshot["storage_uri"]))
+        path = self._validate_storage_path(str(snapshot["storage_uri"]))
+        if path is None:
+            return {"ok": False, "error": "invalid_storage_path"}
         if not path.exists():
             return {"ok": False, "error": "snapshot_missing", "snapshot_id": snapshot_id}
         actual = _sha256_file(path)
@@ -99,7 +107,9 @@ class DRService:
         snapshot = self.db.get_dr_snapshot(snapshot_id=snapshot_id, tenant_id=tenant_id)
         if snapshot is None:
             return {"ok": False, "error": "snapshot_not_found"}
-        snapshot_path = Path(str(snapshot["storage_uri"]))
+        snapshot_path = self._validate_storage_path(str(snapshot["storage_uri"]))
+        if snapshot_path is None:
+            return {"ok": False, "error": "invalid_storage_path"}
         if not snapshot_path.exists():
             return {"ok": False, "error": "snapshot_missing", "snapshot_id": snapshot_id}
         expected_checksum = str(snapshot["checksum"])
@@ -113,12 +123,18 @@ class DRService:
                 "actual_checksum": actual_checksum,
             }
         backup_path = self.db_path.with_suffix(f"{self.db_path.suffix}.pre_restore.bak")
-        self.db.conn.commit()
-        if self.db_path.exists():
-            shutil.copy2(self.db_path, backup_path)
-        with sqlite3.connect(snapshot_path) as source_conn:
-            source_conn.backup(self.db.conn)
-        self.db.conn.commit()
+        with self.db.transaction():
+            # sqlite3.backup() requires the destination connection to be idle,
+            # so we flush any active transaction state before copying pages.
+            self.db.conn.commit()
+            if self.db_path.exists():
+                shutil.copy2(self.db_path, backup_path)
+            source_conn = sqlite3.connect(snapshot_path)
+            try:
+                source_conn.backup(self.db.conn)
+            finally:
+                source_conn.close()
+            self.db.conn.commit()
         return {
             "ok": True,
             "snapshot_id": snapshot_id,
