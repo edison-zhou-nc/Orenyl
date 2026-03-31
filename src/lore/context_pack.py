@@ -12,16 +12,17 @@ from typing import cast
 from . import env_vars
 from .config import compliance_strict_mode_enabled, min_fact_confidence_threshold
 from .db import Database
-from .embedding_provider import build_embedding_provider_from_env
 from .embeddings import cosine_similarity
-from .lazy import Lazy
 from .models import ContextPack, RecallTrace
 from .retrieval_ranker import rank_items
+from .runtime import (
+    get_embedding_provider as _get_embedding_provider,
+    reset_embedding_provider_for_tests,
+)
 from .vector_backend import build_vector_backend_from_env
 
 _vector_backend = None
-_embedding_provider_lazy = Lazy(build_embedding_provider_from_env)
-_vector_backend_db_id: int | None = None
+_vector_backend_db_id: str | None = None
 _embedding_executor: concurrent.futures.ThreadPoolExecutor | None = None
 _embedding_future: concurrent.futures.Future[list[float]] | None = None
 _embedding_executor_lock = threading.Lock()
@@ -29,14 +30,12 @@ logger = logging.getLogger(__name__)
 _EMBEDDING_TIMEOUT_SECONDS = float(os.environ.get(env_vars.EMBEDDING_TIMEOUT_SECONDS, "10"))
 
 
-def _get_embedding_provider():
-    return _embedding_provider_lazy.value
-
-
 def _get_vector_backend(db: Database):
     global _vector_backend, _vector_backend_db_id
-    db_id = id(db)
+    db_id = str(getattr(db, "db_path", None) or id(db))
     if _vector_backend is None or _vector_backend_db_id != db_id:
+        if _vector_backend is not None and hasattr(_vector_backend, "close"):
+            _vector_backend.close()
         _vector_backend_db_id = db_id
         _vector_backend = build_vector_backend_from_env(db)
     return _vector_backend
@@ -44,7 +43,9 @@ def _get_vector_backend(db: Database):
 
 def _reset_runtime_state_for_tests() -> None:
     global _vector_backend, _embedding_executor, _embedding_future, _vector_backend_db_id
-    _embedding_provider_lazy.reset()
+    if _vector_backend is not None and hasattr(_vector_backend, "close"):
+        _vector_backend.close()
+    reset_embedding_provider_for_tests()
     _vector_backend = None
     _vector_backend_db_id = None
     if _embedding_executor is not None:
@@ -56,8 +57,12 @@ def _reset_runtime_state_for_tests() -> None:
 def _get_embedding_executor() -> concurrent.futures.ThreadPoolExecutor:
     global _embedding_executor
     if _embedding_executor is None:
+        try:
+            configured_workers = int(os.environ.get(env_vars.EMBEDDING_WORKERS, "4"))
+        except ValueError:
+            configured_workers = 4
         _embedding_executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=1,
+            max_workers=max(1, min(configured_workers, 16)),
             thread_name_prefix="lore-embedding",
         )
     return _embedding_executor

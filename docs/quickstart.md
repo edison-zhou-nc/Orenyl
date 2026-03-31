@@ -1,6 +1,6 @@
 # Quickstart: Lore in 5 Minutes
 
-Get Lore running locally in a documented self-serve development mode.
+Get Lore running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
 
 ## Install
 
@@ -13,81 +13,116 @@ Or from source:
 ```bash
 git clone https://github.com/edison-zhou-nc/Lore.git
 cd Lore
-pip install -e .
+python -m pip install -e .
 ```
 
-## Try It (Python)
+## Start Lore in local dev mode
 
-```python
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.context_pack import ContextPackBuilder
-from lore.models import Event
-
-# 1. Create an in-memory database
-db = Database(":memory:")
-engine = LineageEngine(db)
-builder = ContextPackBuilder(db)
-
-# 2. Store an event
-event = Event(
-    id="event:demo:1",
-    type="note",
-    payload={"text": "Started metformin 500mg daily for blood sugar"},
-    domains=["health"],
-    sensitivity="medium",
-)
-db.insert_event(event)
-facts = engine.derive_facts_for_event(db.get_event(event.id))
-print(f"Derived {len(facts)} fact(s)")
-
-# 3. Retrieve a context pack
-pack = builder.build(domain="health", query="medication", limit=10)
-print(f"Context pack: {len(pack.facts)} fact(s)")
-
-# 4. Delete with verification
-proof = engine.delete_and_recompute(event.id, "event", reason="user_request", mode="soft")
-verified = proof.to_dict()["checks"]["deletion_verified"]
-print(f"Deletion verified: {verified}")
-
-# 5. Verify nothing resurfaces
-pack_after = builder.build(domain="health", query="medication", limit=10)
-print(f"After deletion: {len(pack_after.facts)} fact(s)")
+```powershell
+$env:LORE_TRANSPORT = "stdio"
+$env:LORE_ALLOW_STDIO_DEV = "1"
+lore-server
 ```
 
-Expected output:
+This mode uses Lore's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
+It is for development only.
 
-```text
-Derived 2 fact(s)
-Context pack: 2 fact(s)
-Deletion verified: True
-After deletion: 0 fact(s)
+## Configure your MCP client
+
+```json
+{
+  "mcpServers": {
+    "lore": {
+      "command": "lore-server",
+      "env": {
+        "LORE_TRANSPORT": "stdio",
+        "LORE_ALLOW_STDIO_DEV": "1",
+        "LORE_DB_PATH": "./lore_memory.db"
+      }
+    }
+  }
+}
 ```
 
-## Run as MCP Server
+## Try the core tool flow
 
-For AI agent integration (Claude Code, OpenClaw, etc.), use Lore's local development mode:
+### 1. Store an event
 
-```bash
-LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m lore.server
+```json
+{
+  "name": "store_event",
+  "arguments": {
+    "domains": ["health"],
+    "type": "med_started",
+    "payload": {"name": "metformin"},
+    "sensitivity": "medium"
+  }
+}
 ```
 
-This stdio path is for development only and uses Lore's explicit local-dev auth bypass. Production deployment mode should use `streamable-http` with authenticated requests.
+Expected result: a response containing `stored: true` and an `event_id`.
 
-See [Integration Guides](guides/) for client-specific configuration.
+### 2. Retrieve a context pack
 
-## What Just Happened?
+```json
+{
+  "name": "retrieve_context_pack",
+  "arguments": {
+    "domain": "health",
+    "query": "medication",
+    "limit": 10
+  }
+}
+```
 
-1. **Store**: Immutable event recorded with domain and sensitivity tags
-2. **Derive**: Facts extracted deterministically from the event
-3. **Retrieve**: Context pack assembled with relevance ranking and lineage tracing
-4. **Delete**: Event removed, downstream facts invalidated and recomputed
-5. **Verify**: Proof confirms deleted data cannot resurface
+Expected result: facts plus lineage-aware retrieval metadata.
 
-This is Lore's core guarantee: **if upstream data is deleted, downstream derivations must not resurface.**
+### 3. Delete with verification
 
-## Next Steps
+```json
+{
+  "name": "delete_and_recompute",
+  "arguments": {
+    "target_id": "event:replace-with-your-event-id",
+    "target_type": "event",
+    "reason": "user_request",
+    "mode": "soft"
+  }
+}
+```
 
-- [Claude Code Integration](guides/claude-code.md)
-- [OpenClaw Integration](guides/openclaw.md)
-- [MCP Tool Contract](MCP_TOOL_CONTRACTS.md) - full API reference
+Expected result: a deletion proof whose checks include `deletion_verified: true`.
+
+### 4. Inspect lineage
+
+```json
+{
+  "name": "audit_trace",
+  "arguments": {
+    "item_id": "event:replace-with-your-event-id",
+    "include_source_events": true
+  }
+}
+```
+
+Expected result: a full lineage trace showing upstream and downstream relationships.
+
+## Production note
+
+Production deployment uses `streamable-http` and authenticated tool calls. When auth is enabled, pass `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments. This path replaces the development-only stdio flow. See [INTEGRATION.md](INTEGRATION.md) for the exact contract.
+
+## What just happened?
+
+1. Lore stored an immutable event.
+2. Lore derived deterministic facts from active events.
+3. Retrieval returned bounded context with lineage.
+4. Deletion invalidated downstream facts and verified they do not resurface.
+
+This is Lore's core guarantee: if upstream data is deleted, downstream derivations must not resurface.
+
+## Next steps
+
+- [INTEGRATION.md](INTEGRATION.md)
+- [guides/claude-code.md](guides/claude-code.md)
+- [guides/openclaw.md](guides/openclaw.md)
+- [MCP_TOOL_CONTRACTS.md](MCP_TOOL_CONTRACTS.md)

@@ -10,6 +10,7 @@ from lore.context_pack import ContextPackBuilder
 from lore.db import Database
 from lore.lineage import LineageEngine
 from lore.models import Event
+from lore.handlers.tooling import list_registered_tools
 
 
 class _Verifier:
@@ -88,3 +89,11 @@ def test_phase4_tools_registered_and_callable(monkeypatch):
     )
     verify_payload = json.loads(verify_out[0].text)
     assert verify_payload["ok"] is True
+
+
+def test_retrieve_context_pack_schema_includes_restricted_max_sensitivity():
+    tools = {tool.name: tool for tool in list_registered_tools()}
+    schema = tools["retrieve_context_pack"].inputSchema
+    sensitivity_enum = schema["properties"]["max_sensitivity"]["enum"]
+
+    assert "restricted" in sensitivity_enum

@@ -17,7 +17,7 @@ def _reset_server(monkeypatch, db):
 def test_high_sensitivity_payload_stored_encrypted_when_key_present(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase!")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
     out = asyncio.run(
@@ -61,7 +61,7 @@ def test_restricted_not_returned_in_context_pack():
 def test_encryption_enabled_skips_sensitive_fact_derivation(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase")
+    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase!")
     monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
     out = asyncio.run(

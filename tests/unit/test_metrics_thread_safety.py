@@ -26,3 +26,14 @@ def test_metrics_concurrent_increments_are_counted_correctly():
     expected_total = thread_count * increments_per_thread
     assert f"lore_tool_calls_total {expected_total}" in rendered
     assert f'lore_tool_calls{{tool="store_event",status="ok"}} {expected_total}' in rendered
+
+
+def test_latency_observations_are_bounded():
+    metrics.reset_metrics_for_tests()
+
+    for i in range(20_000):
+        metrics.observe_latency("store_event_latency_ms", float(i))
+
+    rendered = metrics.render_prometheus()
+
+    assert "lore_store_event_latency_ms_count 10000" in rendered

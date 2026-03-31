@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from . import env_vars
 
 logger = logging.getLogger(__name__)
 _INSECURE_DEV_SALTS: dict[str, bytes] = {}
+_AAD_VERSION = "v1"
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,10 @@ def resolve_runtime_keyring() -> RuntimeKeyring:
         salt = _decode_salt(env_vars.ENCRYPTION_SALT)
     else:
         salt = _decode_salt(salt_var)
+    if passphrase and len(passphrase) < 16:
+        raise RuntimeError(
+            "passphrase_too_short: encryption passphrase must be at least 16 characters"
+        )
 
     keys: dict[str, EncryptionKey] = {
         active_version: EncryptionKey(key=generate_key(passphrase, salt), salt=salt)
@@ -87,10 +93,29 @@ def resolve_runtime_keyring() -> RuntimeKeyring:
         version = version_norm.lower()
         if version in keys:
             continue
+        if len(env_value) < 16:
+            raise RuntimeError(
+                "passphrase_too_short: encryption passphrase must be at least 16 characters"
+            )
         prev_salt = _decode_salt(f"{env_vars.ENCRYPTION_SALT_PREFIX}{version_norm}")
         keys[version] = EncryptionKey(key=generate_key(env_value, prev_salt), salt=prev_salt)
 
     return RuntimeKeyring(active_version=active_version, keys=keys)
+
+
+def _build_aad(alg: str, kdf: str, key_version: str, aad_version: str = _AAD_VERSION) -> bytes:
+    if aad_version != _AAD_VERSION:
+        raise ValueError("unsupported_aad")
+    return json.dumps(
+        {
+            "aad": aad_version,
+            "alg": alg,
+            "kdf": kdf,
+            "key_version": key_version,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
 
 
 def encrypt_content(plaintext: str, key: bytes, salt: bytes, key_version: str = "v1") -> dict:
@@ -100,11 +125,12 @@ def encrypt_content(plaintext: str, key: bytes, salt: bytes, key_version: str = 
     if len(salt) < 8:
         raise ValueError("salt_too_short")
     nonce = os.urandom(12)
-
-    ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+    aad = _build_aad("aes-256-gcm", "argon2id", key_version)
+    ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), aad)
     return {
         "alg": "aes-256-gcm",
         "kdf": "argon2id",
+        "aad": _AAD_VERSION,
         "key_version": key_version,
         "salt": base64.b64encode(salt).decode("ascii"),
         "nonce": base64.b64encode(nonce).decode("ascii"),
@@ -113,9 +139,11 @@ def encrypt_content(plaintext: str, key: bytes, salt: bytes, key_version: str = 
 
 
 def decrypt_content(payload: dict, key: bytes) -> str:
-    if payload.get("alg") != "aes-256-gcm":
+    alg = payload.get("alg", "")
+    kdf = payload.get("kdf", "")
+    if alg != "aes-256-gcm":
         raise ValueError("unsupported_algorithm")
-    if payload.get("kdf") != "argon2id":
+    if kdf != "argon2id":
         raise ValueError("unsupported_kdf")
     try:
         nonce = base64.b64decode(payload["nonce"], validate=True)
@@ -123,5 +151,11 @@ def decrypt_content(payload: dict, key: bytes) -> str:
     except (KeyError, ValueError, binascii.Error) as exc:
         raise ValueError("malformed_ciphertext") from exc
     aesgcm = AESGCM(key)
-    plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    aad_version = payload.get("aad")
+    if aad_version is None:
+        plaintext = aesgcm.decrypt(nonce, ciphertext, None)
+    else:
+        key_version = str(payload.get("key_version", "v1"))
+        aad = _build_aad(alg, kdf, key_version, str(aad_version))
+        plaintext = aesgcm.decrypt(nonce, ciphertext, aad)
     return plaintext.decode("utf-8")

@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import time
+from datetime import UTC, datetime, timedelta
 
 from mcp.types import TextContent
 
@@ -46,16 +47,137 @@ from ._deps import (
 logger = logging.getLogger(__name__)
 ALLOWED_SENSITIVITY_LEVELS = {"low", "medium", "high", "restricted"}
 MAX_EXPORT_DOMAIN_EVENTS = 10_000
+MAX_METADATA_JSON_BYTES = 65_536
+MAX_EVENT_FUTURE_SKEW = timedelta(hours=24)
+MAX_EVENT_PAST_AGE = timedelta(days=365 * 10)
 
 
 def _subject_id_for_event(event: dict | None) -> str:
     return str((event or {}).get("metadata", {}).get("subject_id", "")).strip()
 
 
+def _store_event_rejection(reason: str, detail: str | None = None) -> list[TextContent]:
+    payload: dict[str, object] = {"stored": False, "reason": reason, "error": reason}
+    if detail:
+        payload["detail"] = detail
+    return [TextContent(type="text", text=json.dumps(payload, indent=2))]
+
+
+def _parse_event_timestamp(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise TypeError("timestamp must be a string")
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("timestamp must not be empty")
+    if normalized.endswith("Z"):
+        normalized = f"{normalized[:-1]}+00:00"
+    parsed = datetime.fromisoformat(normalized)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
 async def handle_store_event(args: dict) -> list[TextContent]:
     started = time.perf_counter()
     db = get_db()
     engine = get_engine()
+    domains = args.get("domains", ["general"])
+    if not isinstance(domains, list):
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {"error": "invalid_domains", "detail": "domains must be a list"},
+                    indent=2,
+                ),
+            )
+        ]
+    if not domains:
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {"error": "invalid_domains", "detail": "domains must not be empty"},
+                    indent=2,
+                ),
+            )
+        ]
+    if len(domains) > 100:
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "error": "too_many_domains",
+                        "detail": f"max 100 domains, got {len(domains)}",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
+    if not all(isinstance(domain, str) and domain.strip() and len(domain) <= 200 for domain in domains):
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "error": "invalid_domains",
+                        "detail": "each domain must be a non-empty string <= 200 chars",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
+    event_type = args.get("type", "note")
+    if not isinstance(event_type, str) or not event_type.strip() or len(event_type) > 100:
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {"error": "invalid_type", "detail": "type must be a string <= 100 chars"},
+                    indent=2,
+                ),
+            )
+        ]
+    metadata = args.get("metadata", {})
+    if metadata is None:
+        metadata = {}
+    if not isinstance(metadata, dict):
+        return _store_event_rejection("invalid_metadata", "metadata must be an object")
+    try:
+        metadata_size = len(
+            json.dumps(metadata, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        )
+    except (TypeError, ValueError):
+        return _store_event_rejection(
+            "invalid_metadata",
+            "metadata must be JSON serializable",
+        )
+    if metadata_size > MAX_METADATA_JSON_BYTES:
+        return _store_event_rejection(
+            "metadata_too_large",
+            f"metadata exceeds {MAX_METADATA_JSON_BYTES} bytes when serialized",
+        )
+    if "ts" in args and args.get("ts") not in (None, ""):
+        try:
+            parsed_ts = _parse_event_timestamp(args["ts"])
+        except (TypeError, ValueError):
+            return _store_event_rejection(
+                "invalid_timestamp",
+                "ts must be a valid ISO 8601 datetime",
+            )
+        now = datetime.now(UTC)
+        if parsed_ts > now + MAX_EVENT_FUTURE_SKEW:
+            return _store_event_rejection(
+                "invalid_timestamp",
+                "timestamp too far in the future",
+            )
+        if parsed_ts < now - MAX_EVENT_PAST_AGE:
+            return _store_event_rejection(
+                "invalid_timestamp",
+                "timestamp too far in the past",
+            )
+
     payload = args.get("payload", {})
     content = args.get("content", "")
     if content and isinstance(payload, dict):
@@ -89,7 +211,6 @@ async def handle_store_event(args: dict) -> list[TextContent]:
             )
         ]
     content_hash = compute_content_hash(content_basis)
-    domains = args.get("domains", ["general"])
     tenant_id = args.get("_auth_tenant_id", "")
     if check_duplicate(db, content_hash, domains, window_hours=24, tenant_id=tenant_id):
         return [
@@ -164,8 +285,8 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         }
 
     event = Event(
-        id=new_id("event", args.get("type", "note")),
-        type=args.get("type", "note"),
+        id=new_id("event", event_type),
+        type=event_type,
         payload=event_payload,
         domains=domains,
         content_hash=content_hash,
@@ -173,7 +294,7 @@ async def handle_store_event(args: dict) -> list[TextContent]:
         consent_source=args.get("consent_source", "implicit"),
         expires_at=args.get("expires_at"),
         metadata={
-            **(args.get("metadata", {}) or {}),
+            **metadata,
             "tenant_id": args.get("_auth_tenant_id", "default"),
         },
         source=args.get("source", "user"),
@@ -415,9 +536,9 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
             )
         ]
 
-    if page_size > 0 or cursor or stream_mode:
-        event_count = db.get_event_count(domain=domain, tenant_id=tenant_id)
-        if event_count > MAX_EXPORT_DOMAIN_EVENTS:
+    event_count = db.get_event_count(domain=domain, tenant_id=tenant_id)
+    if event_count > MAX_EXPORT_DOMAIN_EVENTS:
+        if page_size > 0 or cursor or stream_mode:
             return [
                 TextContent(
                     type="text",
@@ -430,6 +551,20 @@ async def handle_export_domain(args: dict) -> list[TextContent]:
                     ),
                 )
             ]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "error": "export_domain_too_large",
+                        "event_count": event_count,
+                        "max_events": MAX_EXPORT_DOMAIN_EVENTS,
+                        "detail": "Use pagination (page_size > 0) for large domains",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
 
     events = (
         db.get_active_events_by_domains([domain], tenant_id=tenant_id)

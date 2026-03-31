@@ -81,20 +81,26 @@ class AuditMixin(BaseMixin):
         if not references:
             return 0
 
-        rows = self.conn.execute(
-            """SELECT id, context_pack, trace FROM retrieval_logs
-               WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
-            (tenant_id, tenant_id),
-        ).fetchall()
-        delete_ids = [
-            int(row["id"])
-            for row in rows
-            if self._retrieval_log_references_lineage(
-                str(row["context_pack"]),
-                str(row["trace"]),
-                references,
-            )
-        ]
+        delete_ids: list[int] = []
+        batch_size = 1000
+        offset = 0
+        while True:
+            rows = self.conn.execute(
+                """SELECT id, context_pack, trace FROM retrieval_logs
+                   WHERE (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
+                   LIMIT ? OFFSET ?""",
+                (tenant_id, tenant_id, batch_size, offset),
+            ).fetchall()
+            if not rows:
+                break
+            for row in rows:
+                if self._retrieval_log_references_lineage(
+                    str(row["context_pack"]),
+                    str(row["trace"]),
+                    references,
+                ):
+                    delete_ids.append(int(row["id"]))
+            offset += batch_size
         if not delete_ids:
             return 0
 

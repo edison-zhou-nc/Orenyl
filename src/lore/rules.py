@@ -127,7 +127,7 @@ ALL_RULES: list[DerivationRule] = [
 RULES_BY_KEY: dict[str, DerivationRule] = {r.output_key: r for r in ALL_RULES}
 
 
-class RuleRegistry:
+class DerivationRuleRegistry:
     def __init__(self):
         self._by_domain: dict[str, list[DerivationRule]] = {}
 
@@ -154,7 +154,7 @@ class RuleRegistry:
         return result
 
 
-RULE_REGISTRY = RuleRegistry()
+RULE_REGISTRY = DerivationRuleRegistry()
 for _rule in ALL_RULES:
     RULE_REGISTRY.register_rule("general", _rule)
 

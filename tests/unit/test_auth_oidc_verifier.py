@@ -182,3 +182,26 @@ def test_fetch_jwks_logs_warning_on_request_failure(monkeypatch, caplog):
 
     assert jwks == {}
     assert "jwks_fetch_failed" in caplog.text
+
+
+def test_failed_jwks_fetch_uses_short_negative_cache(monkeypatch):
+    verifier = OIDCTokenVerifier(
+        issuer="https://issuer.example",
+        audience="lore",
+        hs256_secret="",
+        jwks_url="https://issuer.example/.well-known/jwks.json",
+        allowed_algorithms=("RS256",),
+        jwks_cache_ttl_seconds=300,
+    )
+
+    async def _empty_jwks():
+        return {}
+
+    now = {"value": 1_000.0}
+    monkeypatch.setattr(verifier, "_fetch_jwks", _empty_jwks)
+    monkeypatch.setattr("lore.auth.time.time", lambda: now["value"])
+
+    asyncio.run(verifier._get_jwks())
+
+    assert verifier._jwks_cache == {}
+    assert verifier._jwks_cache_expires_at == 1030

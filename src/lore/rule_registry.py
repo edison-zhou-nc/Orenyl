@@ -5,7 +5,7 @@ from __future__ import annotations
 from .db import Database
 
 
-class RuleRegistry:
+class RuleVersionRegistry:
     def __init__(self, db: Database):
         self.db = db
 

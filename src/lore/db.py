@@ -14,7 +14,6 @@ from .repositories.events import EventMixin
 from .repositories.facts import FactMixin
 from .repositories.federation import FederationMixin
 from .repositories.lineage import LineageMixin
-
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
 
 
@@ -59,6 +58,7 @@ class Database(
     """Database shell that preserves the public API through mixin composition."""
 
     def __init__(self, db_path: str = ":memory:"):
+        self.db_path = db_path
         self._transaction_lock = threading.RLock()
         self.conn = sqlite3.connect(
             db_path,
@@ -90,15 +90,27 @@ class Database(
             finally:
                 self._in_transaction = False
 
+    def _get_schema_version(self) -> int:
+        try:
+            row = self.conn.execute("SELECT MAX(version) FROM schema_version").fetchone()
+        except sqlite3.OperationalError:
+            return 1
+        return int(row[0]) if row is not None and row[0] is not None else 1
+
+    def _set_schema_version(self, version: int) -> None:
+        self.conn.execute("INSERT OR REPLACE INTO schema_version (version) VALUES (?)", (version,))
+        self.conn.commit()
+
     def _init_schema(self):
-        # Bring legacy v1 tables up to minimum shape before executing schema script
-        # so index creation on new columns cannot fail.
-        self.migrate_v1_to_v2()
+        # migrate_v1_to_v2 MUST run before executescript(schema).
+        current = self._get_schema_version()
+        if current < 2:
+            self.migrate_v1_to_v2()
         schema = SCHEMA_PATH.read_text()
         self.conn.executescript(schema)
-        # Legacy artifact from early phase-4 draft; hash chain lives in audit DB.
+        if current < 2:
+            self._set_schema_version(2)
         self.conn.execute("DROP TABLE IF EXISTS audit_hash_chain")
-        # Ensure uniqueness is enforced for existing DBs upgraded prior to this index.
         self.conn.execute("DROP INDEX IF EXISTS idx_facts_key_version_unique")
         self.conn.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_facts_key_version_unique "
@@ -106,6 +118,8 @@ class Database(
         )
 
     def detect_schema_version(self) -> str:
+        if self._get_schema_version() >= 2:
+            return "v2"
         tables = {
             row[0]
             for row in self.conn.execute(

@@ -15,6 +15,8 @@ class VectorBackend(Protocol):
 
     def query(self, namespace: str, query: list[float], top_k: int) -> list[str]: ...
 
+    def close(self) -> None: ...
+
 
 class LocalVectorBackend:
     """SQLite-backed vector store for local/dev usage."""
@@ -46,15 +48,20 @@ class LocalVectorBackend:
         safe_top_k = max(0, int(top_k))
         return [item_id for _, item_id in scored[:safe_top_k]]
 
+    def close(self) -> None:
+        return None
+
 
 class PgvectorVectorBackend:
     """pgvector adapter for externally managed Postgres vector stores."""
 
     def __init__(self, dsn: str):
         self.dsn = dsn
+        self._conn = None
 
     def upsert(self, namespace: str, item_id: str, vector: list[float]) -> None:
-        with self._connect() as conn:
+        conn = self._get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute(
                     """CREATE TABLE IF NOT EXISTS lore_vectors (
@@ -72,10 +79,14 @@ class PgvectorVectorBackend:
                     (namespace, item_id, encode_vector(vector)),
                 )
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def query(self, namespace: str, query: list[float], top_k: int) -> list[str]:
         # Fallback implementation uses client-side cosine scoring over JSON vectors.
-        with self._connect() as conn:
+        conn = self._get_conn()
+        try:
             with conn.cursor() as cur:
                 cur.execute(
                     """SELECT item_id, embedding
@@ -84,18 +95,28 @@ class PgvectorVectorBackend:
                     (namespace,),
                 )
                 rows = cur.fetchall()
+        except Exception:
+            conn.rollback()
+            raise
         scored: list[tuple[float, str]] = []
         for item_id, embedding in rows:
             scored.append((cosine_similarity(query, decode_vector(str(embedding))), str(item_id)))
         scored.sort(key=lambda item: (-item[0], item[1]))
         return [item_id for _, item_id in scored[: max(0, int(top_k))]]
 
-    def _connect(self):
-        try:
-            import psycopg
-        except Exception as exc:  # pragma: no cover - exercised in pgvector environments only
-            raise RuntimeError("pgvector_backend_requires_psycopg") from exc
-        return psycopg.connect(self.dsn)
+    def _get_conn(self):
+        if self._conn is None or getattr(self._conn, "closed", False):
+            try:
+                import psycopg
+            except Exception as exc:  # pragma: no cover - exercised in pgvector environments only
+                raise RuntimeError("pgvector_backend_requires_psycopg") from exc
+            self._conn = psycopg.connect(self.dsn, autocommit=False)
+        return self._conn
+
+    def close(self) -> None:
+        if self._conn is not None and not getattr(self._conn, "closed", False):
+            self._conn.close()
+        self._conn = None
 
 
 def build_vector_backend_from_env(db: Database) -> VectorBackend:
