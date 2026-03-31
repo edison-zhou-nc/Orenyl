@@ -104,6 +104,17 @@ class OpenAIEmbeddingProvider:
                 time.sleep(self.backoff_seconds * (attempt + 1))
         raise RuntimeError("embedding_provider_unavailable") from last_error
 
+    def close(self) -> None:
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
+
 
 def _is_retryable_status(status_code: int) -> bool:
     return status_code == 429 or 500 <= status_code <= 599

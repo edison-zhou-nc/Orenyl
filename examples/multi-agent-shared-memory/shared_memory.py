@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
-
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+try:
+    from lore.context_pack import ContextPackBuilder
+    from lore.db import Database
+    from lore.models import Edge, Event, Fact
+except ImportError as exc:  # pragma: no cover - example guard
+    raise SystemExit("Install lore first with `python -m pip install -e .`.") from exc
 
 
 def _seed_tenant_memory(

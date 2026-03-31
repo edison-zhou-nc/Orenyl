@@ -11,7 +11,9 @@ from ._base import BaseMixin
 class LineageMixin(BaseMixin):
     def insert_edge(self, edge: Edge):
         self.conn.execute(
-            """INSERT INTO edges (tenant_id, parent_id, parent_type, child_id, child_type, relation)
+            """INSERT OR IGNORE INTO edges (
+                   tenant_id, parent_id, parent_type, child_id, child_type, relation
+               )
                VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 edge.tenant_id,
@@ -66,15 +68,16 @@ class LineageMixin(BaseMixin):
         """Recursively find downstream facts using a single SQL CTE."""
         rows = self.conn.execute(
             """
-            WITH RECURSIVE graph(child_id) AS (
-                SELECT child_id FROM edges
+            WITH RECURSIVE graph(child_id, depth) AS (
+                SELECT child_id, 1 FROM edges
                 WHERE parent_id = ?
                   AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)
-                UNION
-                SELECT e.child_id
+                UNION ALL
+                SELECT e.child_id, g.depth + 1
                 FROM edges e
                 JOIN graph g ON e.parent_id = g.child_id
-                WHERE (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
+                WHERE g.depth < 100
+                  AND (NULLIF(?, '') IS NULL OR COALESCE(e.tenant_id, 'default') = ?)
             )
             SELECT DISTINCT child_id FROM graph ORDER BY child_id
             """,

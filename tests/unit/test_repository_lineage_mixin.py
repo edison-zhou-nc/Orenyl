@@ -20,3 +20,21 @@ def test_lineage_repository_tracks_parent_child_relationships():
     assert db.get_parents(fact.id)[0]["parent_id"] == event.id
     assert db.get_parents_for_children([fact.id])[fact.id][0]["parent_id"] == event.id
     assert db.get_downstream_facts(event.id) == [fact.id]
+
+
+def test_get_downstream_facts_is_bounded_to_100_recursive_hops():
+    db = Database(":memory:")
+    for i in range(150):
+        db.insert_edge(
+            Edge(
+                parent_id=f"fact:test:{i}",
+                parent_type="fact",
+                child_id=f"fact:test:{i + 1}",
+            )
+        )
+
+    result = db.get_downstream_facts("fact:test:0")
+
+    assert len(result) == 100
+    assert "fact:test:100" in result
+    assert "fact:test:101" not in result

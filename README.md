@@ -94,14 +94,19 @@ This mode uses Lore's explicit local-dev auth bypass so you do not need external
 
 ## Production deployment mode
 
-Use `streamable-http` with authenticated bearer tokens for real deployments.
+Use `streamable-http` with authenticated tool calls for real deployments.
 
 1. Set `LORE_TRANSPORT=streamable-http`.
 2. Configure OIDC or HS256 verification settings.
-3. Start `python -m lore.server`.
-4. Treat stdio mode as development only.
+3. Pass a JWT per tool call using `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments.
+4. Start `lore-server` or `python -m lore.server`.
+5. Treat stdio mode as development only.
+
+Lore does not currently read an HTTP `Authorization` header inside tool dispatch. If you need gateway-level HTTP auth, terminate that at your proxy or application edge and still pass the JWT into the tool call contract described in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## MCP Tool Contract (v2)
+
+Authenticated transports use the same 14-tool contract below. When auth is enabled, include `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments.
 
 1. `store_event(domains, content, sensitivity, consent_source, expires_at, metadata, type?, payload?, source?, ts?)`
 2. `retrieve_context_pack(domain, query, include_summary, max_sensitivity, limit, agent_id?, session_id?)`
@@ -145,6 +150,7 @@ Use `streamable-http` with authenticated bearer tokens for real deployments.
 | `LORE_VECTOR_BACKEND` | `local` | Vector storage backend (`local`, `sqlite`, or `pgvector`) |
 | `LORE_PGVECTOR_DSN` | unset | PostgreSQL DSN used when `LORE_VECTOR_BACKEND=pgvector` |
 | `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider only (ignored for `openai`) |
+| `LORE_EMBEDDING_WORKERS` | `4` | Worker count for async embedding tasks, clamped to 1-16 |
 | `LORE_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
 | `LORE_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
 | `LORE_EMBEDDING_TIMEOUT_SECONDS` | `10` | Timeout before retrieval falls back when embeddings stall |

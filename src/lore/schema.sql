@@ -73,6 +73,11 @@ CREATE TABLE IF NOT EXISTS retrieval_logs (
     ts TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
+CREATE TABLE IF NOT EXISTS schema_version (
+    version INTEGER PRIMARY KEY,
+    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS event_domains (
     event_id TEXT NOT NULL,
     domain TEXT NOT NULL,
@@ -228,6 +233,8 @@ CREATE INDEX IF NOT EXISTS idx_delegation_grants_lookup
 ON delegation_grants(tenant_id, grantee_agent_id, domain, action, expires_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sync_journal_idempotency
 ON sync_journal(tenant_id, direction, idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_sync_journal_applied_item
+ON sync_journal(tenant_id, direction, status, json_extract(payload, '$.item_id'), id);
 CREATE INDEX IF NOT EXISTS idx_consent_lookup
 ON consent_records(tenant_id, subject_id, purpose, effective_at);
 CREATE INDEX IF NOT EXISTS idx_subject_requests_lookup

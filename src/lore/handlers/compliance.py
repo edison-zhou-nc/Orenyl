@@ -9,11 +9,16 @@ from mcp.types import TextContent
 from ..article30 import generate_article30_report
 from ._deps import get_compliance_service, get_consent_service, get_db
 
+VALID_CONSENT_STATUSES = {"granted", "denied", "withdrawn", "pending"}
+
 
 async def handle_erase_subject_data(args: dict) -> list[TextContent]:
+    subject_id = str(args.get("subject_id", "")).strip()
+    if not subject_id:
+        return [TextContent(type="text", text=json.dumps({"error": "subject_id_required"}, indent=2))]
     service = get_compliance_service()
     result = service.erase_subject_data(
-        subject_id=str(args.get("subject_id", "")),
+        subject_id=subject_id,
         mode=str(args.get("mode", "hard")),
         tenant_id=str(args.get("_auth_tenant_id", "")),
         reason=str(args.get("reason", "subject_erasure")),
@@ -31,12 +36,26 @@ async def handle_export_subject_data(args: dict) -> list[TextContent]:
 
 
 async def handle_record_consent(args: dict) -> list[TextContent]:
+    status = str(args.get("status", "")).strip().lower()
+    if status not in VALID_CONSENT_STATUSES:
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "error": "invalid_consent_status",
+                        "detail": f"status must be one of: {', '.join(sorted(VALID_CONSENT_STATUSES))}",
+                    },
+                    indent=2,
+                ),
+            )
+        ]
     service = get_consent_service()
     record_id = service.record(
         tenant_id=str(args.get("_auth_tenant_id", "default")),
         subject_id=str(args.get("subject_id", "")),
         purpose=str(args.get("purpose", "retrieval")),
-        status=str(args.get("status", "")),
+        status=status,
         legal_basis=str(args.get("legal_basis", "")),
         source=str(args.get("source", "user")),
         metadata=dict(args.get("metadata", {}) or {}),

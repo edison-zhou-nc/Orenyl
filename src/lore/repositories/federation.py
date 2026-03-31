@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from typing import Any
+from typing import Any, cast
 
 from ._base import BaseMixin
 
@@ -97,3 +97,24 @@ class FederationMixin(BaseMixin):
             (tenant_id, tenant_id),
         ).fetchone()
         return int(row["c"]) if row is not None else 0
+
+    def get_latest_applied_journal_entry_by_item(
+        self,
+        tenant_id: str,
+        item_id: str,
+        direction: str = "inbound",
+    ) -> dict[str, Any] | None:
+        row = self.conn.execute(
+            """SELECT payload
+               FROM sync_journal
+               WHERE tenant_id = ?
+                 AND direction = ?
+                 AND status = 'applied'
+                 AND json_extract(payload, '$.item_id') = ?
+               ORDER BY id DESC
+               LIMIT 1""",
+            (tenant_id, direction, item_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return cast(dict[str, Any], json.loads(str(row["payload"] or "{}")))

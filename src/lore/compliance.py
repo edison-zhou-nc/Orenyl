@@ -22,6 +22,7 @@ class ComplianceService:
         tenant_id: str = "",
         reason: str = "subject_erasure",
     ) -> dict:
+        normalized_tenant_id = tenant_id or "default"
         request_id = new_id("subject_request", "erasure")
         opened_at = now_iso()
         events = self.db.get_active_events_by_subject(subject_id=subject_id, tenant_id=tenant_id)
@@ -36,18 +37,20 @@ class ComplianceService:
                 "deletion_verified": True,
                 "proofs": [],
             }
-            self.db.create_subject_request(
-                SubjectRequest(
-                    request_id=request_id,
-                    tenant_id=tenant_id or "default",
-                    subject_id=subject_id,
-                    request_type="erasure",
-                    status="completed",
-                    opened_at=opened_at,
-                    closed_at=now_iso(),
-                    details=result,
+            with self.db.transaction():
+                self._delete_subject_records(subject_id=subject_id, tenant_id=normalized_tenant_id)
+                self.db.create_subject_request(
+                    SubjectRequest(
+                        request_id=request_id,
+                        tenant_id=normalized_tenant_id,
+                        subject_id=subject_id,
+                        request_type="erasure",
+                        status="completed",
+                        opened_at=opened_at,
+                        closed_at=now_iso(),
+                        details=result,
+                    )
                 )
-            )
             return result
         deleted_event_ids: list[str] = []
         deletion_verified = True
@@ -76,19 +79,35 @@ class ComplianceService:
             "deletion_verified": deletion_verified,
             "proofs": proofs,
         }
-        self.db.create_subject_request(
-            SubjectRequest(
-                request_id=request_id,
-                tenant_id=tenant_id or "default",
-                subject_id=subject_id,
-                request_type="erasure",
-                status="completed",
-                opened_at=opened_at,
-                closed_at=now_iso(),
-                details=result,
+        with self.db.transaction():
+            self._delete_subject_records(subject_id=subject_id, tenant_id=normalized_tenant_id)
+            self.db.create_subject_request(
+                SubjectRequest(
+                    request_id=request_id,
+                    tenant_id=normalized_tenant_id,
+                    subject_id=subject_id,
+                    request_type="erasure",
+                    status="completed",
+                    opened_at=opened_at,
+                    closed_at=now_iso(),
+                    details=result,
+                )
             )
-        )
         return result
+
+    def _delete_subject_records(self, subject_id: str, tenant_id: str) -> None:
+        self.db.conn.execute(
+            """DELETE FROM consent_records
+               WHERE subject_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (subject_id, tenant_id, tenant_id),
+        )
+        self.db.conn.execute(
+            """DELETE FROM subject_requests
+               WHERE subject_id = ?
+                 AND (NULLIF(?, '') IS NULL OR COALESCE(tenant_id, 'default') = ?)""",
+            (subject_id, tenant_id, tenant_id),
+        )
 
     def export_subject_data(self, subject_id: str, tenant_id: str = "") -> dict:
         request = SubjectRequest(
