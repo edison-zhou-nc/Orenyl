@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 import sys
 
 
@@ -45,13 +44,12 @@ def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
             "-q",
         ],
         [py, "-m", "build"],
-        [py, "-c", "import lore, lore.server; print('ok')"],
     ]
 
 
-def run_release_commands(commands: list[list[str]]) -> int:
-    for command in commands:
-        completed = subprocess.run(command, check=False)
-        if completed.returncode:
-            return completed.returncode
-    return 0
+def build_smoke_install_commands(python_bin: str, wheel_path: str) -> list[list[str]]:
+    return [
+        [python_bin, "-m", "pip", "install", "--upgrade", "pip"],
+        [python_bin, "-m", "pip", "install", wheel_path],
+        [python_bin, "-c", "import lore, lore.server"],
+    ]
