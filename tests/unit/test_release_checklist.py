@@ -19,6 +19,7 @@ def test_release_checklist_covers_the_current_release_contract() -> None:
     ]:
         assert heading in doc
 
+    assert "public beta / early production" in lower
     assert "for the exact pre-tag checklist, see [release_checklist.md](release_checklist.md)." in process_prefix
     assert "use it for every public beta / early-production release." in process_prefix
     assert "bootstrap the release tools" in lower
