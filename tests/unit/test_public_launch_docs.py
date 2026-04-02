@@ -31,3 +31,13 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
     assert "development only" in claude.lower()
     assert "development only" in openclaw.lower()
+
+
+def test_production_http_guide_exists() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production-http.md").read_text(encoding="utf-8")
+
+    assert "streamable-http" in doc
+    assert "oidc" in doc.lower() or "hs256" in doc.lower()
+    assert "lore_transport" in doc.lower()
+    assert "lore_db_path" in doc.lower()
+    assert "lore_audit_db_path" in doc.lower()
