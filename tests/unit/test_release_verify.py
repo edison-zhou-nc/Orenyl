@@ -1,4 +1,4 @@
-from lore.release_verify import build_release_commands, build_smoke_install_commands, run_release_commands
+from lore.release_verify import build_release_commands, run_release_commands
 
 
 def test_build_release_commands_covers_current_release_gate_in_order() -> None:
@@ -15,17 +15,12 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
     assert any("pytest tests/unit/test_health_structured.py tests/integration/test_perf_regression.py tests/integration/test_server_metrics_and_health.py -q" in command for command in flattened)
     assert any("pytest tests/integration/test_phase3_tool_isolation.py tests/integration/test_federation_worker_idempotency.py tests/integration/test_federation_conflict_resolution.py tests/unit/test_sync_envelope_validation.py tests/integration/test_sync_journal_persistence.py -q" in command for command in flattened)
     assert any(command == "python -m build" for command in flattened)
-    assert len(commands) == 10
-
-
-def test_build_smoke_install_commands_uses_fresh_venv_python() -> None:
-    commands = build_smoke_install_commands("venv-python", "dist/lore-1.2.3-py3-none-any.whl")
-
-    assert commands == [
-        ["venv-python", "-m", "pip", "install", "--upgrade", "pip"],
-        ["venv-python", "-m", "pip", "install", "dist/lore-1.2.3-py3-none-any.whl"],
-        ["venv-python", "-c", "import lore, lore.server"],
-    ]
+    assert ["python", "-c", "import lore, lore.server; print('ok')"] in commands
+    assert any(
+        command[1:] and command[1] == "-c" and "venv.EnvBuilder" in command[2] and "Path(\"dist\").glob(\"*.whl\")" in command[2] and "import lore, lore.server; print('ok')" in command[2]
+        for command in commands
+    )
+    assert len(commands) == 12
 
 
 def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:

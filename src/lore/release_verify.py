@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import subprocess
 import sys
-import tempfile
-import venv
-from pathlib import Path
 
 
 def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
@@ -48,15 +45,38 @@ def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
             "-q",
         ],
         [py, "-m", "build"],
+        [py, "-c", "import lore, lore.server; print('ok')"],
+        _build_fresh_venv_smoke_command(py),
     ]
 
 
-def build_smoke_install_commands(python_bin: str, wheel_path: str) -> list[list[str]]:
-    return [
-        [python_bin, "-m", "pip", "install", "--upgrade", "pip"],
-        [python_bin, "-m", "pip", "install", wheel_path],
-        [python_bin, "-c", "import lore, lore.server"],
-    ]
+def _build_fresh_venv_smoke_command(python_bin: str) -> list[str]:
+    return [python_bin, "-c", _build_fresh_venv_smoke_script()]
+
+
+def _build_fresh_venv_smoke_script() -> str:
+    return "\n".join(
+        [
+            "import subprocess",
+            "import sys",
+            "import tempfile",
+            "import venv",
+            "from pathlib import Path",
+            "",
+            'wheels = sorted(Path("dist").glob("*.whl"))',
+            'if not wheels:',
+            '    raise FileNotFoundError("No built wheel found in dist/")',
+            "",
+            'with tempfile.TemporaryDirectory(prefix="lore-release-smoke-") as temp_dir:',
+            "    venv_dir = Path(temp_dir)",
+            "    venv.EnvBuilder(with_pip=True).create(venv_dir)",
+            '    bin_dir = venv_dir / ("Scripts" if sys.platform == "win32" else "bin")',
+            '    python_path = bin_dir / ("python.exe" if sys.platform == "win32" else "python")',
+            '    subprocess.run([str(python_path), "-m", "pip", "install", "--upgrade", "pip"], check=True)',
+            '    subprocess.run([str(python_path), "-m", "pip", "install", str(wheels[0])], check=True)',
+            '    subprocess.run([str(python_path), "-c", "import lore, lore.server; print(\'ok\')"], check=True)',
+        ]
+    )
 
 
 def run_release_commands(commands: list[list[str]]) -> int:
@@ -65,26 +85,3 @@ def run_release_commands(commands: list[list[str]]) -> int:
         if completed.returncode:
             return completed.returncode
     return 0
-
-
-def find_built_wheel() -> str:
-    wheels = sorted(Path("dist").glob("*.whl"))
-    if not wheels:
-        raise FileNotFoundError("No built wheel found in dist/")
-    return str(wheels[0])
-
-
-def run_smoke_install_commands(wheel_path: str) -> int:
-    with tempfile.TemporaryDirectory(prefix="lore-release-smoke-") as temp_dir:
-        venv_dir = Path(temp_dir)
-        venv.EnvBuilder(with_pip=True).create(venv_dir)
-        python_bin = venv_dir / ("Scripts" if sys.platform == "win32" else "bin")
-        python_path = python_bin / ("python.exe" if sys.platform == "win32" else "python")
-        return run_release_commands(build_smoke_install_commands(str(python_path), wheel_path))
-
-
-def run_release_verification(python_bin: str | None = None) -> int:
-    release_exit_code = run_release_commands(build_release_commands(python_bin))
-    if release_exit_code:
-        return release_exit_code
-    return run_smoke_install_commands(find_built_wheel())
