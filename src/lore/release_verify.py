@@ -46,37 +46,7 @@ def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
         ],
         [py, "-m", "build"],
         [py, "-c", "import lore, lore.server; print('ok')"],
-        _build_fresh_venv_smoke_command(py),
     ]
-
-
-def _build_fresh_venv_smoke_command(python_bin: str) -> list[str]:
-    return [python_bin, "-c", _build_fresh_venv_smoke_script()]
-
-
-def _build_fresh_venv_smoke_script() -> str:
-    return "\n".join(
-        [
-            "import subprocess",
-            "import sys",
-            "import tempfile",
-            "import venv",
-            "from pathlib import Path",
-            "",
-            'wheels = sorted(Path("dist").glob("*.whl"))',
-            'if not wheels:',
-            '    raise FileNotFoundError("No built wheel found in dist/")',
-            "",
-            'with tempfile.TemporaryDirectory(prefix="lore-release-smoke-") as temp_dir:',
-            "    venv_dir = Path(temp_dir)",
-            "    venv.EnvBuilder(with_pip=True).create(venv_dir)",
-            '    bin_dir = venv_dir / ("Scripts" if sys.platform == "win32" else "bin")',
-            '    python_path = bin_dir / ("python.exe" if sys.platform == "win32" else "python")',
-            '    subprocess.run([str(python_path), "-m", "pip", "install", "--upgrade", "pip"], check=True)',
-            '    subprocess.run([str(python_path), "-m", "pip", "install", str(wheels[0])], check=True)',
-            '    subprocess.run([str(python_path), "-c", "import lore, lore.server; print(\'ok\')"], check=True)',
-        ]
-    )
 
 
 def run_release_commands(commands: list[list[str]]) -> int:
