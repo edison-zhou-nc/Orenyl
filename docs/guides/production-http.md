@@ -41,7 +41,7 @@ Use this only when a shared secret is acceptable and you can protect it like any
 $env:LORE_TRANSPORT = "streamable-http"
 $env:LORE_OIDC_ALLOWED_ALGS = "HS256"
 $env:LORE_OIDC_ISSUER = "https://issuer.example.com/"
-$env:LORE_OIDC_HS256_SECRET = "replace-with-a-secret"
+$env:LORE_OIDC_HS256_SECRET = "replace-with-at-least-32-random-bytes"
 ```
 
 ## Data, snapshots, and backup
