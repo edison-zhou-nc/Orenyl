@@ -14,6 +14,7 @@ def test_release_docs_exist_and_cover_current_surface() -> None:
         "docs/ADR.md",
         "docs/SCALING.md",
         "docs/DR.md",
+        "docs/RELEASE_CHECKLIST.md",
         "docs/RELEASE_PROCESS.md",
     ]
 
