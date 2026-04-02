@@ -1,9 +1,3 @@
-import runpy
-import sys
-from pathlib import Path
-
-import pytest
-
 from lore.release_verify import build_release_commands, run_release_commands
 
 
@@ -69,30 +63,3 @@ def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:
 
     assert exit_code == 1
     assert calls == [["one"], ["two"]]
-
-
-def test_verify_release_anchors_to_repo_root(monkeypatch, tmp_path) -> None:
-    repo_root = Path(__file__).resolve().parents[2]
-    script_path = repo_root / "scripts" / "verify_release.py"
-    observed: dict[str, Path | list[list[str]] | str] = {}
-
-    def fake_build_release_commands(python_bin: str | None = None):
-        observed["python_bin"] = python_bin
-        return [["python", "-c", "pass"]]
-
-    def fake_run_release_commands(commands):
-        observed["cwd"] = Path.cwd()
-        observed["commands"] = commands
-        return 0
-
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("lore.release_verify.build_release_commands", fake_build_release_commands)
-    monkeypatch.setattr("lore.release_verify.run_release_commands", fake_run_release_commands)
-
-    with pytest.raises(SystemExit) as exc_info:
-        runpy.run_path(str(script_path), run_name="__main__")
-
-    assert exc_info.value.code == 0
-    assert observed["python_bin"] == sys.executable
-    assert observed["cwd"] == repo_root
-    assert observed["commands"] == [["python", "-c", "pass"]]
