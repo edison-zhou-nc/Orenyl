@@ -35,7 +35,7 @@ $env:LORE_OIDC_JWKS_URL = "https://issuer.example.com/.well-known/jwks.json"
 
 ### HS256
 
-Use this only when a shared secret is acceptable and you can protect it like any other production credential.
+Use this only when a shared secret is acceptable and you can protect it like any other production credential. The HS256 secret must be at least 32 bytes.
 
 ```powershell
 $env:LORE_TRANSPORT = "streamable-http"

@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -41,3 +42,37 @@ def test_production_http_guide_exists() -> None:
     assert "lore_transport" in doc.lower()
     assert "lore_db_path" in doc.lower()
     assert "lore_audit_db_path" in doc.lower()
+
+
+def test_integration_guide_uses_relative_production_links() -> None:
+    doc = (REPO_ROOT / "docs" / "INTEGRATION.md").read_text(encoding="utf-8")
+
+    assert "](guides/production-http.md)" in doc
+    assert "](guides/production.env.example)" in doc
+    assert "](docs/guides/production-http.md)" not in doc
+    assert "](docs/guides/production.env.example)" not in doc
+
+
+def test_production_http_guide_mentions_hs256_minimum_bytes() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production-http.md").read_text(encoding="utf-8")
+
+    assert "hs256" in doc.lower()
+    assert "at least 32 bytes" in doc.lower()
+
+
+def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production.env.example").read_text(encoding="utf-8")
+
+    assert "replace-with-base64-salt" not in doc
+    assert "LORE_ENCRYPTION_SALT=" in doc or "# LORE_ENCRYPTION_SALT=" in doc
+
+    salt_line = next(
+        line
+        for line in doc.splitlines()
+        if line.startswith("LORE_ENCRYPTION_SALT=") or line.startswith("# LORE_ENCRYPTION_SALT=")
+    )
+    if salt_line.startswith("#"):
+        return
+
+    salt_value = salt_line.split("=", 1)[1].strip()
+    base64.b64decode(salt_value, validate=True)
