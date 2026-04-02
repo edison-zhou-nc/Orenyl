@@ -1,5 +1,8 @@
 # Release Process
 
+For the exact pre-tag checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+Use it for every public beta / early-production release.
+
 ## Release candidate
 
 1. Bump package metadata to the next RC tag.
