@@ -19,6 +19,7 @@ Lore supports two server transports:
 - Transport: `streamable-http`
 - Auth behavior: per-tool JWT authentication through `auth_token` or `_auth_token`
 - Intended use: protected real deployments and non-dev integrations
+- Operator template: [docs/guides/production-http.md](docs/guides/production-http.md) with [docs/guides/production.env.example](docs/guides/production.env.example)
 
 ## Production auth contract
 
