@@ -58,6 +58,8 @@ def test_production_http_guide_mentions_hs256_minimum_bytes() -> None:
 
     assert "hs256" in doc.lower()
     assert "at least 32 bytes" in doc.lower()
+    assert "replace-with-at-least-32-random-bytes" in doc
+    assert "replace-with-a-secret" not in doc
 
 
 def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
