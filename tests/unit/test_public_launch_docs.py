@@ -64,17 +64,12 @@ def test_production_http_guide_mentions_hs256_minimum_bytes() -> None:
 
 def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
     doc = (REPO_ROOT / "docs" / "guides" / "production.env.example").read_text(encoding="utf-8")
+    lines = doc.splitlines()
 
-    assert "replace-with-base64-salt" not in doc
-    assert "LORE_ENCRYPTION_SALT=" in doc or "# LORE_ENCRYPTION_SALT=" in doc
-
-    salt_line = next(
-        line
-        for line in doc.splitlines()
-        if line.startswith("LORE_ENCRYPTION_SALT=") or line.startswith("# LORE_ENCRYPTION_SALT=")
-    )
-    if salt_line.startswith("#"):
-        return
-
-    salt_value = salt_line.split("=", 1)[1].strip()
-    base64.b64decode(salt_value, validate=True)
+    assert "# LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" in lines
+    assert "# LORE_ENCRYPTION_SALT=replace-with-base64-salt" in lines
+    assert "LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" not in lines
+    assert "LORE_ENCRYPTION_SALT=replace-with-base64-salt" not in lines
+    assert all(not line.startswith("LORE_ENCRYPTION_PASSPHRASE=replace-with-secret") for line in lines)
+    assert all(not line.startswith("LORE_ENCRYPTION_SALT=replace-with-base64-salt") for line in lines)
+    assert base64.b64decode("cGxhY2Vob2xkZXItYmFzZTY0LXNhbHQ=", validate=True)
