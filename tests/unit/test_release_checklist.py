@@ -6,6 +6,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_release_checklist_covers_the_current_release_contract() -> None:
     doc = (REPO_ROOT / "docs" / "RELEASE_CHECKLIST.md").read_text(encoding="utf-8")
     lower = doc.lower()
+    normalized = " ".join(lower.split())
     process_doc = (REPO_ROOT / "docs" / "RELEASE_PROCESS.md").read_text(encoding="utf-8")
     process_prefix = "\n".join(process_doc.splitlines()[:4]).lower()
 
@@ -22,19 +23,26 @@ def test_release_checklist_covers_the_current_release_contract() -> None:
     assert "public beta / early production" in lower
     assert "for the exact pre-tag checklist, see [release_checklist.md](release_checklist.md)." in process_prefix
     assert "use it for every public beta / early-production release." in process_prefix
-    assert "bootstrap the release tools" in lower
+    assert "bootstrap the locked runtime and dev dependencies" in lower
+    assert "requirements.lock" in lower
+    assert "requirements-dev.lock" in lower
     assert "bootstrap" in lower
     assert "bandit" in lower
     assert "pip-audit" in lower
     assert "pytest-cov" in lower
+    assert "ruff" in lower
     assert "build" in lower
     assert "mypy" in lower
-    assert "python -m pip install bandit pip-audit pytest-cov build mypy" in doc
+    assert "python -m pip install -r requirements.lock -r requirements-dev.lock" in doc
+    assert "python -m pip install bandit pip-audit pytest-cov ruff build mypy" in doc
     assert "python -m pip install --no-deps -e ." in doc
     assert "python scripts/verify_release.py" in doc
-    assert doc.index("python -m pip install bandit pip-audit pytest-cov build mypy") < doc.index("python -m pip install --no-deps -e .")
+    assert doc.index("python -m pip install -r requirements.lock -r requirements-dev.lock") < doc.index("python -m pip install --no-deps -e .")
+    assert doc.index("python -m pip install bandit pip-audit pytest-cov ruff build mypy") < doc.index("python -m pip install --no-deps -e .")
     assert doc.index("python -m pip install --no-deps -e .") < doc.index("python scripts/verify_release.py")
     assert "clean working tree" in lower
     assert "release artifacts" in lower
     assert "rollback" in lower
-    assert "same release verifier" not in lower
+    assert "same pass/fail signal" not in lower
+    assert "publishes after its required workflow gates pass" in normalized
+    assert "passes its required workflow gates before publish" in normalized

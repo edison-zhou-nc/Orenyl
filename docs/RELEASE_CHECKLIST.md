@@ -9,10 +9,16 @@ to keep the release gate small, explicit, and repeatable.
 
 - Confirm the branch is ready to cut and the tree is clean. Start from a clean
   working tree.
-- Bootstrap the release tools before the editable install:
+- Bootstrap the locked runtime and dev dependencies before the editable install:
 
 ```bash
-python -m pip install bandit pip-audit pytest-cov build mypy
+python -m pip install -r requirements.lock -r requirements-dev.lock
+```
+
+- Install the release verification tooling needed by the verifier:
+
+```bash
+python -m pip install bandit pip-audit pytest-cov ruff build mypy
 ```
 
 - Install the project in editable mode from the repo root:
@@ -39,8 +45,9 @@ python scripts/verify_release.py
 ## CI / tagged-release verification
 
 - Confirm the tag-triggered workflow enforces the tagged-release gate and only
-  publishes on a green result.
-- Confirm CI produces the same pass/fail signal you saw locally.
+  publishes after its required workflow gates pass.
+- Confirm the tagged workflow passes its required workflow gates before
+  publish.
 - Do not publish until the tagged release is green.
 
 ## Release artifacts to inspect
