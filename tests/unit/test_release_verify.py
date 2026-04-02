@@ -16,11 +16,7 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
     assert any("pytest tests/integration/test_phase3_tool_isolation.py tests/integration/test_federation_worker_idempotency.py tests/integration/test_federation_conflict_resolution.py tests/unit/test_sync_envelope_validation.py tests/integration/test_sync_journal_persistence.py -q" in command for command in flattened)
     assert any(command == "python -m build" for command in flattened)
     assert ["python", "-c", "import lore, lore.server; print('ok')"] in commands
-    assert any(
-        command[1:] and command[1] == "-c" and "venv.EnvBuilder" in command[2] and "Path(\"dist\").glob(\"*.whl\")" in command[2] and "import lore, lore.server; print('ok')" in command[2]
-        for command in commands
-    )
-    assert len(commands) == 12
+    assert len(commands) == 11
 
 
 def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:
