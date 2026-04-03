@@ -36,9 +36,9 @@ This document summarizes Lore's public-launch security posture, accepted risks, 
 
 ## Repo-owned vs operator-owned boundary
 
-Operator responsibilities
-
 Repo-owned controls cover the code, docs, and tests in this repository. Operators still own deployment-time security inputs and should verify them before launch:
+
+### Operator responsibilities
 
 - Configure OIDC or HS256 secrets correctly for the chosen transport.
 - Protect secrets, JWT signing material, and any proxy or gateway credentials outside the repository.

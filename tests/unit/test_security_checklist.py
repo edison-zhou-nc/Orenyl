@@ -17,8 +17,8 @@ def test_security_audit_lists_operator_responsibilities() -> None:
     doc = (REPO_ROOT / "docs" / "SECURITY_AUDIT.md").read_text(encoding="utf-8").lower()
 
     assert "repo-owned vs operator-owned boundary" in doc
-    assert "deployment-time security inputs" in doc
-    assert "operator responsibilities" in doc
+    assert "repo-owned controls cover the code, docs, and tests in this repository." in doc
+    assert "### operator responsibilities" in doc
     assert "oidc" in doc
     assert "secrets" in doc
     assert "backups" in doc
