@@ -13,7 +13,7 @@ Lore gives agents durable memory without losing control: every derived fact is t
 
 **Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
 
-Lore is ready for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Lore is not yet externally certified or enterprise-complete.
+Lore is in early production / public beta for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Lore is not yet externally certified or enterprise-complete.
 
 ## Why Lore
 

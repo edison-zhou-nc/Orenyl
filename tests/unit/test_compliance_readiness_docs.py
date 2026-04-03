@@ -14,3 +14,10 @@ def test_compliance_readiness_doc_exists_and_covers_ga_checklist() -> None:
     assert "retention" in doc.lower()
     assert "audit integrity" in doc.lower()
     assert "soc 2" in doc.lower()
+
+
+def test_compliance_readiness_separates_repo_owned_from_external_readiness() -> None:
+    doc = (REPO_ROOT / "docs" / "COMPLIANCE_READINESS.md").read_text(encoding="utf-8").lower()
+
+    assert "repo-owned vs external readiness" in doc
+    assert "external certification" in doc or "externally certified" in doc
