@@ -16,7 +16,8 @@ def test_security_audit_doc_exists_and_covers_ga_checklist() -> None:
 def test_security_audit_lists_operator_responsibilities() -> None:
     doc = (REPO_ROOT / "docs" / "SECURITY_AUDIT.md").read_text(encoding="utf-8").lower()
 
-    assert "accepted risks" in doc
+    assert "repo-owned vs operator-owned boundary" in doc
+    assert "deployment-time security inputs" in doc
     assert "operator responsibilities" in doc
     assert "oidc" in doc
     assert "secrets" in doc
