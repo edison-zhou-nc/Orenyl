@@ -4,7 +4,7 @@
 
 This document summarizes Lore's public-launch posture for privacy, auditability, and governed-memory operations.
 
-## Repo-owned vs external readiness
+## Repo-owned vs external readiness boundary
 
 Repo-owned readiness covers the code, tests, and documentation in this repository. External readiness still depends on deployment-specific controls, infrastructure, and third-party validation that are not provided by the repo itself.
 
