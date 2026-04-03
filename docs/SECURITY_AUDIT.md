@@ -34,6 +34,15 @@ This document summarizes Lore's public-launch security posture, accepted risks, 
 - CI and release verification both run Bandit and `pip-audit`.
 - CI runs auth, tenant isolation, encryption misconfiguration, and health/perf gate tests.
 
+## Operator responsibilities
+
+Repo-owned controls cover the code, docs, and tests in this repository. Operators still own deployment-time security inputs and should verify them before launch:
+
+- Configure OIDC or HS256 secrets correctly for the chosen transport.
+- Protect secrets, JWT signing material, and any proxy or gateway credentials outside the repository.
+- Maintain backups, restore drills, and snapshot handling for the target environment.
+- Validate external dependencies and infrastructure settings before treating a deployment as production-ready.
+
 ## Pre-review sanity check (2026-03-30)
 
 Verified locally before requesting an independent release-readiness review:
