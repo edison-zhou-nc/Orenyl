@@ -34,12 +34,11 @@ def test_release_checklist_covers_the_current_release_contract() -> None:
     assert "build" in lower
     assert "mypy" in lower
     assert "python -m pip install -r requirements.lock -r requirements-dev.lock" in doc
-    assert "python -m pip install bandit pip-audit pytest-cov ruff build mypy" in doc
     assert "python -m pip install --no-deps -e ." in doc
     assert "python scripts/verify_release.py" in doc
     assert doc.index("python -m pip install -r requirements.lock -r requirements-dev.lock") < doc.index("python -m pip install --no-deps -e .")
-    assert doc.index("python -m pip install bandit pip-audit pytest-cov ruff build mypy") < doc.index("python -m pip install --no-deps -e .")
     assert doc.index("python -m pip install --no-deps -e .") < doc.index("python scripts/verify_release.py")
+    assert "build the release artifacts and verify the built wheel" in lower
     assert "clean working tree" in lower
     assert "release artifacts" in lower
     assert "rollback" in lower

@@ -15,11 +15,9 @@ to keep the release gate small, explicit, and repeatable.
 python -m pip install -r requirements.lock -r requirements-dev.lock
 ```
 
-- Install the release verification tooling needed by the verifier:
-
-```bash
-python -m pip install bandit pip-audit pytest-cov ruff build mypy
-```
+`requirements-dev.lock` includes the release verification tooling used by the
+verifier, including `bandit`, `pip-audit`, `pytest-cov`, `ruff`, `build`, and
+`mypy`.
 
 - Install the project in editable mode from the repo root:
 
@@ -37,6 +35,8 @@ python scripts/verify_release.py
 ## Local verification
 
 - Run the release verifier locally before tagging.
+- The verifier will build the release artifacts and verify the built wheel in a
+  clean virtual environment.
 - Confirm the release posture still matches public beta / early production
   expectations.
 - Check that the clean working tree requirement still holds after the final

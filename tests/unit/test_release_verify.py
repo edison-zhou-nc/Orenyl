@@ -41,7 +41,22 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
             "-q",
         ],
         ["python", "-m", "build"],
-        ["python", "-c", "import lore, lore.server; print('ok')"],
+        [
+            "python",
+            "-c",
+            (
+                "import pathlib, subprocess, sys, tempfile, venv; "
+                "dist = pathlib.Path('dist'); "
+                "wheel = next(dist.glob('lore_mcp-*.whl')); "
+                "venv_dir = pathlib.Path(tempfile.mkdtemp(prefix='lore-smoke-')); "
+                "venv.EnvBuilder(with_pip=True).create(venv_dir); "
+                "scripts = venv_dir / ('Scripts' if sys.platform == 'win32' else 'bin'); "
+                "python_bin = scripts / ('python.exe' if sys.platform == 'win32' else 'python'); "
+                "subprocess.run([str(python_bin), '-m', 'pip', 'install', '--upgrade', 'pip'], check=True); "
+                "subprocess.run([str(python_bin), '-m', 'pip', 'install', str(wheel)], check=True); "
+                "subprocess.run([str(python_bin), '-c', 'import lore, lore.server'], check=True)"
+            ),
+        ],
     ]
 
 

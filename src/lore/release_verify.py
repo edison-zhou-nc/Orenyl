@@ -45,7 +45,7 @@ def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
             "-q",
         ],
         [py, "-m", "build"],
-        [py, "-c", "import lore, lore.server; print('ok')"],
+        [py, "-c", _build_wheel_smoke_script()],
     ]
 
 
@@ -55,3 +55,18 @@ def run_release_commands(commands: list[list[str]]) -> int:
         if completed.returncode:
             return completed.returncode
     return 0
+
+
+def _build_wheel_smoke_script() -> str:
+    return (
+        "import pathlib, subprocess, sys, tempfile, venv; "
+        "dist = pathlib.Path('dist'); "
+        "wheel = next(dist.glob('lore_mcp-*.whl')); "
+        "venv_dir = pathlib.Path(tempfile.mkdtemp(prefix='lore-smoke-')); "
+        "venv.EnvBuilder(with_pip=True).create(venv_dir); "
+        "scripts = venv_dir / ('Scripts' if sys.platform == 'win32' else 'bin'); "
+        "python_bin = scripts / ('python.exe' if sys.platform == 'win32' else 'python'); "
+        "subprocess.run([str(python_bin), '-m', 'pip', 'install', '--upgrade', 'pip'], check=True); "
+        "subprocess.run([str(python_bin), '-m', 'pip', 'install', str(wheel)], check=True); "
+        "subprocess.run([str(python_bin), '-c', 'import lore, lore.server'], check=True)"
+    )
