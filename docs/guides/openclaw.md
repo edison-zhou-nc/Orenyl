@@ -5,7 +5,7 @@ Add Lore as an MCP server in OpenClaw to give your AI agent persistent, producti
 ## Prerequisites
 
 - [OpenClaw](https://openclaw.ai) installed and running
-- Python 3.12+ with `lore-mcp` installed: `pip install lore-mcp`
+- Python 3.12+ with `lore-mcp-server` installed: `pip install lore-mcp-server`
 
 ## Setup
 

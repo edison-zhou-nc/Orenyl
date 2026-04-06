@@ -10,6 +10,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Explicit local stdio development mode for self-serve onboarding and demos.
 
 ### Changed
+- Renamed the public PyPI distribution to `lore-mcp-server` to avoid conflict with an unrelated `lore-mcp` package.
 - Clarified public launch messaging to distinguish local development from authenticated production deployment.
 - Aligned the MCP contract and onboarding docs with the live runtime behavior.
 

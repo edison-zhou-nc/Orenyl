@@ -5,7 +5,7 @@ Demonstrates Lore's memory model with health events, single-record deletion, and
 ## Run
 
 ```bash
-pip install lore-mcp   # or: pip install -e ../..
+pip install lore-mcp-server   # or: pip install -e ../..
 python health_tracker.py
 ```
 

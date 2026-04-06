@@ -1,7 +1,7 @@
 # Lore
 
 [![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/lore-mcp)](https://pypi.org/project/lore-mcp/)
+[![PyPI](https://img.shields.io/pypi/v/lore-mcp-server)](https://pypi.org/project/lore-mcp-server/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -26,7 +26,7 @@ Lore is ready for self-serve local development and evaluation. Production deploy
 ## Install
 
 ```bash
-pip install lore-mcp
+pip install lore-mcp-server
 ```
 
 Or from source:
