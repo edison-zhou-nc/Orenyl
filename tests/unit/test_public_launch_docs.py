@@ -57,6 +57,7 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
         r"lore-mcp-server",
         r"\blore-server\b",
         r"python -m lore\.server",
+        r'\[\s*"-m"\s*,\s*"lore\.server"\s*\]',
     ]
 
     for path, expected_strings in expectations.items():
