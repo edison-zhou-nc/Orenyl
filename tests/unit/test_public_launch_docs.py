@@ -38,7 +38,7 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
     expectations = {
         REPO_ROOT / "README.md": ["pip install orenyl-mcp-server", "orenyl-server"],
         REPO_ROOT / "docs" / "quickstart.md": ["pip install orenyl-mcp-server", "orenyl-server"],
-        REPO_ROOT / "docs" / "guides" / "openclaw.md": ["pip install orenyl-mcp-server"],
+        REPO_ROOT / "docs" / "guides" / "openclaw.md": ["pip install orenyl-mcp-server", "orenyl-server"],
         REPO_ROOT / "examples" / "meeting-memory" / "README.md": [
             "pip install orenyl-mcp-server",
         ],
@@ -52,6 +52,7 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
     forbidden_patterns = [
         r"\bpip install lore-mcp\b(?!-)",
         r"`lore-mcp` installed",
+        r"lore-mcp-server",
         r"\blore-server\b",
         r"python -m lore\.server",
     ]
