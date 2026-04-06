@@ -38,6 +38,8 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
     expectations = {
         REPO_ROOT / "README.md": ["pip install orenyl-mcp-server", "orenyl-server"],
         REPO_ROOT / "docs" / "quickstart.md": ["pip install orenyl-mcp-server", "orenyl-server"],
+        REPO_ROOT / "docs" / "INTEGRATION.md": ["orenyl-server", "python -m orenyl.server"],
+        REPO_ROOT / "docs" / "guides" / "claude-code.md": ["orenyl-server"],
         REPO_ROOT / "docs" / "guides" / "openclaw.md": ["pip install orenyl-mcp-server", "orenyl-server"],
         REPO_ROOT / "examples" / "meeting-memory" / "README.md": [
             "pip install orenyl-mcp-server",
