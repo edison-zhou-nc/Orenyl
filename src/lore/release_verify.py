@@ -24,26 +24,6 @@ def build_release_commands(python_bin: str | None = None) -> list[list[str]]:
             "--cov-report=term-missing",
             "--cov-fail-under=80",
         ],
-        [
-            py,
-            "-m",
-            "pytest",
-            "tests/unit/test_health_structured.py",
-            "tests/integration/test_perf_regression.py",
-            "tests/integration/test_server_metrics_and_health.py",
-            "-q",
-        ],
-        [
-            py,
-            "-m",
-            "pytest",
-            "tests/integration/test_phase3_tool_isolation.py",
-            "tests/integration/test_federation_worker_idempotency.py",
-            "tests/integration/test_federation_conflict_resolution.py",
-            "tests/unit/test_sync_envelope_validation.py",
-            "tests/integration/test_sync_journal_persistence.py",
-            "-q",
-        ],
         [py, "-m", "build"],
         [py, "-c", _build_wheel_smoke_script()],
     ]
@@ -58,15 +38,26 @@ def run_release_commands(commands: list[list[str]]) -> int:
 
 
 def _build_wheel_smoke_script() -> str:
-    return (
-        "import pathlib, subprocess, sys, tempfile, venv; "
-        "dist = pathlib.Path('dist'); "
-        "wheel = next(dist.glob('lore_mcp-*.whl')); "
-        "venv_dir = pathlib.Path(tempfile.mkdtemp(prefix='lore-smoke-')); "
-        "venv.EnvBuilder(with_pip=True).create(venv_dir); "
-        "scripts = venv_dir / ('Scripts' if sys.platform == 'win32' else 'bin'); "
-        "python_bin = scripts / ('python.exe' if sys.platform == 'win32' else 'python'); "
-        "subprocess.run([str(python_bin), '-m', 'pip', 'install', '--upgrade', 'pip'], check=True); "
-        "subprocess.run([str(python_bin), '-m', 'pip', 'install', str(wheel)], check=True); "
-        "subprocess.run([str(python_bin), '-c', 'import lore, lore.server'], check=True)"
+    return "\n".join(
+        [
+            "import pathlib",
+            "import shutil",
+            "import subprocess",
+            "import sys",
+            "import tempfile",
+            "import venv",
+            "",
+            "dist = pathlib.Path('dist')",
+            "wheel = next(dist.glob('lore_mcp-*.whl'))",
+            "venv_dir = pathlib.Path(tempfile.mkdtemp(prefix='lore-smoke-'))",
+            "try:",
+            "    venv.EnvBuilder(with_pip=True).create(venv_dir)",
+            "    scripts = venv_dir / ('Scripts' if sys.platform == 'win32' else 'bin')",
+            "    python_bin = scripts / ('python.exe' if sys.platform == 'win32' else 'python')",
+            "    subprocess.run([str(python_bin), '-m', 'pip', 'install', '--upgrade', 'pip'], check=True)",
+            "    subprocess.run([str(python_bin), '-m', 'pip', 'install', str(wheel)], check=True)",
+            "    subprocess.run([str(python_bin), '-c', 'import lore, lore.server'], check=True)",
+            "finally:",
+            "    shutil.rmtree(venv_dir, ignore_errors=True)",
+        ]
     )

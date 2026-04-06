@@ -60,6 +60,8 @@ def test_production_http_guide_mentions_hs256_minimum_bytes() -> None:
     assert "at least 32 bytes" in doc.lower()
     assert "replace-with-at-least-32-random-bytes" in doc
     assert "replace-with-a-secret" not in doc
+    assert "powershell" in doc.lower()
+    assert "same environment variables apply on linux and macos" in doc.lower()
 
 
 def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
@@ -67,9 +69,10 @@ def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
     lines = doc.splitlines()
 
     assert "# LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" in lines
-    assert "# LORE_ENCRYPTION_SALT=replace-with-base64-salt" in lines
+    assert "replace-with-base64-salt" not in doc
     assert "LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" not in lines
-    assert "LORE_ENCRYPTION_SALT=replace-with-base64-salt" not in lines
+    assert all(not line.startswith("LORE_ENCRYPTION_SALT=") for line in lines)
     assert all(not line.startswith("LORE_ENCRYPTION_PASSPHRASE=replace-with-secret") for line in lines)
-    assert all(not line.startswith("LORE_ENCRYPTION_SALT=replace-with-base64-salt") for line in lines)
-    assert base64.b64decode("cGxhY2Vob2xkZXItYmFzZTY0LXNhbHQ=", validate=True)
+    salt_line = next(line for line in lines if line.startswith("# LORE_ENCRYPTION_SALT="))
+    salt_value = salt_line.split("=", 1)[1].strip()
+    assert base64.b64decode(salt_value, validate=True)

@@ -1,8 +1,10 @@
-from lore.release_verify import build_release_commands, run_release_commands
+from lore.release_verify import _build_wheel_smoke_script, build_release_commands, run_release_commands
 
 
 def test_build_release_commands_covers_current_release_gate_in_order() -> None:
-    assert build_release_commands("python") == [
+    commands = build_release_commands("python")
+
+    assert commands == [
         ["python", "-m", "ruff", "check", ".", "--select", "F,B"],
         ["python", "-m", "ruff", "check", "src", "--select", "S105,S324,S603,S607,S608"],
         ["python", "-m", "bandit", "-r", "src/lore", "-ll", "-q"],
@@ -20,44 +22,18 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
             "--cov-report=term-missing",
             "--cov-fail-under=80",
         ],
-        [
-            "python",
-            "-m",
-            "pytest",
-            "tests/unit/test_health_structured.py",
-            "tests/integration/test_perf_regression.py",
-            "tests/integration/test_server_metrics_and_health.py",
-            "-q",
-        ],
-        [
-            "python",
-            "-m",
-            "pytest",
-            "tests/integration/test_phase3_tool_isolation.py",
-            "tests/integration/test_federation_worker_idempotency.py",
-            "tests/integration/test_federation_conflict_resolution.py",
-            "tests/unit/test_sync_envelope_validation.py",
-            "tests/integration/test_sync_journal_persistence.py",
-            "-q",
-        ],
         ["python", "-m", "build"],
-        [
-            "python",
-            "-c",
-            (
-                "import pathlib, subprocess, sys, tempfile, venv; "
-                "dist = pathlib.Path('dist'); "
-                "wheel = next(dist.glob('lore_mcp-*.whl')); "
-                "venv_dir = pathlib.Path(tempfile.mkdtemp(prefix='lore-smoke-')); "
-                "venv.EnvBuilder(with_pip=True).create(venv_dir); "
-                "scripts = venv_dir / ('Scripts' if sys.platform == 'win32' else 'bin'); "
-                "python_bin = scripts / ('python.exe' if sys.platform == 'win32' else 'python'); "
-                "subprocess.run([str(python_bin), '-m', 'pip', 'install', '--upgrade', 'pip'], check=True); "
-                "subprocess.run([str(python_bin), '-m', 'pip', 'install', str(wheel)], check=True); "
-                "subprocess.run([str(python_bin), '-c', 'import lore, lore.server'], check=True)"
-            ),
-        ],
+        ["python", "-c", _build_wheel_smoke_script()],
     ]
+    assert sum(command[1:3] == ["-m", "pytest"] for command in commands) == 1
+
+
+def test_build_wheel_smoke_script_cleans_up_temp_env() -> None:
+    script = _build_wheel_smoke_script()
+
+    assert "tempfile.mkdtemp" in script
+    assert "shutil.rmtree" in script
+    assert "finally:" in script
 
 
 def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:
@@ -67,7 +43,8 @@ def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:
         def __init__(self, returncode: int) -> None:
             self.returncode = returncode
 
-    def fake_run(command, check):
+    def fake_run(command, *, check):
+        assert check is False
         calls.append(command)
         if len(calls) == 2:
             return Result(1)
