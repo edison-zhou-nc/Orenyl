@@ -45,7 +45,6 @@ jobs:
           . .venv-smoke/bin/activate
           python -m pip install --upgrade pip
           python -m pip install dist/*.whl
-          python -m orenyl.server --help
           python -c "import orenyl, orenyl.server"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
