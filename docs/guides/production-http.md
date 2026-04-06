@@ -22,6 +22,8 @@ For authenticated deployments, also configure one JWT family:
 
 ## Example setups
 
+Examples below use PowerShell syntax. The same environment variables apply on Linux and macOS; translate the assignments to your shell before starting Lore.
+
 ### RS256 / OIDC
 
 Use this when you already have an OIDC provider or production identity platform.
