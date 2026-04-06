@@ -1,5 +1,8 @@
 # Release Process
 
+For the exact pre-tag checklist, see [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+Use it for every public beta / early-production release.
+
 ## Release candidate
 
 1. Bump package metadata to the next RC tag.
@@ -17,7 +20,7 @@
    - `python -m mypy src/lore --config-file pyproject.toml`
    - `python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80`
    - `python -m build`
-   - `python -c "import lore, lore.server"`
+   - built-wheel smoke import in a clean virtual environment
 4. Tag the release only after the branch is green locally and in CI.
 5. Publish artifacts from the gated release workflow.
 
