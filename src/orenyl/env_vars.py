@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
+
+LEGACY_PREFIX = "LORE_"
+
 AUDIT_DB_PATH = "ORENYL_AUDIT_DB_PATH"
 ALLOW_INSECURE_DEV_SALT = "ORENYL_ALLOW_INSECURE_DEV_SALT"
 ALLOW_STDIO_DEV = "ORENYL_ALLOW_STDIO_DEV"
@@ -100,3 +105,17 @@ def all_names() -> tuple[str, ...]:
 
 def all_prefixes() -> tuple[str, ...]:
     return _ALL_PREFIXES
+
+
+def detect_legacy_names(environ: Mapping[str, str] | None = None) -> tuple[str, ...]:
+    source = environ if environ is not None else os.environ
+    return tuple(sorted(name for name in source if name.startswith(LEGACY_PREFIX)))
+
+
+def require_no_legacy_env_vars(environ: Mapping[str, str] | None = None) -> None:
+    legacy_names = detect_legacy_names(environ)
+    if legacy_names:
+        legacy_list = ", ".join(legacy_names)
+        raise RuntimeError(
+            f"legacy environment variables are not supported: {legacy_list}"
+        )

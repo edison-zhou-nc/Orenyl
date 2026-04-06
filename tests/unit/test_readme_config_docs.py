@@ -23,6 +23,7 @@ def test_readme_documents_correct_default_values():
         ("ORENYL_COMPLIANCE_STRICT_MODE", "`1`"),
         ("ORENYL_VECTOR_BACKEND", "`local`"),
         ("ORENYL_EMBEDDING_TIMEOUT_SECONDS", "`10`"),
+        ("ORENYL_OIDC_AUDIENCE", "`orenyl`"),
         ("ORENYL_OIDC_CLOCK_SKEW_SECONDS", "`30`"),
     ]
 

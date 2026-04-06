@@ -81,7 +81,7 @@ $env:ORENYL_TRANSPORT = "streamable-http"
 $env:ORENYL_OIDC_ALLOWED_ALGS = "RS256"
 $env:ORENYL_OIDC_ISSUER = "https://issuer.example.com/"
 $env:ORENYL_OIDC_JWKS_URL = "https://issuer.example.com/.well-known/jwks.json"
-$env:ORENYL_OIDC_AUDIENCE = "lore"
+$env:ORENYL_OIDC_AUDIENCE = "orenyl"
 ```
 
 Notes:
@@ -96,7 +96,7 @@ $env:ORENYL_TRANSPORT = "streamable-http"
 $env:ORENYL_OIDC_ALLOWED_ALGS = "HS256"
 $env:ORENYL_OIDC_ISSUER = "https://lore.internal/"
 $env:ORENYL_OIDC_HS256_SECRET = "replace-with-at-least-32-random-bytes"
-$env:ORENYL_OIDC_AUDIENCE = "lore"
+$env:ORENYL_OIDC_AUDIENCE = "orenyl"
 ```
 
 Notes:
@@ -129,7 +129,7 @@ token = jwt.encode(
     {
         "sub": "agent-1",
         "iss": "https://lore.internal/",
-        "aud": "lore",
+        "aud": "orenyl",
         "scope": "memory:read memory:write memory:delete compliance:write operations:read operations:write",
         "exp": datetime.now(timezone.utc) + timedelta(minutes=15),
     },

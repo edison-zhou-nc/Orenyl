@@ -1,3 +1,5 @@
+import pytest
+
 from orenyl import env_vars
 
 
@@ -23,3 +25,18 @@ def test_all_prefixes_are_exposed_separately():
     assert env_vars.ENCRYPTION_PASSPHRASE_PREFIX in prefixes
     assert env_vars.ENCRYPTION_SALT_PREFIX in prefixes
     assert env_vars.SEMANTIC_DEDUP_THRESHOLD_PREFIX in prefixes
+
+
+def test_detect_legacy_names_returns_legacy_lore_keys(monkeypatch):
+    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_TRANSPORT", "streamable-http")
+    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+
+    assert env_vars.detect_legacy_names() == ("LORE_READ_ONLY_MODE", "LORE_TRANSPORT")
+
+
+def test_require_no_legacy_env_vars_raises_for_legacy_keys(monkeypatch):
+    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+
+    with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
+        env_vars.require_no_legacy_env_vars()

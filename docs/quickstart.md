@@ -32,7 +32,7 @@ It is for development only.
 ```json
 {
   "mcpServers": {
-    "lore": {
+    "orenyl": {
       "command": "orenyl-server",
       "env": {
         "ORENYL_TRANSPORT": "stdio",

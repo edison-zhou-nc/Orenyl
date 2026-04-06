@@ -440,6 +440,7 @@ async def _ttl_sweep_loop(
 
 
 def get_transport_mode() -> str:
+    env_vars.require_no_legacy_env_vars()
     return os.environ.get(env_vars.TRANSPORT, "streamable-http").strip().lower()
 
 
@@ -473,6 +474,7 @@ def build_fastmcp_server() -> FastMCP:
 
 
 async def run_stdio_server() -> None:
+    env_vars.require_no_legacy_env_vars()
     ttl_delete_mode = os.environ.get(env_vars.TTL_DELETE_MODE, "soft")
     ttl_interval_seconds = int(os.environ.get(env_vars.TTL_SWEEP_INTERVAL_SECONDS, "3600"))
     run_ttl_sweep(delete_mode=ttl_delete_mode)
@@ -491,6 +493,7 @@ async def run_stdio_server() -> None:
 
 
 def main():
+    env_vars.require_no_legacy_env_vars()
     mode = get_transport_mode()
     validate_transport_mode(mode)
     try:
