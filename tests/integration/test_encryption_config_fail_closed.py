@@ -17,11 +17,11 @@ def _reset_server_state(monkeypatch):
 
 def test_restricted_encryption_refuses_static_default_salt_in_prod(monkeypatch):
     _reset_server_state(monkeypatch)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "top-secret-passphrase")
-    monkeypatch.delenv("LORE_ENCRYPTION_SALT", raising=False)
-    monkeypatch.delenv("LORE_ALLOW_INSECURE_DEV_SALT", raising=False)
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "top-secret-passphrase")
+    monkeypatch.delenv("ORENYL_ENCRYPTION_SALT", raising=False)
+    monkeypatch.delenv("ORENYL_ALLOW_INSECURE_DEV_SALT", raising=False)
 
-    with pytest.raises(RuntimeError, match="LORE_ENCRYPTION_SALT is required"):
+    with pytest.raises(RuntimeError, match="ORENYL_ENCRYPTION_SALT is required"):
         asyncio.run(
             server.handle_store_event(
                 {
@@ -36,11 +36,11 @@ def test_restricted_encryption_refuses_static_default_salt_in_prod(monkeypatch):
 
 def test_missing_salt_is_error_when_passphrase_set_in_prod(monkeypatch):
     _reset_server_state(monkeypatch)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "top-secret-passphrase")
-    monkeypatch.delenv("LORE_ENCRYPTION_SALT", raising=False)
-    monkeypatch.delenv("LORE_ALLOW_INSECURE_DEV_SALT", raising=False)
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "top-secret-passphrase")
+    monkeypatch.delenv("ORENYL_ENCRYPTION_SALT", raising=False)
+    monkeypatch.delenv("ORENYL_ALLOW_INSECURE_DEV_SALT", raising=False)
 
-    with pytest.raises(RuntimeError, match="LORE_ENCRYPTION_SALT is required"):
+    with pytest.raises(RuntimeError, match="ORENYL_ENCRYPTION_SALT is required"):
         asyncio.run(
             server.handle_store_event(
                 {

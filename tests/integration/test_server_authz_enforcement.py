@@ -52,7 +52,7 @@ class StubVerifier:
 
 
 def _reset_server_state(monkeypatch):
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
@@ -62,9 +62,9 @@ def _reset_server_state(monkeypatch):
 
 
 def _reset_local_dev_state(monkeypatch):
-    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.delenv("ORENYL_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))

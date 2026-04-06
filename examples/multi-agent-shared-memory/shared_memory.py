@@ -52,8 +52,8 @@ def _seed_tenant_memory(
 
 
 def main() -> int:
-    previous_multi_tenant = os.environ.get("LORE_ENABLE_MULTI_TENANT")
-    os.environ["LORE_ENABLE_MULTI_TENANT"] = "1"
+    previous_multi_tenant = os.environ.get("ORENYL_ENABLE_MULTI_TENANT")
+    os.environ["ORENYL_ENABLE_MULTI_TENANT"] = "1"
     try:
         db = Database(":memory:")
         builder = ContextPackBuilder(db)
@@ -128,9 +128,9 @@ def main() -> int:
         return 1
     finally:
         if previous_multi_tenant is None:
-            os.environ.pop("LORE_ENABLE_MULTI_TENANT", None)
+            os.environ.pop("ORENYL_ENABLE_MULTI_TENANT", None)
         else:
-            os.environ["LORE_ENABLE_MULTI_TENANT"] = previous_multi_tenant
+            os.environ["ORENYL_ENABLE_MULTI_TENANT"] = previous_multi_tenant
 
 
 if __name__ == "__main__":

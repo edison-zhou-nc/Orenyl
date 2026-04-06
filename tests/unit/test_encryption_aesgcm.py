@@ -97,16 +97,16 @@ def test_decrypt_supports_legacy_payload_without_aad():
 
 
 def test_resolve_runtime_keyring_rejects_short_passphrase(monkeypatch):
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "short")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "short")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
 
     with pytest.raises(RuntimeError, match="passphrase_too_short"):
         resolve_runtime_keyring()
 
 
 def test_resolve_runtime_keyring_accepts_16_char_passphrase(monkeypatch):
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "0123456789abcdef")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "0123456789abcdef")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
 
     keyring = resolve_runtime_keyring()
 

@@ -1,6 +1,6 @@
 """Error-path tests for critical tool handlers.
 
-Tests use dev-stdio mode (LORE_TRANSPORT=stdio, LORE_ALLOW_STDIO_DEV=1) to
+Tests use dev-stdio mode (ORENYL_TRANSPORT=stdio, ORENYL_ALLOW_STDIO_DEV=1) to
 bypass authentication and hit handler logic directly. The auth-scope test
 stubs the verifier to test authorization enforcement specifically.
 """
@@ -16,8 +16,8 @@ from orenyl import server
 @pytest.fixture(autouse=True)
 def _dev_stdio_mode(monkeypatch):
     """Enable dev-stdio for all tests in this module."""
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
 
 
 def test_delete_and_recompute_missing_target_id():
@@ -63,8 +63,8 @@ def test_unauthorized_scope_raises_permission_error(monkeypatch):
                 )
             return None
 
-    monkeypatch.setenv("LORE_TRANSPORT", "streamable-http")
-    monkeypatch.delenv("LORE_ALLOW_STDIO_DEV", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "streamable-http")
+    monkeypatch.delenv("ORENYL_ALLOW_STDIO_DEV", raising=False)
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _ReadOnlyVerifier())
 
     with pytest.raises(PermissionError, match="forbidden"):

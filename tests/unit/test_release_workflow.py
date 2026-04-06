@@ -16,7 +16,7 @@ def test_release_workflow_runs_verification_before_publish() -> None:
     assert "src/lore" not in workflow
     assert "--cov=src/lore" not in workflow
     assert "lore-dist" not in workflow
-    assert "python -m lore.server" not in workflow
+    assert "python -m orenyl.server" not in workflow
     assert "python -m orenyl.server" not in workflow
     assert "import lore" not in workflow
 

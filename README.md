@@ -63,7 +63,7 @@ Use this mode for self-serve evaluation, local MCP clients, and demos. It is dev
 1. Start Lore in local stdio mode:
 
 ```bash
-LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m orenyl.server
+ORENYL_TRANSPORT=stdio ORENYL_ALLOW_STDIO_DEV=1 python -m orenyl.server
 ```
 
 2. Configure your MCP client:
@@ -75,9 +75,9 @@ LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m orenyl.server
       "command": "python",
       "args": ["-m", "orenyl.server"],
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./lore_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./lore_memory.db"
       }
     }
   }
@@ -96,7 +96,7 @@ This mode uses Lore's explicit local-dev auth bypass so you do not need external
 
 Use `streamable-http` with authenticated tool calls for real deployments.
 
-1. Set `LORE_TRANSPORT=streamable-http`.
+1. Set `ORENYL_TRANSPORT=streamable-http`.
 2. Configure OIDC or HS256 verification settings.
 3. Pass a JWT per tool call using `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments.
 4. Start `orenyl-server` or `python -m orenyl.server`.
@@ -129,50 +129,50 @@ Authenticated transports use the same 14-tool contract below. When auth is enabl
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `LORE_DB_PATH` | `lore_memory.db` | SQLite database path |
-| `LORE_AUDIT_DB_PATH` | `lore_audit.db` | SQLite audit log database path |
-| `LORE_DR_SNAPSHOT_DIR` | `lore_snapshots` | Directory used for disaster recovery snapshots |
-| `LORE_TRANSPORT` | `streamable-http` | Server transport mode |
-| `LORE_ALLOW_STDIO_DEV` | `0` | Allow stdio transport in dev |
-| `LORE_MAX_CONTEXT_PACK_LIMIT` | `100` | Upper bound for context retrieval |
-| `LORE_MAX_LIST_EVENTS_LIMIT` | `200` | Upper bound for list_events |
-| `LORE_READ_ONLY_MODE` | `0` | Reject mutating tools while keeping read-safe tools available |
-| `LORE_RATE_LIMIT_RPM` | `100` | Per-tenant request budget; `0` disables rate limiting |
-| `LORE_COMPLIANCE_STRICT_MODE` | `1` | Tighten compliance behavior for restricted or incomplete requests |
-| `LORE_ENABLE_MULTI_TENANT` | `0` | Enable tenant-aware request resolution and isolation checks |
-| `LORE_ENABLE_AGENT_PERMISSIONS` | `0` | Enforce domain-scoped policy checks for authenticated agents |
-| `LORE_POLICY_SHADOW_MODE` | `0` | Log policy denies without enforcing them; unsafe with some agent-permission combinations |
-| `LORE_ENABLE_SEMANTIC_DEDUP` | `0` | Enable semantic duplicate suppression |
-| `LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT` | `0.92` | Default cosine threshold for semantic dedup |
-| `LORE_SEMANTIC_DEDUP_THRESHOLD_<DOMAIN>` | unset | Domain-specific dedup threshold override (example: `..._HEALTH`) |
-| `LORE_MIN_FACT_CONFIDENCE` | `0.7` | Minimum confidence required for facts in context packs |
-| `LORE_EMBEDDING_PROVIDER` | `hash-local` | Embedding provider (`hash-local` or `openai`) |
-| `LORE_VECTOR_BACKEND` | `local` | Vector storage backend (`local`, `sqlite`, or `pgvector`) |
-| `LORE_PGVECTOR_DSN` | unset | PostgreSQL DSN used when `LORE_VECTOR_BACKEND=pgvector` |
-| `LORE_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider only (ignored for `openai`) |
-| `LORE_EMBEDDING_WORKERS` | `4` | Worker count for async embedding tasks, clamped to 1-16 |
-| `LORE_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
-| `LORE_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
-| `LORE_EMBEDDING_TIMEOUT_SECONDS` | `10` | Timeout before retrieval falls back when embeddings stall |
-| `LORE_ENCRYPTION_PASSPHRASE` | unset | Enables encryption for high/restricted payloads |
-| `LORE_ENCRYPTION_SALT` | unset | Base64 salt for key derivation |
-| `LORE_ENCRYPTION_KEY_VERSION` | `v1` | Active encryption key version stamped onto encrypted payloads |
-| `LORE_ALLOW_INSECURE_DEV_SALT` | `0` | Dev-only fallback when salt is unset |
-| `LORE_TTL_DELETE_MODE` | `soft` | TTL cleanup deletion mode |
-| `LORE_TTL_SWEEP_INTERVAL_SECONDS` | `3600` | TTL sweep interval |
-| `LORE_OIDC_ISSUER` | unset | OIDC token issuer (required when RS256/JWKS is enabled) |
-| `LORE_OIDC_AUDIENCE` | `lore` | OIDC audience |
-| `LORE_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms; default requires issuer config |
-| `LORE_OIDC_HS256_SECRET` | unset | HS256 verifier secret (required when `HS256` is enabled) |
-| `LORE_OIDC_JWKS_URL` | unset | JWKS endpoint for RS256 verification |
-| `LORE_OIDC_JWKS_CACHE_TTL_SECONDS` | `300` | JWKS cache lifetime for RS256 verification |
-| `LORE_OIDC_CLOCK_SKEW_SECONDS` | `30` | Allowed token clock skew in seconds |
-| `LORE_FEDERATION_NODE_ID` | `node-local` | Stable node identifier for federation journals and conflict resolution |
+| `ORENYL_DB_PATH` | `lore_memory.db` | SQLite database path |
+| `ORENYL_AUDIT_DB_PATH` | `lore_audit.db` | SQLite audit log database path |
+| `ORENYL_DR_SNAPSHOT_DIR` | `lore_snapshots` | Directory used for disaster recovery snapshots |
+| `ORENYL_TRANSPORT` | `streamable-http` | Server transport mode |
+| `ORENYL_ALLOW_STDIO_DEV` | `0` | Allow stdio transport in dev |
+| `ORENYL_MAX_CONTEXT_PACK_LIMIT` | `100` | Upper bound for context retrieval |
+| `ORENYL_MAX_LIST_EVENTS_LIMIT` | `200` | Upper bound for list_events |
+| `ORENYL_READ_ONLY_MODE` | `0` | Reject mutating tools while keeping read-safe tools available |
+| `ORENYL_RATE_LIMIT_RPM` | `100` | Per-tenant request budget; `0` disables rate limiting |
+| `ORENYL_COMPLIANCE_STRICT_MODE` | `1` | Tighten compliance behavior for restricted or incomplete requests |
+| `ORENYL_ENABLE_MULTI_TENANT` | `0` | Enable tenant-aware request resolution and isolation checks |
+| `ORENYL_ENABLE_AGENT_PERMISSIONS` | `0` | Enforce domain-scoped policy checks for authenticated agents |
+| `ORENYL_POLICY_SHADOW_MODE` | `0` | Log policy denies without enforcing them; unsafe with some agent-permission combinations |
+| `ORENYL_ENABLE_SEMANTIC_DEDUP` | `0` | Enable semantic duplicate suppression |
+| `ORENYL_SEMANTIC_DEDUP_THRESHOLD_DEFAULT` | `0.92` | Default cosine threshold for semantic dedup |
+| `ORENYL_SEMANTIC_DEDUP_THRESHOLD_<DOMAIN>` | unset | Domain-specific dedup threshold override (example: `..._HEALTH`) |
+| `ORENYL_MIN_FACT_CONFIDENCE` | `0.7` | Minimum confidence required for facts in context packs |
+| `ORENYL_EMBEDDING_PROVIDER` | `hash-local` | Embedding provider (`hash-local` or `openai`) |
+| `ORENYL_VECTOR_BACKEND` | `local` | Vector storage backend (`local`, `sqlite`, or `pgvector`) |
+| `ORENYL_PGVECTOR_DSN` | unset | PostgreSQL DSN used when `ORENYL_VECTOR_BACKEND=pgvector` |
+| `ORENYL_EMBEDDING_DIM` | `128` | Vector dimension for `hash-local` provider only (ignored for `openai`) |
+| `ORENYL_EMBEDDING_WORKERS` | `4` | Worker count for async embedding tasks, clamped to 1-16 |
+| `ORENYL_OPENAI_API_KEY` | unset | OpenAI API key for `openai` embedding provider |
+| `ORENYL_EMBEDDING_MODEL` | `text-embedding-3-small` | Embedding model when provider is `openai` |
+| `ORENYL_EMBEDDING_TIMEOUT_SECONDS` | `10` | Timeout before retrieval falls back when embeddings stall |
+| `ORENYL_ENCRYPTION_PASSPHRASE` | unset | Enables encryption for high/restricted payloads |
+| `ORENYL_ENCRYPTION_SALT` | unset | Base64 salt for key derivation |
+| `ORENYL_ENCRYPTION_KEY_VERSION` | `v1` | Active encryption key version stamped onto encrypted payloads |
+| `ORENYL_ALLOW_INSECURE_DEV_SALT` | `0` | Dev-only fallback when salt is unset |
+| `ORENYL_TTL_DELETE_MODE` | `soft` | TTL cleanup deletion mode |
+| `ORENYL_TTL_SWEEP_INTERVAL_SECONDS` | `3600` | TTL sweep interval |
+| `ORENYL_OIDC_ISSUER` | unset | OIDC token issuer (required when RS256/JWKS is enabled) |
+| `ORENYL_OIDC_AUDIENCE` | `lore` | OIDC audience |
+| `ORENYL_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms; default requires issuer config |
+| `ORENYL_OIDC_HS256_SECRET` | unset | HS256 verifier secret (required when `HS256` is enabled) |
+| `ORENYL_OIDC_JWKS_URL` | unset | JWKS endpoint for RS256 verification |
+| `ORENYL_OIDC_JWKS_CACHE_TTL_SECONDS` | `300` | JWKS cache lifetime for RS256 verification |
+| `ORENYL_OIDC_CLOCK_SKEW_SECONDS` | `30` | Allowed token clock skew in seconds |
+| `ORENYL_FEDERATION_NODE_ID` | `node-local` | Stable node identifier for federation journals and conflict resolution |
 
 Notes:
-- With default `LORE_OIDC_ALLOWED_ALGS=RS256`, startup requires `LORE_OIDC_ISSUER` (and typically `LORE_OIDC_JWKS_URL`).
-- HS256-only deployments should explicitly set `LORE_OIDC_ALLOWED_ALGS=HS256`, `LORE_OIDC_HS256_SECRET`, and `LORE_OIDC_ISSUER`.
-- Multi-version key rotation can use `LORE_ENCRYPTION_PASSPHRASE_<VERSION>` and `LORE_ENCRYPTION_SALT_<VERSION>` alongside `LORE_ENCRYPTION_KEY_VERSION`.
+- With default `ORENYL_OIDC_ALLOWED_ALGS=RS256`, startup requires `ORENYL_OIDC_ISSUER` (and typically `ORENYL_OIDC_JWKS_URL`).
+- HS256-only deployments should explicitly set `ORENYL_OIDC_ALLOWED_ALGS=HS256`, `ORENYL_OIDC_HS256_SECRET`, and `ORENYL_OIDC_ISSUER`.
+- Multi-version key rotation can use `ORENYL_ENCRYPTION_PASSPHRASE_<VERSION>` and `ORENYL_ENCRYPTION_SALT_<VERSION>` alongside `ORENYL_ENCRYPTION_KEY_VERSION`.
 
 ## Security Notes
 
@@ -221,7 +221,7 @@ python -m pytest tests/integration/test_federation_worker_idempotency.py tests/i
 Run Phase 3 multi-tenant load harness (opt-in):
 
 ```bash
-LORE_ENABLE_PHASE3_LOAD_TEST=1 LORE_PHASE3_LOAD_EVENTS=1000000 python -m pytest tests/benchmarks/test_phase3_multi_tenant_load.py -q
+ORENYL_ENABLE_PHASE3_LOAD_TEST=1 ORENYL_PHASE3_LOAD_EVENTS=1000000 python -m pytest tests/benchmarks/test_phase3_multi_tenant_load.py -q
 ```
 
 ## Contributing

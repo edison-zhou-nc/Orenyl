@@ -46,9 +46,9 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 - Test: `tests/benchmarks/test_phase3_multi_tenant_load.py`
 - Disabled by default.
 - Enable with:
-  `LORE_ENABLE_PHASE3_LOAD_TEST=1`
+  `ORENYL_ENABLE_PHASE3_LOAD_TEST=1`
 - Configurable event count:
-  `LORE_PHASE3_LOAD_EVENTS` (default `1000000`)
+  `ORENYL_PHASE3_LOAD_EVENTS` (default `1000000`)
 
 ## Published Benchmarks (2026-03-18)
 

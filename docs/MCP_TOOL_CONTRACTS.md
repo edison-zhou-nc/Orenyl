@@ -1,6 +1,6 @@
 # MCP Tool Contracts
 
-Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`LORE_TRANSPORT=stdio` with `LORE_ALLOW_STDIO_DEV=1`), tool calls run under the explicit local-dev auth bypass. In authenticated transports, tool calls require a valid auth token and server-side authorization is enforced per tool.
+Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`ORENYL_TRANSPORT=stdio` with `ORENYL_ALLOW_STDIO_DEV=1`), tool calls run under the explicit local-dev auth bypass. In authenticated transports, tool calls require a valid auth token and server-side authorization is enforced per tool.
 
 ## Common expectations
 

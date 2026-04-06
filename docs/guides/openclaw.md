@@ -17,16 +17,16 @@ Add Lore as an MCP server in OpenClaw's configuration:
     "lore": {
       "command": "orenyl-server",
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./openclaw_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./openclaw_memory.db"
       }
     }
   }
 }
 ```
 
-`LORE_ALLOW_STDIO_DEV=1` disables Lore's production guard for stdio transport, so keep that setting for local development only.
+`ORENYL_ALLOW_STDIO_DEV=1` disables Lore's production guard for stdio transport, so keep that setting for local development only.
 
 Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory with governed deletion and audit guarantees.
 

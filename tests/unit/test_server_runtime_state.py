@@ -97,7 +97,7 @@ def test_rebind_runtime_state_for_tests_rebinds_database_path_from_env(monkeypat
     monkeypatch.setattr(server, "engine", LineageEngine(seeded))
     monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(seeded))
     monkeypatch.setattr(server, "DB_PATH", str(seeded_db))
-    monkeypatch.setenv("LORE_DB_PATH", str(fresh_db))
+    monkeypatch.setenv("ORENYL_DB_PATH", str(fresh_db))
 
     server._rebind_runtime_state_for_tests()
 

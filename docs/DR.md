@@ -67,9 +67,9 @@ Lore creates a `.pre_restore.bak` file beside the active database before restori
 
 Key environment variables:
 
-- `LORE_DB_PATH`: active SQLite database path
-- `LORE_DR_SNAPSHOT_DIR`: directory used for snapshot artifacts
-- `LORE_ENABLE_MULTI_TENANT=0`: required for create/restore snapshot operations
+- `ORENYL_DB_PATH`: active SQLite database path
+- `ORENYL_DR_SNAPSHOT_DIR`: directory used for snapshot artifacts
+- `ORENYL_ENABLE_MULTI_TENANT=0`: required for create/restore snapshot operations
 
 Verification remains available in multi-tenant mode because it checks an existing artifact and does not materialize a database-wide backup.
 

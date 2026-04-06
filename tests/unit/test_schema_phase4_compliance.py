@@ -30,8 +30,8 @@ def test_phase4_models_exist():
 
 
 def test_phase4_config_defaults(monkeypatch):
-    monkeypatch.delenv("LORE_COMPLIANCE_STRICT_MODE", raising=False)
-    monkeypatch.delenv("LORE_READ_ONLY_MODE", raising=False)
+    monkeypatch.delenv("ORENYL_COMPLIANCE_STRICT_MODE", raising=False)
+    monkeypatch.delenv("ORENYL_READ_ONLY_MODE", raising=False)
 
     assert compliance_strict_mode_enabled() is True
     assert read_only_mode_enabled() is False

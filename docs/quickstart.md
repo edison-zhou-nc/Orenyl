@@ -19,8 +19,8 @@ python -m pip install -e .
 ## Start Lore in local dev mode
 
 ```powershell
-$env:LORE_TRANSPORT = "stdio"
-$env:LORE_ALLOW_STDIO_DEV = "1"
+$env:ORENYL_TRANSPORT = "stdio"
+$env:ORENYL_ALLOW_STDIO_DEV = "1"
 orenyl-server
 ```
 
@@ -35,9 +35,9 @@ It is for development only.
     "lore": {
       "command": "orenyl-server",
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./lore_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./lore_memory.db"
       }
     }
   }
