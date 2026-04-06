@@ -7,6 +7,10 @@ import os
 from . import env_vars
 
 
+def _require_clean_env() -> None:
+    env_vars.require_no_legacy_env_vars()
+
+
 def _bool_env(name: str, default: bool = False) -> bool:
     raw = os.environ.get(name)
     if raw is None:
@@ -30,6 +34,7 @@ def _float_env(name: str, default: float) -> float:
 
 
 def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
+    _require_clean_env()
     default = _float_env(env_vars.SEMANTIC_DEDUP_THRESHOLD_DEFAULT, 0.92)
     # For multi-domain events, choose the highest configured cutoff so
     # dedup behavior is deterministic and conservative.
@@ -44,15 +49,18 @@ def semantic_dedup_threshold_for_domains(domains: list[str]) -> float:
 
 
 def min_fact_confidence_threshold() -> float:
+    _require_clean_env()
     value = _float_env(env_vars.MIN_FACT_CONFIDENCE, 0.7)
     return max(0.0, min(value, 1.0))
 
 
 def multi_tenant_enabled() -> bool:
+    _require_clean_env()
     return os.environ.get(env_vars.ENABLE_MULTI_TENANT, "0").strip() == "1"
 
 
 def dev_stdio_mode_enabled() -> bool:
+    _require_clean_env()
     return (
         os.environ.get(env_vars.TRANSPORT, "streamable-http").strip().lower() == "stdio"
         and os.environ.get(env_vars.ALLOW_STDIO_DEV, "0").strip() == "1"
@@ -64,16 +72,20 @@ def auth_required_for_runtime() -> bool:
 
 
 def vector_backend_name() -> str:
+    _require_clean_env()
     return os.environ.get(env_vars.VECTOR_BACKEND, "local").strip().lower() or "local"
 
 
 def pgvector_dsn() -> str:
+    _require_clean_env()
     return os.environ.get(env_vars.PGVECTOR_DSN, "").strip()
 
 
 def compliance_strict_mode_enabled() -> bool:
+    _require_clean_env()
     return _bool_env(env_vars.COMPLIANCE_STRICT_MODE, default=True)
 
 
 def read_only_mode_enabled() -> bool:
+    _require_clean_env()
     return _bool_env(env_vars.READ_ONLY_MODE, default=False)

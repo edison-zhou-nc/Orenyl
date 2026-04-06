@@ -277,6 +277,7 @@ def _validate_jwks_url(jwks_url: str) -> None:
 
 
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
+    env_vars.require_no_legacy_env_vars()
     jwks_url = os.environ.get(env_vars.OIDC_JWKS_URL, "").strip()
     allowed_algorithms_raw = os.environ.get(env_vars.OIDC_ALLOWED_ALGS, "RS256")
     allowed_algorithms = tuple(

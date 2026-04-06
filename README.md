@@ -71,7 +71,7 @@ ORENYL_TRANSPORT=stdio ORENYL_ALLOW_STDIO_DEV=1 python -m orenyl.server
 ```json
 {
   "mcpServers": {
-    "lore": {
+    "orenyl": {
       "command": "python",
       "args": ["-m", "orenyl.server"],
       "env": {
@@ -161,7 +161,7 @@ Authenticated transports use the same 14-tool contract below. When auth is enabl
 | `ORENYL_TTL_DELETE_MODE` | `soft` | TTL cleanup deletion mode |
 | `ORENYL_TTL_SWEEP_INTERVAL_SECONDS` | `3600` | TTL sweep interval |
 | `ORENYL_OIDC_ISSUER` | unset | OIDC token issuer (required when RS256/JWKS is enabled) |
-| `ORENYL_OIDC_AUDIENCE` | `lore` | OIDC audience |
+| `ORENYL_OIDC_AUDIENCE` | `orenyl` | OIDC audience |
 | `ORENYL_OIDC_ALLOWED_ALGS` | `RS256` | Allowed JWT algorithms; default requires issuer config |
 | `ORENYL_OIDC_HS256_SECRET` | unset | HS256 verifier secret (required when `HS256` is enabled) |
 | `ORENYL_OIDC_JWKS_URL` | unset | JWKS endpoint for RS256 verification |

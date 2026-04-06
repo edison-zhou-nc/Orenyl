@@ -14,7 +14,7 @@ Add Lore as an MCP server in OpenClaw's configuration:
 ```json
 {
   "mcpServers": {
-    "lore": {
+    "orenyl": {
       "command": "orenyl-server",
       "env": {
         "ORENYL_TRANSPORT": "stdio",
