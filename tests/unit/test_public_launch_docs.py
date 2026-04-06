@@ -1,3 +1,4 @@
+import base64
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -31,3 +32,47 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
     assert "development only" in claude.lower()
     assert "development only" in openclaw.lower()
+
+
+def test_production_http_guide_exists() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production-http.md").read_text(encoding="utf-8")
+
+    assert "streamable-http" in doc
+    assert "oidc" in doc.lower() or "hs256" in doc.lower()
+    assert "lore_transport" in doc.lower()
+    assert "lore_db_path" in doc.lower()
+    assert "lore_audit_db_path" in doc.lower()
+
+
+def test_integration_guide_uses_relative_production_links() -> None:
+    doc = (REPO_ROOT / "docs" / "INTEGRATION.md").read_text(encoding="utf-8")
+
+    assert "](guides/production-http.md)" in doc
+    assert "](guides/production.env.example)" in doc
+    assert "](docs/guides/production-http.md)" not in doc
+    assert "](docs/guides/production.env.example)" not in doc
+
+
+def test_production_http_guide_mentions_hs256_minimum_bytes() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production-http.md").read_text(encoding="utf-8")
+
+    assert "hs256" in doc.lower()
+    assert "at least 32 bytes" in doc.lower()
+    assert "replace-with-at-least-32-random-bytes" in doc
+    assert "replace-with-a-secret" not in doc
+    assert "powershell" in doc.lower()
+    assert "same environment variables apply on linux and macos" in doc.lower()
+
+
+def test_production_env_example_uses_safe_base64_salt_placeholder() -> None:
+    doc = (REPO_ROOT / "docs" / "guides" / "production.env.example").read_text(encoding="utf-8")
+    lines = doc.splitlines()
+
+    assert "# LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" in lines
+    assert "replace-with-base64-salt" not in doc
+    assert "LORE_ENCRYPTION_PASSPHRASE=replace-with-secret" not in lines
+    assert all(not line.startswith("LORE_ENCRYPTION_SALT=") for line in lines)
+    assert all(not line.startswith("LORE_ENCRYPTION_PASSPHRASE=replace-with-secret") for line in lines)
+    salt_line = next(line for line in lines if line.startswith("# LORE_ENCRYPTION_SALT="))
+    salt_value = salt_line.split("=", 1)[1].strip()
+    assert base64.b64decode(salt_value, validate=True)
