@@ -1,7 +1,7 @@
 # Lore
 
 [![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/lore-mcp-server)](https://pypi.org/project/lore-mcp-server/)
+[![PyPI](https://img.shields.io/pypi/v/orenyl-mcp-server)](https://pypi.org/project/orenyl-mcp-server/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -26,7 +26,7 @@ Lore is ready for self-serve local development and evaluation. Production deploy
 ## Install
 
 ```bash
-pip install lore-mcp-server
+pip install orenyl-mcp-server
 ```
 
 Or from source:
@@ -63,7 +63,7 @@ Use this mode for self-serve evaluation, local MCP clients, and demos. It is dev
 1. Start Lore in local stdio mode:
 
 ```bash
-LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m lore.server
+LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m orenyl.server
 ```
 
 2. Configure your MCP client:
@@ -73,7 +73,7 @@ LORE_TRANSPORT=stdio LORE_ALLOW_STDIO_DEV=1 python -m lore.server
   "mcpServers": {
     "lore": {
       "command": "python",
-      "args": ["-m", "lore.server"],
+      "args": ["-m", "orenyl.server"],
       "env": {
         "LORE_TRANSPORT": "stdio",
         "LORE_ALLOW_STDIO_DEV": "1",
@@ -99,7 +99,7 @@ Use `streamable-http` with authenticated tool calls for real deployments.
 1. Set `LORE_TRANSPORT=streamable-http`.
 2. Configure OIDC or HS256 verification settings.
 3. Pass a JWT per tool call using `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments.
-4. Start `lore-server` or `python -m lore.server`.
+4. Start `orenyl-server` or `python -m orenyl.server`.
 5. Treat stdio mode as development only.
 
 Lore does not currently read an HTTP `Authorization` header inside tool dispatch. If you need gateway-level HTTP auth, terminate that at your proxy or application edge and still pass the JWT into the tool call contract described in [docs/INTEGRATION.md](docs/INTEGRATION.md).

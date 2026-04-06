@@ -5,7 +5,7 @@ Get Lore running locally in documented self-serve development mode, then exercis
 ## Install
 
 ```bash
-pip install lore-mcp-server
+pip install orenyl-mcp-server
 ```
 
 Or from source:
@@ -21,7 +21,7 @@ python -m pip install -e .
 ```powershell
 $env:LORE_TRANSPORT = "stdio"
 $env:LORE_ALLOW_STDIO_DEV = "1"
-lore-server
+orenyl-server
 ```
 
 This mode uses Lore's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
@@ -33,7 +33,7 @@ It is for development only.
 {
   "mcpServers": {
     "lore": {
-      "command": "lore-server",
+      "command": "orenyl-server",
       "env": {
         "LORE_TRANSPORT": "stdio",
         "LORE_ALLOW_STDIO_DEV": "1",
