@@ -5,14 +5,14 @@ import json
 
 import pytest
 
-from lore.config import compliance_strict_mode_enabled, read_only_mode_enabled
-from lore.db import Database
-from lore.handlers import compliance as compliance_handlers
-from lore.models import AuditChainRecord, ConsentRecord, DRSnapshot, SubjectRequest
+from orenyl.config import compliance_strict_mode_enabled, read_only_mode_enabled
+from orenyl.db import Database
+from orenyl.handlers import compliance as compliance_handlers
+from orenyl.models import AuditChainRecord, ConsentRecord, DRSnapshot, SubjectRequest
 
 
 def test_phase4_tables_exist(tmp_path):
-    db = Database(str(tmp_path / "lore.db"))
+    db = Database(str(tmp_path / "orenyl.db"))
     tables = {
         row[0]
         for row in db.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()

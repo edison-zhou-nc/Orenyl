@@ -1,6 +1,6 @@
-from lore import server
-from lore.handlers.compliance import handle_record_consent
-from lore.handlers.operations import handle_create_snapshot
+from orenyl import server
+from orenyl.handlers.compliance import handle_record_consent
+from orenyl.handlers.operations import handle_create_snapshot
 
 
 def test_server_re_exports_non_core_handlers():

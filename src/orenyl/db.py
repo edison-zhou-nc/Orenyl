@@ -1,4 +1,4 @@
-"""SQLite database layer for Lore governed memory."""
+"""SQLite database layer for orenyl governed memory."""
 
 from __future__ import annotations
 

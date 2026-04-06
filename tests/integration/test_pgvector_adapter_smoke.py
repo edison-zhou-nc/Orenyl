@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from lore.vector_backend import PgvectorVectorBackend
+from orenyl.vector_backend import PgvectorVectorBackend
 
 
 @pytest.mark.skipif(

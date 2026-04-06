@@ -4,7 +4,7 @@ import pytest
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from lore.encryption import decrypt_content, encrypt_content, generate_key, resolve_runtime_keyring
+from orenyl.encryption import decrypt_content, encrypt_content, generate_key, resolve_runtime_keyring
 
 
 def _build_legacy_payload(plaintext: str, key: bytes, salt: bytes, key_version: str = "v1") -> dict:

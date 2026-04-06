@@ -1,10 +1,10 @@
 import sys
 import types
 
-from lore.db import Database
-from lore.embeddings import encode_vector
-from lore.models import Fact
-from lore.vector_backend import LocalVectorBackend, PgvectorVectorBackend
+from orenyl.db import Database
+from orenyl.embeddings import encode_vector
+from orenyl.models import Fact
+from orenyl.vector_backend import LocalVectorBackend, PgvectorVectorBackend
 
 
 def test_vector_backend_contract_returns_ordered_ids():

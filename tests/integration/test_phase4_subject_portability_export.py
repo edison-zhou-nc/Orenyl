@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from lore.compliance import ComplianceService
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.compliance import ComplianceService
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_subject_portability_export_returns_manifest_and_subject_scoped_records():

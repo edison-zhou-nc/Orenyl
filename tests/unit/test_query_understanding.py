@@ -1,4 +1,4 @@
-from lore.query_understanding import infer_domain, rewrite_query
+from orenyl.query_understanding import infer_domain, rewrite_query
 
 
 def test_infer_domain_maps_medication_query_to_health():

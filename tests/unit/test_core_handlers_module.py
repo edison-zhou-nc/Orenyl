@@ -6,11 +6,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from lore import server
-from lore.db import Database
-from lore.handlers import core
-from lore.handlers.core import MAX_EXPORT_DOMAIN_EVENTS, handle_store_event
-from lore.lineage import LineageEngine
+from orenyl import server
+from orenyl.db import Database
+from orenyl.handlers import core
+from orenyl.handlers.core import MAX_EXPORT_DOMAIN_EVENTS, handle_store_event
+from orenyl.lineage import LineageEngine
 
 
 class _EmbeddingProviderStub:

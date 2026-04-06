@@ -1,4 +1,4 @@
-from lore.config import semantic_dedup_threshold_for_domains
+from orenyl.config import semantic_dedup_threshold_for_domains
 
 
 def test_health_domain_threshold_override(monkeypatch):

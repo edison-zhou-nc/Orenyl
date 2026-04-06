@@ -1,4 +1,4 @@
-from lore import metrics
+from orenyl import metrics
 
 
 def test_metrics_concurrent_increments_are_counted_correctly():

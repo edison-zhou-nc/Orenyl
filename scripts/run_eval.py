@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ruff: noqa: E402, I001
-"""Lore Eval Harness - your credibility engine.
+"""orenyl Eval Harness - your credibility engine.
 
 Runs synthetic scenarios against the governed memory engine
 and produces a scoreboard proving deletion compliance.
@@ -23,10 +23,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # Add src/ to path for local execution without editable install.
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from lore.db import Database
-from lore.models import Event, new_id, now_iso
-from lore.lineage import LineageEngine
-from lore.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.models import Event, new_id, now_iso
+from orenyl.lineage import LineageEngine
+from orenyl.context_pack import ContextPackBuilder
 
 
 @dataclass
@@ -277,7 +277,7 @@ def run_phase1_precision_eval(
         return 0.0
 
     # Ensure benchmark runs are isolated from process-wide provider caches.
-    from lore import context_pack as context_pack_module
+    from orenyl import context_pack as context_pack_module
     context_pack_module._reset_runtime_state_for_tests()
 
     hits = 0
@@ -317,7 +317,7 @@ def run_phase1_precision_eval(
 def print_scoreboard(cards: list[ScoreCard]):
     """Print the one chart that tells the whole story."""
     print("\n" + "=" * 70)
-    print("  Lore GOVERNED MEMORY - EVAL SCOREBOARD")
+    print("  orenyl GOVERNED MEMORY - EVAL SCOREBOARD")
     print("=" * 70)
 
     total_steps = sum(c.total_steps for c in cards)
@@ -340,7 +340,7 @@ def print_scoreboard(cards: list[ScoreCard]):
             print(f"         WARN Resurface incidents: {card.resurface_incidents}")
         if card.failures:
             for f in card.failures:
-                print(f"         ✗ [{f['label']}] {f['error']}")
+                print(f"         âœ— [{f['label']}] {f['error']}")
 
     print("\n" + "-" * 70)
     print(f"  TOTAL STEPS:              {total_passed}/{total_steps} passed")

@@ -1,7 +1,7 @@
 import pytest
 
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+from orenyl.db import Database
+from orenyl.models import Edge, Event, Fact
 
 
 def test_fact_repository_returns_latest_domain_facts_and_stale_state():

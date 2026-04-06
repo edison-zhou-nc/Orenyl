@@ -1,8 +1,8 @@
 import sqlite3
 
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_facts_unique_key_version_index_exists():

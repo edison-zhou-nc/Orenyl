@@ -1,7 +1,7 @@
-from lore import server
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_expired_event_is_soft_deleted_by_ttl_sweep(monkeypatch):

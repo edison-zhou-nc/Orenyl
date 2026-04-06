@@ -1,12 +1,12 @@
 import pytest
 
-from lore import context_pack as context_pack_module
-from lore import env_vars, runtime, server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lazy import Lazy
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import context_pack as context_pack_module
+from orenyl import env_vars, runtime, server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lazy import Lazy
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_reset_runtime_state_clears_verifier_and_salt_warning(monkeypatch):
@@ -115,7 +115,7 @@ def test_runtime_state_test_helpers_require_testing_mode(monkeypatch, tmp_path):
 
 
 def test_server_does_not_alias_context_pack_test_reset_helper_at_import_time():
-    import lore.server as server_module
+    import orenyl.server as server_module
 
     assert "reset_context_pack_runtime_state_for_tests" not in vars(server_module)
 

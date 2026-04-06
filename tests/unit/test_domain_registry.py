@@ -1,4 +1,4 @@
-from lore.domain_registry import normalize_domain
+from orenyl.domain_registry import normalize_domain
 
 
 def test_normalize_alias_and_custom_domain():

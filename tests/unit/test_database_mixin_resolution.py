@@ -1,4 +1,4 @@
-from lore.db import Database
+from orenyl.db import Database
 
 
 def test_database_methods_come_from_mixins_not_class_body():

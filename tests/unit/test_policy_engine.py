@@ -1,7 +1,7 @@
 import logging
 
-from lore.db import Database
-from lore.policy import PolicyEngine
+from orenyl.db import Database
+from orenyl.policy import PolicyEngine
 
 
 def test_policy_denies_agent_without_domain_read_grant():

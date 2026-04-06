@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Edge, Event, Fact
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Edge, Event, Fact
 
 
 def test_delete_and_recompute_handles_recursive_downstream_chain():

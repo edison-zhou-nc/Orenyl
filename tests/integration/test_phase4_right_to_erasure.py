@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from lore.compliance import ComplianceService
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.compliance import ComplianceService
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_right_to_erasure_deletes_subject_data_and_returns_proof():

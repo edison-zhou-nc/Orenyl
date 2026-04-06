@@ -63,7 +63,7 @@ def _get_embedding_executor() -> concurrent.futures.ThreadPoolExecutor:
             configured_workers = 4
         _embedding_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max(1, min(configured_workers, 16)),
-            thread_name_prefix="lore-embedding",
+            thread_name_prefix="orenyl-embedding",
         )
     return _embedding_executor
 

@@ -2,7 +2,7 @@ import base64
 
 import pytest
 
-from lore.encryption import decrypt_content, encrypt_content, resolve_runtime_keyring
+from orenyl.encryption import decrypt_content, encrypt_content, resolve_runtime_keyring
 
 
 def test_resolve_runtime_keyring_uses_active_version_and_legacy_env(monkeypatch):

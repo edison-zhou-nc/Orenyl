@@ -1,4 +1,4 @@
-from lore.domain_registry import should_promote_domain
+from orenyl.domain_registry import should_promote_domain
 
 
 def test_custom_domain_promotion_threshold():

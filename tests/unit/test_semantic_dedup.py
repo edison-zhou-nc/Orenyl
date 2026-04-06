@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.models import Event
-from lore.semantic_dedup import (
+from orenyl.db import Database
+from orenyl.models import Event
+from orenyl.semantic_dedup import (
     check_semantic_duplicate,
     cosine_similarity,
     is_semantic_duplicate_by_embedding,

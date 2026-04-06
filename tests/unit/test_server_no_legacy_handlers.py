@@ -1,6 +1,6 @@
 """Regression tests for the server handler extraction."""
 
-from lore import server
+from orenyl import server
 
 
 def test_server_module_exposes_no_legacy_handlers() -> None:

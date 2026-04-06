@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 
-from lore import server
-from lore.consent import ConsentService
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.consent import ConsentService
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def _reset_server(monkeypatch, db: Database) -> None:

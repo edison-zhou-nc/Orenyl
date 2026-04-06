@@ -8,9 +8,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lore import env_vars
-from lore.db import Database
-from lore.disaster_recovery import DRService
+from orenyl import env_vars
+from orenyl.db import Database
+from orenyl.disaster_recovery import DRService
 
 
 def _build_service() -> DRService:
@@ -21,7 +21,7 @@ def _build_service() -> DRService:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Lore disaster recovery operations.")
+    parser = argparse.ArgumentParser(description="orenyl disaster recovery operations.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     create = sub.add_parser("create", help="Create snapshot")

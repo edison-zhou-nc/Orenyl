@@ -1,6 +1,6 @@
 import json
 
-from lore.db import Database
+from orenyl.db import Database
 
 
 def test_support_repositories_cover_sync_counts_and_retrieval_logs():

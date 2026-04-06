@@ -1,7 +1,7 @@
 import asyncio
 
-from lore import server
-from lore.models import ContextPack
+from orenyl import server
+from orenyl.models import ContextPack
 
 
 class _CaptureBuilder:

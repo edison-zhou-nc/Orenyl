@@ -1,6 +1,6 @@
 import pytest
 
-from lore.auth import authorize_action
+from orenyl.auth import authorize_action
 
 
 def test_delete_requires_memory_delete_scope():

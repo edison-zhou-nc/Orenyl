@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from lore import audit, server
+from orenyl import audit, server
 
 
 class _DenyVerifier:

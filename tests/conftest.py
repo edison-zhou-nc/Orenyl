@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture
 def workspace_tmp_path():
-    path = Path(tempfile.mkdtemp(prefix=f"lore-pytest-{uuid.uuid4().hex[:8]}-"))
+    path = Path(tempfile.mkdtemp(prefix=f"orenyl-pytest-{uuid.uuid4().hex[:8]}-"))
     try:
         yield path
     finally:
@@ -26,8 +26,8 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     monkeypatch.setenv("LORE_DR_SNAPSHOT_DIR", str(snapshot_dir))
     monkeypatch.setenv("LORE_TESTING_MODE", "1")
 
-    server = sys.modules.get("lore.server")
-    audit = sys.modules.get("lore.audit")
+    server = sys.modules.get("orenyl.server")
+    audit = sys.modules.get("orenyl.audit")
     rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None
     reset = getattr(server, "_reset_runtime_state_for_tests", None) if server else None
     reset_audit = getattr(audit, "_reset_for_tests", None) if audit else None
@@ -41,8 +41,8 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
         yield
     finally:
         monkeypatch.setenv("LORE_TESTING_MODE", "1")
-        server = sys.modules.get("lore.server")
-        audit = sys.modules.get("lore.audit")
+        server = sys.modules.get("orenyl.server")
+        audit = sys.modules.get("orenyl.audit")
         rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None
         reset = getattr(server, "_reset_runtime_state_for_tests", None) if server else None
         reset_audit = getattr(audit, "_reset_for_tests", None) if audit else None

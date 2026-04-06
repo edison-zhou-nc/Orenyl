@@ -1,4 +1,4 @@
-"""Canonical environment variable names used across Lore."""
+"""Canonical environment variable names used across orenyl."""
 
 from __future__ import annotations
 

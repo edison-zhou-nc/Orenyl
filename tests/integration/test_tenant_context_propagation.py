@@ -3,11 +3,11 @@ import json
 
 from mcp.server.auth.provider import AccessToken
 
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.tenant import get_current_tenant_context
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.tenant import get_current_tenant_context
 
 
 class _Verifier:

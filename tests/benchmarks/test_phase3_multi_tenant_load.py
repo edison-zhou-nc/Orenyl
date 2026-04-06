@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from lore.db import Database
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.models import Event
 
 
 @pytest.mark.skipif(

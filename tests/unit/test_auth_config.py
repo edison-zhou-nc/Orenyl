@@ -2,8 +2,8 @@ import socket
 
 import pytest
 
-from lore.auth import build_token_verifier_from_env
-from lore.config import auth_required_for_runtime, dev_stdio_mode_enabled
+from orenyl.auth import build_token_verifier_from_env
+from orenyl.config import auth_required_for_runtime, dev_stdio_mode_enabled
 
 _VALID_HS256_SECRET = "0123456789abcdef0123456789abcdef"
 
