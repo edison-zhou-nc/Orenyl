@@ -5,7 +5,7 @@ Demonstrates tenant isolation: two agents share the same Lore instance but canno
 ## Run
 
 ```bash
-pip install lore-mcp-server   # or: pip install -e ../..
+pip install orenyl-mcp-server   # or: pip install -e ../..
 python shared_memory.py
 ```
 

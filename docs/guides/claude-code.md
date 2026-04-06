@@ -10,8 +10,7 @@ Add to your project's `.mcp.json`:
 {
   "mcpServers": {
     "lore": {
-      "command": "python",
-      "args": ["-m", "lore.server"],
+      "command": "orenyl-server",
       "env": {
         "LORE_TRANSPORT": "stdio",
         "LORE_ALLOW_STDIO_DEV": "1",

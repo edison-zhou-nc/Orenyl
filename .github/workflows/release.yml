@@ -28,15 +28,15 @@ jobs:
           python -m ruff check . --select F,B
           python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Security scan (bandit)
-        run: python -m bandit -r src/lore -ll -q
+        run: python -m bandit -r src/orenyl -ll -q
       - name: Dependency audit - production (pip-audit)
         run: python -m pip_audit -r requirements.lock --disable-pip
       - name: Dependency audit - dev tools (pip-audit)
         run: python -m pip_audit -r requirements-dev.lock --disable-pip
       - name: Run mypy
-        run: python -m mypy src/lore --config-file pyproject.toml
+        run: python -m mypy src/orenyl --config-file pyproject.toml
       - name: Run unit and integration tests with coverage
-        run: python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80
+        run: python -m pytest tests/unit tests/integration -q --cov=src/orenyl --cov-report=term-missing --cov-fail-under=80
       - name: Build release artifacts
         run: python -m build
       - name: Smoke import built wheel
@@ -45,11 +45,12 @@ jobs:
           . .venv-smoke/bin/activate
           python -m pip install --upgrade pip
           python -m pip install dist/*.whl
-          python -c "import lore, lore.server"
+          python -m orenyl.server --help
+          python -c "import orenyl, orenyl.server"
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lore-dist
+          name: orenyl-dist
           path: dist/*
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

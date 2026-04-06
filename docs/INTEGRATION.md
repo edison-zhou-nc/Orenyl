@@ -108,10 +108,10 @@ Notes:
 
 ```powershell
 $env:LORE_TRANSPORT = "streamable-http"
-lore-server
+orenyl-server
 ```
 
-`python -m lore.server` works as well.
+`python -m orenyl.server` works as well.
 
 ### Step 4: Mint or obtain a token
 
@@ -168,5 +168,5 @@ print(token)
 
 1. Set `LORE_TRANSPORT=stdio`.
 2. Set `LORE_ALLOW_STDIO_DEV=1`.
-3. Point the MCP client to `lore-server` or `python -m lore.server`.
+3. Point the MCP client to `orenyl-server` or `python -m orenyl.server`.
 4. Treat this mode as development only.
