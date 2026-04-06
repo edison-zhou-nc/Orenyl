@@ -38,7 +38,7 @@ def test_event_repository_requires_tenant_scope_for_unscoped_methods(monkeypatch
         tenant_id="tenant-a",
     )
     db.insert_event(event)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     with pytest.raises(PermissionError, match="tenant_scope_required"):
         db.get_all_events()

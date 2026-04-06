@@ -139,7 +139,7 @@ def test_restore_snapshot_closes_source_connection(monkeypatch, tmp_path):
 
 
 def test_snapshot_operations_are_blocked_in_multi_tenant_mode(tmp_path, monkeypatch):
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
     db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
@@ -162,7 +162,7 @@ def test_verify_snapshot_remains_available_in_multi_tenant_mode(tmp_path, monkey
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
     snapshot = dr.create_snapshot(label="verify-before-multi")
 
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     verify = dr.verify_snapshot(snapshot["snapshot_id"])
     assert verify["ok"] is True
@@ -178,7 +178,7 @@ def test_snapshot_rejects_path_traversal_label(tmp_path):
 
 
 def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
-    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.delenv("ORENYL_ENABLE_MULTI_TENANT", raising=False)
     db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
@@ -194,7 +194,7 @@ def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("label", [".", ".."])
 def test_snapshot_rejects_dot_only_labels(tmp_path, monkeypatch, label):
-    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.delenv("ORENYL_ENABLE_MULTI_TENANT", raising=False)
     db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
@@ -204,7 +204,7 @@ def test_snapshot_rejects_dot_only_labels(tmp_path, monkeypatch, label):
 
 
 def test_snapshot_rejects_forward_slash_traversal_label(tmp_path, monkeypatch):
-    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.delenv("ORENYL_ENABLE_MULTI_TENANT", raising=False)
     db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))

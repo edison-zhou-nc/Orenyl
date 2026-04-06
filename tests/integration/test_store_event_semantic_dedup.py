@@ -30,8 +30,8 @@ class _FakeProvider:
 def test_store_event_rejects_semantic_duplicate_when_enabled(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENABLE_SEMANTIC_DEDUP", "1")
-    monkeypatch.setenv("LORE_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.95")
+    monkeypatch.setenv("ORENYL_ENABLE_SEMANTIC_DEDUP", "1")
+    monkeypatch.setenv("ORENYL_SEMANTIC_DEDUP_THRESHOLD_DEFAULT", "0.95")
     monkeypatch.setattr(runtime, "_embedding_provider_lazy", Lazy(lambda: _FakeProvider()))
 
     first = asyncio.run(

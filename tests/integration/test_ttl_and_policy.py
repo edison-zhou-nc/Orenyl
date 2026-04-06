@@ -74,7 +74,7 @@ def test_multi_tenant_ttl_sweep_processes_expired_events_without_tenant_error(mo
 
     monkeypatch.setattr(server, "db", db)
     monkeypatch.setattr(server, "engine", engine)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     out = server.run_ttl_sweep(delete_mode="soft")
 

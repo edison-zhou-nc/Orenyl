@@ -5,12 +5,12 @@
 Lore supports two server transports:
 
 - `streamable-http`: production default.
-- `stdio`: development-only, enabled with `LORE_ALLOW_STDIO_DEV=1`.
+- `stdio`: development-only, enabled with `ORENYL_ALLOW_STDIO_DEV=1`.
 
 ## Local development mode
 
 - Transport: `stdio`
-- Required env: `LORE_TRANSPORT=stdio`, `LORE_ALLOW_STDIO_DEV=1`
+- Required env: `ORENYL_TRANSPORT=stdio`, `ORENYL_ALLOW_STDIO_DEV=1`
 - Auth behavior: Lore uses an explicit local-dev auth bypass for self-serve setup
 - Intended use: local MCP clients, demos, evaluation, and CI/dev workflows
 
@@ -77,37 +77,37 @@ Do not configure both. Lore fails startup if mixed algorithms are enabled togeth
 #### RS256 / OIDC example
 
 ```powershell
-$env:LORE_TRANSPORT = "streamable-http"
-$env:LORE_OIDC_ALLOWED_ALGS = "RS256"
-$env:LORE_OIDC_ISSUER = "https://issuer.example.com/"
-$env:LORE_OIDC_JWKS_URL = "https://issuer.example.com/.well-known/jwks.json"
-$env:LORE_OIDC_AUDIENCE = "lore"
+$env:ORENYL_TRANSPORT = "streamable-http"
+$env:ORENYL_OIDC_ALLOWED_ALGS = "RS256"
+$env:ORENYL_OIDC_ISSUER = "https://issuer.example.com/"
+$env:ORENYL_OIDC_JWKS_URL = "https://issuer.example.com/.well-known/jwks.json"
+$env:ORENYL_OIDC_AUDIENCE = "lore"
 ```
 
 Notes:
 
-- `LORE_OIDC_JWKS_URL` is required for `RS256`.
+- `ORENYL_OIDC_JWKS_URL` is required for `RS256`.
 - The JWKS URL must be `https://` and resolve to a public, non-private host.
 
 #### HS256 example
 
 ```powershell
-$env:LORE_TRANSPORT = "streamable-http"
-$env:LORE_OIDC_ALLOWED_ALGS = "HS256"
-$env:LORE_OIDC_ISSUER = "https://lore.internal/"
-$env:LORE_OIDC_HS256_SECRET = "replace-with-at-least-32-random-bytes"
-$env:LORE_OIDC_AUDIENCE = "lore"
+$env:ORENYL_TRANSPORT = "streamable-http"
+$env:ORENYL_OIDC_ALLOWED_ALGS = "HS256"
+$env:ORENYL_OIDC_ISSUER = "https://lore.internal/"
+$env:ORENYL_OIDC_HS256_SECRET = "replace-with-at-least-32-random-bytes"
+$env:ORENYL_OIDC_AUDIENCE = "lore"
 ```
 
 Notes:
 
-- `LORE_OIDC_HS256_SECRET` must be at least 32 bytes.
+- `ORENYL_OIDC_HS256_SECRET` must be at least 32 bytes.
 - Keep the secret out of source control and rotate it like any other production credential.
 
 ### Step 3: Start the server
 
 ```powershell
-$env:LORE_TRANSPORT = "streamable-http"
+$env:ORENYL_TRANSPORT = "streamable-http"
 orenyl-server
 ```
 
@@ -162,11 +162,11 @@ print(token)
 
 - Supported providers include `hash-local` and `openai`.
 - Lore shares one lazy embedding provider instance across server and retrieval flows.
-- `LORE_EMBEDDING_WORKERS` controls the async embedding worker pool and is clamped to `1..16`.
+- `ORENYL_EMBEDDING_WORKERS` controls the async embedding worker pool and is clamped to `1..16`.
 
 ## Typical local MCP client setup
 
-1. Set `LORE_TRANSPORT=stdio`.
-2. Set `LORE_ALLOW_STDIO_DEV=1`.
+1. Set `ORENYL_TRANSPORT=stdio`.
+2. Set `ORENYL_ALLOW_STDIO_DEV=1`.
 3. Point the MCP client to `orenyl-server` or `python -m orenyl.server`.
 4. Treat this mode as development only.

@@ -21,10 +21,10 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     audit_db_path = workspace_tmp_path / "lore_audit.db"
     snapshot_dir = workspace_tmp_path / "lore_snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("LORE_DB_PATH", str(db_path))
-    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(audit_db_path))
-    monkeypatch.setenv("LORE_DR_SNAPSHOT_DIR", str(snapshot_dir))
-    monkeypatch.setenv("LORE_TESTING_MODE", "1")
+    monkeypatch.setenv("ORENYL_DB_PATH", str(db_path))
+    monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(audit_db_path))
+    monkeypatch.setenv("ORENYL_DR_SNAPSHOT_DIR", str(snapshot_dir))
+    monkeypatch.setenv("ORENYL_TESTING_MODE", "1")
 
     server = sys.modules.get("orenyl.server")
     audit = sys.modules.get("orenyl.audit")
@@ -40,7 +40,7 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     try:
         yield
     finally:
-        monkeypatch.setenv("LORE_TESTING_MODE", "1")
+        monkeypatch.setenv("ORENYL_TESTING_MODE", "1")
         server = sys.modules.get("orenyl.server")
         audit = sys.modules.get("orenyl.audit")
         rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None

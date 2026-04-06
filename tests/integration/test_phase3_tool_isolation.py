@@ -34,9 +34,9 @@ def _reset(monkeypatch):
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
     monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(fresh_db))
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _Verifier())
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
-    monkeypatch.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
-    monkeypatch.setenv("LORE_POLICY_SHADOW_MODE", "0")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_AGENT_PERMISSIONS", "1")
+    monkeypatch.setenv("ORENYL_POLICY_SHADOW_MODE", "0")
 
     fresh_db.conn.execute(
         """INSERT INTO agent_permissions (tenant_id, agent_id, domain, action, effect)

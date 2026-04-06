@@ -16,7 +16,7 @@ def _reset_server(monkeypatch, db):
 def test_store_event_indexes_event_embedding(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_EMBEDDING_PROVIDER", "hash-local")
+    monkeypatch.setenv("ORENYL_EMBEDDING_PROVIDER", "hash-local")
 
     result = asyncio.run(
         server.handle_store_event(

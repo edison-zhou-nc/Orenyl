@@ -12,9 +12,9 @@ Add to your project's `.mcp.json`:
     "lore": {
       "command": "orenyl-server",
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./lore_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./lore_memory.db"
       }
     }
   }

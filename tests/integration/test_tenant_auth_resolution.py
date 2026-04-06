@@ -39,7 +39,7 @@ def _reset(monkeypatch):
 
 def test_request_without_tenant_claim_is_denied_when_multi_tenant_enabled(monkeypatch):
     _reset(monkeypatch)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     with pytest.raises(PermissionError, match="tenant_scope_violation"):
         asyncio.run(
@@ -52,7 +52,7 @@ def test_request_without_tenant_claim_is_denied_when_multi_tenant_enabled(monkey
 
 def test_request_tenant_arg_is_denied_without_tenant_claim(monkeypatch):
     _reset(monkeypatch)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     with pytest.raises(PermissionError, match="tenant_scope_violation"):
         asyncio.run(
@@ -70,7 +70,7 @@ def test_request_tenant_arg_is_denied_without_tenant_claim(monkeypatch):
 
 def test_request_with_tenant_claim_succeeds_when_multi_tenant_enabled(monkeypatch):
     _reset(monkeypatch)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     out = asyncio.run(
         server.call_tool(
@@ -84,7 +84,7 @@ def test_request_with_tenant_claim_succeeds_when_multi_tenant_enabled(monkeypatc
 
 def test_default_tenant_used_when_multi_tenant_disabled(monkeypatch):
     _reset(monkeypatch)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "0")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "0")
     observed: dict[str, str] = {}
 
     async def _capture(args: dict):

@@ -19,11 +19,11 @@ def test_readme_documents_correct_default_values():
     # Each entry is (env_var_name, expected_default_cell) â€” the literal value shown
     # in the README table's default column.  Update this list when runtime defaults change.
     expected_defaults = [
-        ("LORE_RATE_LIMIT_RPM", "`100`"),
-        ("LORE_COMPLIANCE_STRICT_MODE", "`1`"),
-        ("LORE_VECTOR_BACKEND", "`local`"),
-        ("LORE_EMBEDDING_TIMEOUT_SECONDS", "`10`"),
-        ("LORE_OIDC_CLOCK_SKEW_SECONDS", "`30`"),
+        ("ORENYL_RATE_LIMIT_RPM", "`100`"),
+        ("ORENYL_COMPLIANCE_STRICT_MODE", "`1`"),
+        ("ORENYL_VECTOR_BACKEND", "`local`"),
+        ("ORENYL_EMBEDDING_TIMEOUT_SECONDS", "`10`"),
+        ("ORENYL_OIDC_CLOCK_SKEW_SECONDS", "`30`"),
     ]
 
     wrong = []

@@ -23,7 +23,7 @@ class _Verifier:
 
 
 def test_request_entrypoint_sets_and_clears_tenant_context(monkeypatch):
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))

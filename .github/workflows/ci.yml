@@ -53,7 +53,7 @@ jobs:
             tests/integration/test_sync_journal_persistence.py -q
       - name: Run Phase 3 load harness (opt-in; skip by default)
         env:
-          LORE_ENABLE_PHASE3_LOAD_TEST: "0"
+          ORENYL_ENABLE_PHASE3_LOAD_TEST: "0"
         run: python -m pytest tests/benchmarks/test_phase3_multi_tenant_load.py -q
       - name: Build package artifacts
         run: python -m build

@@ -95,7 +95,7 @@ def test_retention_updated_count_does_not_increment_on_noop_delete(monkeypatch):
 
 def test_retention_requires_tenant_scope_in_multi_tenant_mode(monkeypatch):
     db = Database(":memory:")
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     with pytest.raises(PermissionError, match="tenant_scope_required"):
         retention.apply_retention_to_db(
@@ -108,7 +108,7 @@ def test_retention_requires_tenant_scope_in_multi_tenant_mode(monkeypatch):
 def test_retention_only_updates_requested_tenant(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     tenant_a_event = Event(
         id="event:test:retention-tenant-a",

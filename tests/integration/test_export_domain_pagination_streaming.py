@@ -146,8 +146,8 @@ def test_export_domain_invalid_cursor_returns_stable_tool_error(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
     _seed_export_data(db)
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
     server._reset_runtime_state_for_tests()
 
     out = asyncio.run(

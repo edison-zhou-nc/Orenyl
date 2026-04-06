@@ -10,18 +10,18 @@ from orenyl.lineage import LineageEngine
 
 
 def test_default_transport_is_streamable_http_for_prod(monkeypatch):
-    monkeypatch.delenv("LORE_TRANSPORT", raising=False)
+    monkeypatch.delenv("ORENYL_TRANSPORT", raising=False)
     assert server.get_transport_mode() == "streamable-http"
 
 
 def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.delenv("LORE_ALLOW_STDIO_DEV", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.delenv("ORENYL_ALLOW_STDIO_DEV", raising=False)
 
-    with pytest.raises(PermissionError, match="LORE_ALLOW_STDIO_DEV=1"):
+    with pytest.raises(PermissionError, match="ORENYL_ALLOW_STDIO_DEV=1"):
         server.validate_transport_mode(server.get_transport_mode())
 
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
     server.validate_transport_mode(server.get_transport_mode())
 
 
@@ -34,10 +34,10 @@ def test_main_skips_token_bootstrap_in_dev_stdio_mode(monkeypatch):
     def _raise_if_called():
         raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
 
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
-    monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
+    monkeypatch.delenv("ORENYL_OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("ORENYL_OIDC_JWKS_URL", raising=False)
     monkeypatch.setattr(server, "_get_token_verifier", _raise_if_called)
     monkeypatch.setattr(server, "run_stdio_server", _fake_run_stdio_server)
 

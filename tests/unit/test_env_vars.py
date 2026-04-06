@@ -1,12 +1,12 @@
 from orenyl import env_vars
 
 
-def test_all_env_var_names_are_unique_and_lore_prefixed():
+def test_all_env_var_names_are_unique_and_orenyl_prefixed():
     names = env_vars.all_names()
 
     assert names
     assert len(names) == len(set(names))
-    assert all(name.startswith("LORE_") for name in names)
+    assert all(name.startswith("ORENYL_") for name in names)
 
 
 def test_all_env_var_names_exclude_prefix_constants():
