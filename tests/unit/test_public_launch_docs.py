@@ -35,26 +35,34 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
 
 def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
-    expected = "lore-mcp-server"
+    expectations = {
+        REPO_ROOT / "README.md": ["pip install orenyl-mcp-server", "orenyl-server"],
+        REPO_ROOT / "docs" / "quickstart.md": ["pip install orenyl-mcp-server", "orenyl-server"],
+        REPO_ROOT / "docs" / "guides" / "openclaw.md": ["pip install orenyl-mcp-server"],
+        REPO_ROOT / "examples" / "meeting-memory" / "README.md": [
+            "pip install orenyl-mcp-server",
+        ],
+        REPO_ROOT / "examples" / "personal-health-tracker" / "README.md": [
+            "pip install orenyl-mcp-server",
+        ],
+        REPO_ROOT / "examples" / "multi-agent-shared-memory" / "README.md": [
+            "pip install orenyl-mcp-server",
+        ],
+    }
     forbidden_patterns = [
         r"\bpip install lore-mcp\b(?!-)",
         r"`lore-mcp` installed",
-        r"project/lore-mcp/",
-        r"pypi/v/lore-mcp(?!-)",
-    ]
-    paths = [
-        REPO_ROOT / "README.md",
-        REPO_ROOT / "docs" / "quickstart.md",
-        REPO_ROOT / "docs" / "guides" / "openclaw.md",
-        REPO_ROOT / "examples" / "meeting-memory" / "README.md",
-        REPO_ROOT / "examples" / "personal-health-tracker" / "README.md",
-        REPO_ROOT / "examples" / "multi-agent-shared-memory" / "README.md",
+        r"\blore-server\b",
+        r"python -m lore\.server",
     ]
 
-    for path in paths:
+    for path, expected_strings in expectations.items():
         content = path.read_text()
-        assert expected in content, f"missing install name in {path.relative_to(REPO_ROOT)}"
+        for expected in expected_strings:
+            assert expected in content, (
+                f"missing public launch reference in {path.relative_to(REPO_ROOT)}"
+            )
         for pattern in forbidden_patterns:
             assert re.search(pattern, content) is None, (
-                f"stale install name in {path.relative_to(REPO_ROOT)}"
+                f"stale launch name in {path.relative_to(REPO_ROOT)}"
             )
