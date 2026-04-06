@@ -1,4 +1,4 @@
-"""Lore Governed Memory MCP Server."""
+"""orenyl Governed Memory MCP Server."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
 
-app = Server("lore-governed-memory")
+app = Server("orenyl-governed-memory")
 logger = logging.getLogger(__name__)
 _DEFAULT_SALT_WARNING_EMITTED = False
 _token_verifier: OIDCTokenVerifier | None = None
@@ -87,7 +87,7 @@ READ_ONLY_SAFE_TOOLS = {
 
 handle_store_event = core_handlers.handle_store_event
 handle_retrieve_context_pack = core_handlers.handle_retrieve_context_pack
-# Diagnostic helpers stay import-compatible on lore.server but are not MCP tools.
+# Diagnostic helpers stay import-compatible on orenyl.server but are not MCP tools.
 handle_metrics = core_handlers.handle_metrics
 handle_health = core_handlers.handle_health
 handle_audit_trace = core_handlers.handle_audit_trace
@@ -467,7 +467,7 @@ async def _invoke_tool(name: str, arguments: dict[str, Any]) -> Any:
 
 
 def build_fastmcp_server() -> FastMCP:
-    server = FastMCP("lore-governed-memory")
+    server = FastMCP("orenyl-governed-memory")
     register_fastmcp_tools(server, _invoke_tool)
     return server
 

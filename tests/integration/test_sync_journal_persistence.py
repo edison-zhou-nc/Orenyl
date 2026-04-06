@@ -1,4 +1,4 @@
-from lore.db import Database
+from orenyl.db import Database
 
 
 def test_sync_journal_append_read_update_status():

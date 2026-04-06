@@ -1,4 +1,4 @@
-from lore import env_vars
+from orenyl import env_vars
 
 
 def test_all_env_var_names_are_unique_and_lore_prefixed():

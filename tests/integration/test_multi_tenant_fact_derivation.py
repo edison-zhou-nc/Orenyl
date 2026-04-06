@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_same_rule_output_can_be_derived_in_multiple_tenants():

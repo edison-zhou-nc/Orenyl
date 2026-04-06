@@ -1,14 +1,14 @@
-"""Personal health tracker demonstrating Lore's memory plus deletion verification."""
+"""Personal health tracker demonstrating orenyl's memory plus deletion verification."""
 
 from __future__ import annotations
 
 try:
-    from lore.context_pack import ContextPackBuilder
-    from lore.db import Database
-    from lore.lineage import LineageEngine
-    from lore.models import Event
+    from orenyl.context_pack import ContextPackBuilder
+    from orenyl.db import Database
+    from orenyl.lineage import LineageEngine
+    from orenyl.models import Event
 except ImportError as exc:  # pragma: no cover - example guard
-    raise SystemExit("Install lore first with `python -m pip install -e .`.") from exc
+    raise SystemExit("Install orenyl first with `python -m pip install -e .`.") from exc
 
 
 def main() -> None:

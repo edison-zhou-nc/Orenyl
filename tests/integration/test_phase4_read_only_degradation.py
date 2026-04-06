@@ -5,7 +5,7 @@ import json
 
 from mcp.server.auth.provider import AccessToken
 
-from lore import server
+from orenyl import server
 
 
 def test_write_tools_blocked_in_read_only_mode(monkeypatch):

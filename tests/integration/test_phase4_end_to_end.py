@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from lore.compliance import ComplianceService
-from lore.consent import ConsentService
-from lore.db import Database
-from lore.disaster_recovery import DRService
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.compliance import ComplianceService
+from orenyl.consent import ConsentService
+from orenyl.db import Database
+from orenyl.disaster_recovery import DRService
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_phase4_end_to_end_subject_lifecycle(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     engine = LineageEngine(db)
     compliance = ComplianceService(db, engine)

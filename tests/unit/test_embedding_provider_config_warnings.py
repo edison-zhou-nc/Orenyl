@@ -1,4 +1,4 @@
-from lore.embedding_provider import build_embedding_provider_from_env
+from orenyl.embedding_provider import build_embedding_provider_from_env
 
 
 def test_openai_provider_warns_when_embedding_dim_env_set(monkeypatch, caplog):

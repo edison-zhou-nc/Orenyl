@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.federation import SyncEnvelope
-from lore.federation_worker import FederationWorker
+from orenyl.db import Database
+from orenyl.federation import SyncEnvelope
+from orenyl.federation_worker import FederationWorker
 
 
 def test_lww_prefers_newer_updated_at_then_node_id():

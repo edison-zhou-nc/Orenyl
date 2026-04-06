@@ -1,7 +1,7 @@
-from lore.db import Database
-from lore.compliance import ComplianceService
-from lore.lineage import LineageEngine
-from lore.models import ConsentRecord, DRSnapshot, SubjectRequest, Tombstone
+from orenyl.db import Database
+from orenyl.compliance import ComplianceService
+from orenyl.lineage import LineageEngine
+from orenyl.models import ConsentRecord, DRSnapshot, SubjectRequest, Tombstone
 
 
 def test_compliance_repository_round_trips_tombstones_consent_and_snapshots():
@@ -35,7 +35,7 @@ def test_compliance_repository_round_trips_tombstones_consent_and_snapshots():
     )
     assert db.latest_consent_status("user:consent", "retrieval") == "withdrawn"
     # withdrawn_subject_ids excludes any status not in {granted, allow, allowed},
-    # not just 'withdrawn' — mirrors ConsentService.is_processing_allowed semantics.
+    # not just 'withdrawn' â€” mirrors ConsentService.is_processing_allowed semantics.
     assert db.withdrawn_subject_ids(
         ["user:consent", "user:denied", "user:other"], "retrieval"
     ) == {"user:consent", "user:denied"}

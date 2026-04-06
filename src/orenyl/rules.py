@@ -1,7 +1,7 @@
-"""Deterministic derivation rules for Lore governed memory.
+"""Deterministic derivation rules for orenyl governed memory.
 
 Each rule takes active events and produces facts.
-Rules are pure functions: same events → same facts. Always.
+Rules are pure functions: same events â†’ same facts. Always.
 """
 
 from __future__ import annotations

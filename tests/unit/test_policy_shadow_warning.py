@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from lore.policy import validate_policy_configuration
+from orenyl.policy import validate_policy_configuration
 
 
 def test_shadow_mode_alone_emits_startup_warning(monkeypatch, caplog):

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from lore.article30 import generate_article30_report
-from lore.db import Database
-from lore.models import ConsentRecord, Event
+from orenyl.article30 import generate_article30_report
+from orenyl.db import Database
+from orenyl.models import ConsentRecord, Event
 
 
 def test_generate_article30_report_contains_required_sections():

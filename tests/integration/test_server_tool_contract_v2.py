@@ -1,6 +1,6 @@
 import asyncio
 
-from lore.server import list_tools
+from orenyl.server import list_tools
 
 
 def test_server_exposes_required_tools():

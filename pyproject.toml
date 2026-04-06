@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-lore-server = "lore.server:main"
+orenyl-server = "orenyl.server:main"
 
 [project.urls]
 Homepage = "https://github.com/edison-zhou-nc/Lore"
@@ -40,7 +40,7 @@ Issues = "https://github.com/edison-zhou-nc/Lore/issues"
 package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
-lore = ["schema.sql", "py.typed"]
+orenyl = ["schema.sql", "py.typed"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -73,7 +73,7 @@ check_untyped_defs = true
 ignore_missing_imports = true
 
 [tool.coverage.run]
-source = ["src/lore"]
+source = ["src/orenyl"]
 omit = ["**/tests/**", "**/schema.sql"]
 
 [tool.coverage.report]

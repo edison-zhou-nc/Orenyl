@@ -1,4 +1,4 @@
-from lore.retrieval_ranker import rank_items
+from orenyl.retrieval_ranker import rank_items
 
 
 def test_rrf_ranking_prefers_consistent_top_items():

@@ -2,7 +2,7 @@ import contextlib
 
 import pytest
 
-from lore.tenant import (
+from orenyl.tenant import (
     TenantContext,
     get_current_tenant_context,
     reset_current_tenant_context,

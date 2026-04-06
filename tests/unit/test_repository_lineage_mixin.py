@@ -1,5 +1,5 @@
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+from orenyl.db import Database
+from orenyl.models import Edge, Event, Fact
 
 
 def test_lineage_repository_tracks_parent_child_relationships():

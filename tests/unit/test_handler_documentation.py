@@ -1,6 +1,6 @@
 import inspect
 
-from lore.handlers import _common, _deps, core
+from orenyl.handlers import _common, _deps, core
 
 
 def test_deps_module_docstring_explains_server_singleton_coupling() -> None:

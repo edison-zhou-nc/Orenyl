@@ -6,13 +6,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from lore.db import Database
-from lore.disaster_recovery import DRService
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.disaster_recovery import DRService
+from orenyl.models import Event
 
 
 def test_snapshot_and_verify_round_trip(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     db.insert_event(
         Event(
@@ -35,7 +35,7 @@ def test_snapshot_and_verify_round_trip(tmp_path):
 
 
 def test_restore_snapshot_recovers_previous_db_state(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -66,7 +66,7 @@ def test_restore_snapshot_recovers_previous_db_state(tmp_path):
 
 
 def test_restore_snapshot_succeeds_with_open_destination_transaction(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -116,7 +116,7 @@ def test_restore_snapshot_closes_source_connection(monkeypatch, tmp_path):
         created.append(conn)
         return conn
 
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
     db.insert_event(
@@ -129,7 +129,7 @@ def test_restore_snapshot_closes_source_connection(monkeypatch, tmp_path):
     )
     snapshot = dr.create_snapshot(label="restore-close-source")
 
-    monkeypatch.setattr("lore.disaster_recovery.sqlite3", SimpleNamespace(connect=tracking_connect))
+    monkeypatch.setattr("orenyl.disaster_recovery.sqlite3", SimpleNamespace(connect=tracking_connect))
 
     restored = dr.restore_snapshot(snapshot["snapshot_id"])
 
@@ -140,7 +140,7 @@ def test_restore_snapshot_closes_source_connection(monkeypatch, tmp_path):
 
 def test_snapshot_operations_are_blocked_in_multi_tenant_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -149,7 +149,7 @@ def test_snapshot_operations_are_blocked_in_multi_tenant_mode(tmp_path, monkeypa
 
 
 def test_verify_snapshot_remains_available_in_multi_tenant_mode(tmp_path, monkeypatch):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     db.insert_event(
         Event(
@@ -169,7 +169,7 @@ def test_verify_snapshot_remains_available_in_multi_tenant_mode(tmp_path, monkey
 
 
 def test_snapshot_rejects_path_traversal_label(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -179,7 +179,7 @@ def test_snapshot_rejects_path_traversal_label(tmp_path):
 
 def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
     monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -195,7 +195,7 @@ def test_snapshot_accepts_dotted_label(tmp_path, monkeypatch):
 @pytest.mark.parametrize("label", [".", ".."])
 def test_snapshot_rejects_dot_only_labels(tmp_path, monkeypatch, label):
     monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -205,7 +205,7 @@ def test_snapshot_rejects_dot_only_labels(tmp_path, monkeypatch, label):
 
 def test_snapshot_rejects_forward_slash_traversal_label(tmp_path, monkeypatch):
     monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 
@@ -214,7 +214,7 @@ def test_snapshot_rejects_forward_slash_traversal_label(tmp_path, monkeypatch):
 
 
 def test_verify_snapshot_rejects_storage_uri_outside_snapshot_dir(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
     snapshot = dr.create_snapshot(label="traversal-check")
@@ -232,7 +232,7 @@ def test_verify_snapshot_rejects_storage_uri_outside_snapshot_dir(tmp_path):
 
 
 def test_restore_snapshot_rejects_storage_uri_outside_snapshot_dir(tmp_path):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
     snapshot = dr.create_snapshot(label="restore-traversal")
@@ -250,7 +250,7 @@ def test_restore_snapshot_rejects_storage_uri_outside_snapshot_dir(tmp_path):
 
 
 def test_restore_snapshot_uses_database_transaction(tmp_path, monkeypatch):
-    db_path = tmp_path / "lore.db"
+    db_path = tmp_path / "orenyl.db"
     db = Database(str(db_path))
     dr = DRService(db=db, db_path=str(db_path), snapshot_dir=str(tmp_path / "snapshots"))
 

@@ -1,4 +1,4 @@
-from lore import handlers, repositories
+from orenyl import handlers, repositories
 
 
 def test_repositories_export_base_and_concrete_mixins() -> None:

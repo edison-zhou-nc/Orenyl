@@ -24,7 +24,7 @@ def generate_article30_report(db: Database, tenant_id: str = "default") -> dict[
         recipients.append("federation_peer")
 
     return {
-        "controller": "Lore Tenant Controller",
+        "controller": "orenyl Tenant Controller",
         "tenant_id": tenant_id,
         "purposes": purposes,
         "legal_bases": legal_bases,

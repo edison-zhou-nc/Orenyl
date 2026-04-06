@@ -1,4 +1,4 @@
-from lore.noise_filter import should_store
+from orenyl.noise_filter import should_store
 
 
 def test_rejects_keys_cards_and_agent_refusals():

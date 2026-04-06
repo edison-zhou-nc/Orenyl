@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_single_event_can_produce_facts_in_multiple_domains():

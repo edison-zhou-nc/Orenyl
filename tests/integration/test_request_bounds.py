@@ -1,9 +1,9 @@
 import asyncio
 import json
 
-from lore import server
-from lore.db import Database
-from lore.models import Event
+from orenyl import server
+from orenyl.db import Database
+from orenyl.models import Event
 
 
 class _DummyPack:

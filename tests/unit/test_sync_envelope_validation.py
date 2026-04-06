@@ -1,4 +1,4 @@
-from lore.federation import SyncEnvelope, sign_envelope, validate_envelope
+from orenyl.federation import SyncEnvelope, sign_envelope, validate_envelope
 
 
 def test_sync_envelope_rejects_invalid_signature():

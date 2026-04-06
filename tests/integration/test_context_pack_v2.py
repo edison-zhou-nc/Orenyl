@@ -1,5 +1,5 @@
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
 
 
 def test_context_pack_has_v2_shape():

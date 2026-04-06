@@ -4,7 +4,7 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import env_vars, server
+from orenyl import env_vars, server
 
 
 def test_call_tool_masks_token_verifier_runtime_error(monkeypatch):

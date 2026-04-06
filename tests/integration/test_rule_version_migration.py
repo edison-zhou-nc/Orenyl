@@ -1,7 +1,7 @@
-from lore.db import Database
-from lore.models import Fact
-from lore.rule_migration import migrate_rule_family
-from lore.rule_registry import RuleVersionRegistry
+from orenyl.db import Database
+from orenyl.models import Fact
+from orenyl.rule_migration import migrate_rule_family
+from orenyl.rule_registry import RuleVersionRegistry
 
 
 def test_migrate_rule_family_updates_fact_versions():

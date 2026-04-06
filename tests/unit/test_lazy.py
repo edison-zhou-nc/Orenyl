@@ -1,6 +1,6 @@
 import threading
 
-from lore.lazy import Lazy
+from orenyl.lazy import Lazy
 
 
 def test_lazy_caches_until_reset():

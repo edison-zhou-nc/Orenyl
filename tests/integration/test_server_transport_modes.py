@@ -3,10 +3,10 @@ import asyncio
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import audit, server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
+from orenyl import audit, server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
 
 
 def test_default_transport_is_streamable_http_for_prod(monkeypatch):

@@ -52,12 +52,12 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
         ],
     }
     forbidden_patterns = [
-        r"\bpip install lore-mcp\b(?!-)",
-        r"`lore-mcp` installed",
-        r"lore-mcp-server",
+        r"\bpip install orenyl-mcp\b(?!-)",
+        r"`orenyl-mcp` installed",
+        r"orenyl-mcp-server",
         r"\blore-server\b",
-        r"python -m lore\.server",
-        r'\[\s*"-m"\s*,\s*"lore\.server"\s*\]',
+        r"python -m orenyl\.server",
+        r'\[\s*"-m"\s*,\s*"orenyl\.server"\s*\]',
     ]
 
     for path, expected_strings in expectations.items():

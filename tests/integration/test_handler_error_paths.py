@@ -10,7 +10,7 @@ import json
 
 import pytest
 
-from lore import server
+from orenyl import server
 
 
 @pytest.fixture(autouse=True)

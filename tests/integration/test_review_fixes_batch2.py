@@ -1,12 +1,12 @@
 import asyncio
 import json
 
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.encryption import decrypt_content, encrypt_content, generate_key
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.encryption import decrypt_content, encrypt_content, generate_key
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def _reset_server(monkeypatch, db):

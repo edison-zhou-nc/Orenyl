@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from lore.rate_limit import RateLimiter
+from orenyl.rate_limit import RateLimiter
 
 
 def test_rate_limiter_allows_within_limit():

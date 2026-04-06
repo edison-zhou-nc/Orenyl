@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lore.handlers.tooling import list_registered_tools
+from orenyl.handlers.tooling import list_registered_tools
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
