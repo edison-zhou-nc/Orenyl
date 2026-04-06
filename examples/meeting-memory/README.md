@@ -5,7 +5,7 @@ Demonstrates Lore's lineage tracking: store meeting notes, derive facts, and tra
 ## Run
 
 ```bash
-pip install lore-mcp   # or: pip install -e ../..
+pip install lore-mcp-server   # or: pip install -e ../..
 python meeting_memory.py
 ```
 

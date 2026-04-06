@@ -5,7 +5,7 @@ Get Lore running locally in documented self-serve development mode, then exercis
 ## Install
 
 ```bash
-pip install lore-mcp
+pip install lore-mcp-server
 ```
 
 Or from source:

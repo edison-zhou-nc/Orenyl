@@ -11,6 +11,8 @@ def test_release_metadata_matches_public_launch_positioning() -> None:
     pyproject = (REPO_ROOT / "pyproject.toml").read_text()
 
     assert 'version = "1.0.0"' in pyproject
+    assert 'name = "lore-mcp-server"' in pyproject
+    assert 'name = "lore-mcp"' not in pyproject
     assert "[project.urls]" in pyproject
     assert "Homepage" in pyproject
     assert "Repository" in pyproject

@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "lore-mcp"
+name = "lore-mcp-server"
 version = "1.0.0"
 description = "Production-minded governed memory MCP server for AI agents with deterministic deletion and auditable lineage"
 readme = "README.md"

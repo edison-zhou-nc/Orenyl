@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -31,3 +32,29 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
     assert "development only" in claude.lower()
     assert "development only" in openclaw.lower()
+
+
+def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
+    expected = "lore-mcp-server"
+    forbidden_patterns = [
+        r"\bpip install lore-mcp\b(?!-)",
+        r"`lore-mcp` installed",
+        r"project/lore-mcp/",
+        r"pypi/v/lore-mcp(?!-)",
+    ]
+    paths = [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "docs" / "quickstart.md",
+        REPO_ROOT / "docs" / "guides" / "openclaw.md",
+        REPO_ROOT / "examples" / "meeting-memory" / "README.md",
+        REPO_ROOT / "examples" / "personal-health-tracker" / "README.md",
+        REPO_ROOT / "examples" / "multi-agent-shared-memory" / "README.md",
+    ]
+
+    for path in paths:
+        content = path.read_text()
+        assert expected in content, f"missing install name in {path.relative_to(REPO_ROOT)}"
+        for pattern in forbidden_patterns:
+            assert re.search(pattern, content) is None, (
+                f"stale install name in {path.relative_to(REPO_ROOT)}"
+            )
