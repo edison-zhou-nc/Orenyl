@@ -14,6 +14,7 @@ from orenyl.disaster_recovery import DRService
 
 
 def _build_service() -> DRService:
+    env_vars.require_no_legacy_env_vars()
     db_path = os.environ.get(env_vars.DB_PATH, "orenyl_memory.db")
     snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "orenyl_snapshots")
     db = Database(db_path)

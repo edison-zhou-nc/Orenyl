@@ -4,6 +4,8 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 
 def test_orenyl_dr_uses_orenyl_defaults(monkeypatch):
     captured: dict[str, object] = {}
@@ -47,3 +49,20 @@ def test_orenyl_dr_uses_orenyl_defaults(monkeypatch):
     assert captured["service_db_path"] == "orenyl_memory.db"
     assert captured["snapshot_dir"] == "orenyl_snapshots"
     assert service is not None
+
+
+def test_orenyl_dr_rejects_legacy_env_vars(monkeypatch):
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "orenyl_dr.py"
+    spec = importlib.util.spec_from_file_location("orenyl_dr_guard_test_module", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        with monkeypatch.context() as m:
+            m.setenv("LORE_DB_PATH", "legacy.db")
+            m.setenv("LORE_DR_SNAPSHOT_DIR", "legacy-snaps")
+            with pytest.raises(RuntimeError, match="LORE_"):
+                module._build_service()
+    finally:
+        sys.modules.pop(spec.name, None)

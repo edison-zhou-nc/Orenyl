@@ -110,7 +110,7 @@ class PgvectorVectorBackend:
 
     def _table_exists(self, conn, table_name: str) -> bool:
         with conn.cursor() as cur:
-            cur.execute(f"SELECT to_regclass('public.{table_name}')")
+            cur.execute("SELECT to_regclass(%s)", (table_name,))
             row = cur.fetchone()
         return bool(row and row[0])
 
