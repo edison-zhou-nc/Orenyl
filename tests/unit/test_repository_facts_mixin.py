@@ -1,7 +1,7 @@
 import pytest
 
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+from orenyl.db import Database
+from orenyl.models import Edge, Event, Fact
 
 
 def test_fact_repository_returns_latest_domain_facts_and_stale_state():
@@ -54,7 +54,7 @@ def test_fact_repository_requires_tenant_scope_for_unscoped_methods(monkeypatch)
     db.insert_edge(
         Edge(parent_id=event.id, parent_type="event", child_id=fact.id, tenant_id="tenant-a")
     )
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     with pytest.raises(PermissionError, match="tenant_scope_required"):
         db.list_current_facts_by_rule_family("MedicationRule", "v1")

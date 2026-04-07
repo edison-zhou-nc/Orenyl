@@ -3,8 +3,8 @@ import asyncio
 from mcp.server.fastmcp import FastMCP
 from mcp.types import TextContent
 
-from lore import server
-from lore.handlers.tooling import list_registered_tools, register_fastmcp_tools
+from orenyl import server
+from orenyl.handlers.tooling import list_registered_tools, register_fastmcp_tools
 
 
 def test_decode_tool_output_preserves_non_dict_json():

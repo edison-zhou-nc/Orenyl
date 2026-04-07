@@ -1,4 +1,4 @@
-"""Data models for Lore governed memory."""
+"""Data models for orenyl governed memory."""
 
 from __future__ import annotations
 

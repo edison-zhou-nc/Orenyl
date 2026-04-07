@@ -18,7 +18,7 @@ class TenantContext:
 
 
 _CURRENT_TENANT_CONTEXT: ContextVar[TenantContext | None] = ContextVar(
-    "lore_current_tenant_context",
+    "orenyl_current_tenant_context",
     default=None,
 )
 

@@ -1,4 +1,4 @@
-from lore.db import Database
+from orenyl.db import Database
 
 
 def _cols(conn, table):

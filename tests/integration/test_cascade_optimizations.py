@@ -1,5 +1,5 @@
-from lore.db import Database
-from lore.lineage import LineageEngine
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
 
 
 def test_skip_if_unchanged_increments_skip_counter():

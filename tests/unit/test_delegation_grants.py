@@ -1,5 +1,5 @@
-from lore.db import Database
-from lore.policy import PolicyEngine
+from orenyl.db import Database
+from orenyl.policy import PolicyEngine
 
 
 def test_expired_delegation_is_not_honored():

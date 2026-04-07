@@ -4,7 +4,7 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import env_vars, server
+from orenyl import env_vars, server
 
 
 def test_call_tool_masks_token_verifier_runtime_error(monkeypatch):
@@ -45,8 +45,8 @@ def test_call_tool_masks_token_verifier_non_runtime_error(monkeypatch):
 
 def test_call_tool_dev_stdio_bypasses_token_verifier_bootstrap(monkeypatch):
     server._reset_runtime_state_for_tests()
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
 
     def _raise_misconfig():
         raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
@@ -164,9 +164,9 @@ def test_call_tool_masks_policy_shadow_mode_misconfiguration(monkeypatch):
             return None
 
     server._reset_runtime_state_for_tests()
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
-    monkeypatch.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
-    monkeypatch.setenv("LORE_POLICY_SHADOW_MODE", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_AGENT_PERMISSIONS", "1")
+    monkeypatch.setenv("ORENYL_POLICY_SHADOW_MODE", "1")
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowVerifier())
 
     with pytest.raises(PermissionError, match="server_misconfigured"):

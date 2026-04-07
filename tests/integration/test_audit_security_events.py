@@ -4,7 +4,7 @@ import sqlite3
 
 import pytest
 
-from lore import audit, server
+from orenyl import audit, server
 
 
 class _DenyVerifier:
@@ -14,7 +14,7 @@ class _DenyVerifier:
 
 def test_authz_deny_writes_audit_record(monkeypatch):
     audit.clear_events()
-    monkeypatch.delenv("LORE_AUTH_REQUIRED", raising=False)
+    monkeypatch.delenv("ORENYL_AUTH_REQUIRED", raising=False)
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _DenyVerifier())
 
     with pytest.raises(PermissionError, match="unauthorized"):
@@ -28,7 +28,7 @@ def test_authz_deny_writes_audit_record(monkeypatch):
 
 def test_authz_deny_writes_request_id(monkeypatch):
     audit.clear_events()
-    monkeypatch.delenv("LORE_AUTH_REQUIRED", raising=False)
+    monkeypatch.delenv("ORENYL_AUTH_REQUIRED", raising=False)
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _DenyVerifier())
 
     with pytest.raises(PermissionError, match="unauthorized"):
@@ -44,7 +44,7 @@ def test_audit_events_persist_across_module_reload(monkeypatch, workspace_tmp_pa
     try:
         if db_path.exists():
             db_path.unlink()
-        monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(db_path))
+        monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(db_path))
         reloaded_audit = importlib.reload(audit)
         reloaded_audit.clear_events()
 
@@ -111,12 +111,12 @@ def test_delete_audit_event_emitted_on_engine_failure(monkeypatch):
 def test_audit_reset_for_tests_reopens_connection_for_new_path(monkeypatch, workspace_tmp_path):
     db1 = workspace_tmp_path / "audit-one.sqlite3"
     db2 = workspace_tmp_path / "audit-two.sqlite3"
-    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(db1))
+    monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(db1))
     audit._reset_for_tests()
     audit.clear_events()
     audit.log_security_event("list_events", "deny", request_id="req-one")
 
-    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(db2))
+    monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(db2))
     audit._reset_for_tests()
     audit.clear_events()
     audit.log_security_event("list_events", "deny", request_id="req-two")

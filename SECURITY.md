@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Lore is currently maintained as a single active release line.
+Orenyl is currently maintained as a single active release line.
 
 | Version | Supported |
 |---|---|

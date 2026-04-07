@@ -1,5 +1,5 @@
-from lore.db import Database
-from lore.models import Fact
+from orenyl.db import Database
+from orenyl.models import Fact
 
 
 def test_db_has_embedding_tables_and_fact_confidence_fields():

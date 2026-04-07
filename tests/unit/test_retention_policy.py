@@ -1,4 +1,4 @@
-from lore.retention import apply_retention_policies
+from orenyl.retention import apply_retention_policies
 
 
 def test_retention_policy_transitions_by_age():

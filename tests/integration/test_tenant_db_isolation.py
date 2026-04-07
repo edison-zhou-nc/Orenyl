@@ -1,6 +1,6 @@
 import json
 
-from lore.db import Database
+from orenyl.db import Database
 
 
 def _seed_event(db: Database, event_id: str, tenant_id: str, domain: str = "health") -> None:

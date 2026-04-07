@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 
-from lore import server
-from lore.consent import ConsentService
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.consent import ConsentService
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def _reset_server(monkeypatch, db: Database) -> None:
@@ -18,7 +18,7 @@ def _reset_server(monkeypatch, db: Database) -> None:
 
 
 def test_withdrawn_consent_excludes_subject_facts_from_retrieval(monkeypatch):
-    monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
+    monkeypatch.setenv("ORENYL_COMPLIANCE_STRICT_MODE", "1")
 
     db = Database(":memory:")
     engine = LineageEngine(db)
@@ -52,7 +52,7 @@ def test_withdrawn_consent_excludes_subject_facts_from_retrieval(monkeypatch):
 def test_withdrawn_consent_does_not_suppress_events_from_list_events(monkeypatch):
     # list_events is an admin/history surface; retrieval-consent filtering applies only
     # to retrieve_context. Withdrawn consent must not hide events from admin views.
-    monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
+    monkeypatch.setenv("ORENYL_COMPLIANCE_STRICT_MODE", "1")
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
     consent = ConsentService(db)
@@ -84,7 +84,7 @@ def test_withdrawn_consent_does_not_suppress_events_from_list_events(monkeypatch
 def test_withdrawn_consent_does_not_suppress_events_from_export_domain(monkeypatch):
     # export_domain is an admin/DSAR surface; retrieval-consent filtering applies only
     # to retrieve_context. Withdrawn consent must not hide events from export views.
-    monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
+    monkeypatch.setenv("ORENYL_COMPLIANCE_STRICT_MODE", "1")
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
     consent = ConsentService(db)

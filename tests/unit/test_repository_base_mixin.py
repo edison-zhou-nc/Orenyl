@@ -1,4 +1,4 @@
-from lore.repositories._base import BaseMixin
+from orenyl.repositories._base import BaseMixin
 
 
 class _Conn:

@@ -1,4 +1,4 @@
-from lore.models import Event, Fact
+from orenyl.models import Event, Fact
 
 
 def test_event_and_fact_have_v2_fields():

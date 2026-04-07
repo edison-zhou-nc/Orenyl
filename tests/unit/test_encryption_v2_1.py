@@ -1,6 +1,6 @@
 import base64
 
-from lore.encryption import decrypt_content, encrypt_content, generate_key
+from orenyl.encryption import decrypt_content, encrypt_content, generate_key
 
 
 def test_argon2id_key_derivation_and_envelope_metadata():

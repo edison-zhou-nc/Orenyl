@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 
-from lore import server_stdio
+from orenyl import server_stdio
 
 
 def test_server_stdio_main_validates_mode_and_runs_stdio(monkeypatch):

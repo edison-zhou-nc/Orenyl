@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from lore.embedding_provider import DeterministicHashEmbeddingProvider, OpenAIEmbeddingProvider
+from orenyl.embedding_provider import DeterministicHashEmbeddingProvider, OpenAIEmbeddingProvider
 
 
 def test_deterministic_provider_returns_stable_vector():
@@ -33,7 +33,7 @@ def test_openai_provider_does_not_retry_on_unretryable_4xx(monkeypatch):
     provider = OpenAIEmbeddingProvider(api_key="bad-key")
     provider._client = _Client()
     sleeps: list[float] = []
-    monkeypatch.setattr("lore.embedding_provider.time.sleep", lambda value: sleeps.append(value))
+    monkeypatch.setattr("orenyl.embedding_provider.time.sleep", lambda value: sleeps.append(value))
 
     with pytest.raises(RuntimeError, match="embedding_provider_unavailable"):
         provider.embed_text("hello")
@@ -62,7 +62,7 @@ def test_openai_provider_retries_on_429(monkeypatch):
     provider = OpenAIEmbeddingProvider(api_key="ok-key")
     provider._client = _Client()
     sleeps: list[float] = []
-    monkeypatch.setattr("lore.embedding_provider.time.sleep", lambda value: sleeps.append(value))
+    monkeypatch.setattr("orenyl.embedding_provider.time.sleep", lambda value: sleeps.append(value))
 
     vector = provider.embed_text("hello")
     assert vector == [0.1, 0.2, 0.3]

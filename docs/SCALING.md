@@ -2,7 +2,7 @@
 
 ## Current target
 
-Lore is optimized for SQLite with WAL enabled and deterministic local persistence.
+Orenyl is optimized for SQLite with WAL enabled and deterministic local persistence.
 
 ## What scales well now
 

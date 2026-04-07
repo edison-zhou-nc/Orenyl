@@ -1,4 +1,4 @@
-from lore.content_hash import compute_content_hash
+from orenyl.content_hash import compute_content_hash
 
 
 def test_content_hash_normalizes_whitespace_and_case():

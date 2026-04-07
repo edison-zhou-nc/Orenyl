@@ -83,6 +83,7 @@ def _build_export_items(events: list[dict], facts: list[dict]) -> list[dict]:
 
 
 def _runtime_encryption_material() -> tuple[bytes, bytes, str] | None:
+    env_vars.require_no_legacy_env_vars()
     has_legacy = bool(os.environ.get(env_vars.ENCRYPTION_PASSPHRASE, "").strip())
     has_versioned = any(
         key.startswith(env_vars.ENCRYPTION_PASSPHRASE_PREFIX) for key in os.environ

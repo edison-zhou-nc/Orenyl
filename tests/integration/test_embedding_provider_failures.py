@@ -1,13 +1,13 @@
 import asyncio
 import json
 
-from lore import runtime
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lazy import Lazy
-from lore.lineage import LineageEngine
-from lore.models import Edge, Event, Fact
+from orenyl import runtime
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lazy import Lazy
+from orenyl.lineage import LineageEngine
+from orenyl.models import Edge, Event, Fact
 
 
 def _reset_server(monkeypatch, db):

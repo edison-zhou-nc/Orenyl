@@ -1,7 +1,7 @@
-from lore.db import Database
-from lore.extraction_rule import ExtractionFact
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.extraction_rule import ExtractionFact
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 class _FakeExtractionRuntime:

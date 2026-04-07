@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import sys
 
-from lore.release_verify import build_release_commands, run_release_commands
+from orenyl.release_verify import build_release_commands, run_release_commands
 
 
 if __name__ == "__main__":

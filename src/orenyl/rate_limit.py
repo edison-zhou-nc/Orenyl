@@ -17,6 +17,7 @@ class RateLimiter:
         max_requests: int | None = None,
         window_seconds: float = 60.0,
     ):
+        env_vars.require_no_legacy_env_vars()
         if max_requests is None:
             max_requests = int(os.environ.get(env_vars.RATE_LIMIT_RPM, "100"))
         self.max_requests = max_requests

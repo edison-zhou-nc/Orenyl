@@ -5,7 +5,7 @@ import json
 
 from mcp.server.auth.provider import AccessToken
 
-from lore import server
+from orenyl import server
 
 
 def test_write_tools_blocked_in_read_only_mode(monkeypatch):
@@ -15,7 +15,7 @@ def test_write_tools_blocked_in_read_only_mode(monkeypatch):
                 return AccessToken(token=token, client_id="u1", scopes=["memory:write"])
             return None
 
-    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+    monkeypatch.setenv("ORENYL_READ_ONLY_MODE", "1")
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _AllowVerifier())
 
     out = asyncio.run(
@@ -31,7 +31,7 @@ def test_write_tools_blocked_in_read_only_mode(monkeypatch):
     )
     payload = json.loads(out[0].text)
     assert payload["ok"] is False
-    assert "LORE_READ_ONLY_MODE" in payload["error"]["message"]
+    assert "ORENYL_READ_ONLY_MODE" in payload["error"]["message"]
 
     consent_out = asyncio.run(
         server.call_tool(
@@ -45,4 +45,4 @@ def test_write_tools_blocked_in_read_only_mode(monkeypatch):
     )
     consent_payload = json.loads(consent_out[0].text)
     assert consent_payload["ok"] is False
-    assert "LORE_READ_ONLY_MODE" in consent_payload["error"]["message"]
+    assert "ORENYL_READ_ONLY_MODE" in consent_payload["error"]["message"]

@@ -64,6 +64,7 @@ def _decode_salt(var_name: str) -> bytes:
 
 
 def resolve_runtime_keyring() -> RuntimeKeyring:
+    env_vars.require_no_legacy_env_vars()
     active_version = _read_env(env_vars.ENCRYPTION_KEY_VERSION) or "v1"
     normalized = active_version.upper()
     passphrase_var = f"{env_vars.ENCRYPTION_PASSPHRASE_PREFIX}{normalized}"

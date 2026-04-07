@@ -1,35 +1,34 @@
-# Lore with OpenClaw
+# Orenyl with OpenClaw
 
-Add Lore as an MCP server in OpenClaw to give your AI agent persistent, production-minded governed memory.
+Add Orenyl as an MCP server in OpenClaw to give your AI agent persistent, production-minded governed memory.
 
 ## Prerequisites
 
 - [OpenClaw](https://openclaw.ai) installed and running
-- Python 3.12+ with `lore-mcp` installed: `pip install lore-mcp`
+- Python 3.12+ with `orenyl-mcp-server` installed: `pip install orenyl-mcp-server`
 
 ## Setup
 
-Add Lore as an MCP server in OpenClaw's configuration:
+Add Orenyl as an MCP server in OpenClaw's configuration:
 
 ```json
 {
   "mcpServers": {
-    "lore": {
-      "command": "python",
-      "args": ["-m", "lore.server"],
+    "orenyl": {
+      "command": "orenyl-server",
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./openclaw_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./openclaw_memory.db"
       }
     }
   }
 }
 ```
 
-`LORE_ALLOW_STDIO_DEV=1` disables Lore's production guard for stdio transport, so keep that setting for local development only.
+`ORENYL_ALLOW_STDIO_DEV=1` disables Orenyl's production guard for stdio transport, so keep that setting for local development only.
 
-Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory with governed deletion and audit guarantees.
+Once configured, OpenClaw can use all 14 Orenyl MCP tools for persistent memory with governed deletion and audit guarantees.
 
 ## What OpenClaw Gets
 
@@ -42,14 +41,14 @@ Once configured, OpenClaw can use all 14 Lore MCP tools for persistent memory wi
 | **Comply** | `erase_subject_data` | GDPR Article 17 erasure by subject |
 | **Export** | `export_subject_data` | GDPR Article 20 data portability |
 
-## Why Lore + OpenClaw
+## Why Orenyl + OpenClaw
 
-OpenClaw is an agent runtime that executes tasks. Lore is a governed memory layer that stores what happened with compliance guarantees.
+OpenClaw is an agent runtime that executes tasks. Orenyl is a governed memory layer that stores what happened with compliance guarantees.
 
 - OpenClaw decides what to do and when
-- Lore remembers what happened, with provable deletion
+- Orenyl remembers what happened, with provable deletion
 
-When you delete data from Lore, cascade invalidation ensures downstream facts derived from that data are also removed. This is different from simple key-value memory where deletion leaves derived information orphaned.
+When you delete data from Orenyl, cascade invalidation ensures downstream facts derived from that data are also removed. This is different from simple key-value memory where deletion leaves derived information orphaned.
 
 ## Configuration
 

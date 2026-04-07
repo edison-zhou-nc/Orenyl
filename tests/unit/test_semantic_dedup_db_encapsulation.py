@@ -1,4 +1,4 @@
-from lore.semantic_dedup import check_semantic_duplicate
+from orenyl.semantic_dedup import check_semantic_duplicate
 
 
 class _Provider:

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document summarizes Lore's public-launch security posture, accepted risks, and pre-release verification checks.
+This document summarizes Orenyl's public-launch security posture, accepted risks, and pre-release verification checks.
 
 ## Auth coverage
 
@@ -23,7 +23,7 @@ This document summarizes Lore's public-launch security posture, accepted risks, 
 ## Config hygiene
 
 - Mixed JWT algorithm families are rejected at startup.
-- `RS256` requires a JWKS URL and Lore validates the URL as HTTPS on a public, non-private host.
+- `RS256` requires a JWKS URL and Orenyl validates the URL as HTTPS on a public, non-private host.
 - Transport mode validation blocks unsafe stdio usage outside explicit development mode.
 - Read-only mode and compliance strict mode are environment-driven and tested.
 
@@ -51,11 +51,11 @@ Verified locally before requesting an independent release-readiness review:
 
 - `python -m ruff check . --select F,B`: pass
 - `python -m ruff check src --select S105,S324,S603,S607,S608`: pass
-- `python -m bandit -r src/lore -ll -q`: pass
+- `python -m bandit -r src/orenyl -ll -q`: pass
 - `python -m pip_audit -r requirements.lock --disable-pip`: pass
 - `python -m pip_audit -r requirements-dev.lock --disable-pip`: pass
-- `python -m mypy src/lore --config-file pyproject.toml`: pass
-- `python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80`: pass, 405 passed / 1 skipped, 90.71% coverage
+- `python -m mypy src/orenyl --config-file pyproject.toml`: pass
+- `python -m pytest tests/unit tests/integration -q --cov=src/orenyl --cov-report=term-missing --cov-fail-under=80`: pass, 405 passed / 1 skipped, 90.71% coverage
 - `python -m build`: pass
 - Wheel smoke import: pass
 
@@ -72,15 +72,15 @@ Category spot-checks covered in this pass:
 
 ### M3: In-memory rate limiter
 
-Lore uses an in-memory per-tenant rate limiter. This is acceptable for single-node deployments but is not a distributed rate-limit solution.
+Orenyl uses an in-memory per-tenant rate limiter. This is acceptable for single-node deployments but is not a distributed rate-limit solution.
 
 Mitigation:
 
-- Put a reverse proxy or API gateway in front of Lore for multi-node or internet-facing deployments.
+- Put a reverse proxy or API gateway in front of Orenyl for multi-node or internet-facing deployments.
 
 ### M4: Tenant isolation via query scoping
 
-Lore's multi-tenant isolation model is enforced through validated tenant context plus explicit SQL query scoping. This is the chosen architecture for the current product shape, not a latent bug.
+Orenyl's multi-tenant isolation model is enforced through validated tenant context plus explicit SQL query scoping. This is the chosen architecture for the current product shape, not a latent bug.
 
 Mitigation:
 
@@ -89,15 +89,15 @@ Mitigation:
 
 ### M7: CSRF
 
-Lore is not designed as a browser session app, so CSRF is low-risk for the intended MCP usage model.
+Orenyl is not designed as a browser session app, so CSRF is low-risk for the intended MCP usage model.
 
 Mitigation:
 
-- If you expose Lore behind a browser-accessible HTTP surface, terminate requests at a gateway that enforces origin, session, and anti-CSRF controls.
+- If you expose Orenyl behind a browser-accessible HTTP surface, terminate requests at a gateway that enforces origin, session, and anti-CSRF controls.
 
 ### M12: Event-field extraction from metadata
 
-Lore intentionally allows event metadata to participate in domain logic where designed. This is a product choice rather than a hidden parser bug.
+Orenyl intentionally allows event metadata to participate in domain logic where designed. This is a product choice rather than a hidden parser bug.
 
 Mitigation:
 
@@ -108,4 +108,4 @@ Mitigation:
 
 - External penetration testing is still pending.
 - Formal threat modeling for operator deployments should be expanded before broader enterprise rollout.
-- Lore is not externally certified or independently validated as an enterprise security product.
+- Orenyl is not externally certified or independently validated as an enterprise security product.

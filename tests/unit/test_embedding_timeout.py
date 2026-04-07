@@ -7,11 +7,11 @@ import time
 
 import pytest
 
-from lore import context_pack as context_pack_module
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import context_pack as context_pack_module
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 class SlowEmbeddingProvider:

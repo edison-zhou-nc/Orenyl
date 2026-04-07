@@ -1,4 +1,4 @@
-"""Development-only stdio entrypoint for Lore server."""
+"""Development-only stdio entrypoint for orenyl server."""
 
 import asyncio
 

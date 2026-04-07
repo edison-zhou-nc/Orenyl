@@ -1,6 +1,6 @@
 import asyncio
 
-from lore import server
+from orenyl import server
 
 
 def test_run_ttl_sweep_includes_requested_mode(monkeypatch):

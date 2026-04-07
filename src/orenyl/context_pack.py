@@ -63,7 +63,7 @@ def _get_embedding_executor() -> concurrent.futures.ThreadPoolExecutor:
             configured_workers = 4
         _embedding_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max(1, min(configured_workers, 16)),
-            thread_name_prefix="lore-embedding",
+            thread_name_prefix="orenyl-embedding",
         )
     return _embedding_executor
 
@@ -100,6 +100,7 @@ def should_retrieve(query: str) -> bool:
 
 
 def backfill_missing_fact_embeddings(db: Database, fact_ids: list[str], tenant_id: str = "") -> int:
+    env_vars.require_no_legacy_env_vars()
     if not fact_ids:
         return 0
     provider = _get_embedding_provider()
@@ -140,6 +141,7 @@ class ContextPackBuilder:
         session_id: str = "",
     ) -> ContextPack:
         """Build a context pack from current valid facts with trace."""
+        env_vars.require_no_legacy_env_vars()
         if not should_retrieve(query):
             return ContextPack(
                 domain=domain,

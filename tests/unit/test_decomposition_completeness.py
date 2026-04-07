@@ -1,16 +1,16 @@
 from pathlib import Path
 
-from lore import server
+from orenyl import server
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_db_file_stays_under_three_hundred_lines() -> None:
-    assert len((REPO_ROOT / "src" / "lore" / "db.py").read_text().splitlines()) < 300
+    assert len((REPO_ROOT / "src" / "orenyl" / "db.py").read_text().splitlines()) < 300
 
 
 def test_server_file_stays_under_six_hundred_lines() -> None:
-    assert len((REPO_ROOT / "src" / "lore" / "server.py").read_text().splitlines()) < 600
+    assert len((REPO_ROOT / "src" / "orenyl" / "server.py").read_text().splitlines()) < 600
 
 
 def test_server_exports_all_current_handlers() -> None:

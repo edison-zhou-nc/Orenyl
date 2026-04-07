@@ -2,7 +2,7 @@
 
 ## Scope
 
-This document summarizes Lore's public-launch posture for privacy, auditability, and governed-memory operations.
+This document summarizes Orenyl's public-launch posture for privacy, auditability, and governed-memory operations.
 
 ## Repo-owned vs external readiness boundary
 
@@ -37,4 +37,4 @@ Repo-owned readiness covers the code, tests, and documentation in this repositor
 - SOC 2 evidence collection is not yet automated.
 - Change management, key-management operations, and incident response runbooks need fuller operator packaging.
 - Third-party vendor and infrastructure controls remain deployment-specific rather than product-enforced.
-- Lore is not yet externally certified as an enterprise compliance product.
+- Orenyl is not yet externally certified as an enterprise compliance product.

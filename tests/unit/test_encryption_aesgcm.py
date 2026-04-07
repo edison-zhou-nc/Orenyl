@@ -4,7 +4,7 @@ import pytest
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from lore.encryption import decrypt_content, encrypt_content, generate_key, resolve_runtime_keyring
+from orenyl.encryption import decrypt_content, encrypt_content, generate_key, resolve_runtime_keyring
 
 
 def _build_legacy_payload(plaintext: str, key: bytes, salt: bytes, key_version: str = "v1") -> dict:
@@ -97,18 +97,27 @@ def test_decrypt_supports_legacy_payload_without_aad():
 
 
 def test_resolve_runtime_keyring_rejects_short_passphrase(monkeypatch):
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "short")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "short")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
 
     with pytest.raises(RuntimeError, match="passphrase_too_short"):
         resolve_runtime_keyring()
 
 
 def test_resolve_runtime_keyring_accepts_16_char_passphrase(monkeypatch):
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "0123456789abcdef")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "0123456789abcdef")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
 
     keyring = resolve_runtime_keyring()
 
     assert keyring.active_version == "v1"
     assert keyring.keys["v1"].key
+
+
+def test_resolve_runtime_keyring_rejects_legacy_encryption_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_ENCRYPTION_PASSPHRASE", "legacy-passphrase-123")
+        m.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+
+        with pytest.raises(RuntimeError, match="legacy environment variables"):
+            resolve_runtime_keyring()

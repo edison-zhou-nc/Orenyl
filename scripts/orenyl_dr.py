@@ -8,20 +8,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lore import env_vars
-from lore.db import Database
-from lore.disaster_recovery import DRService
+from orenyl import env_vars
+from orenyl.db import Database
+from orenyl.disaster_recovery import DRService
 
 
 def _build_service() -> DRService:
-    db_path = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
-    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "lore_snapshots")
+    env_vars.require_no_legacy_env_vars()
+    db_path = os.environ.get(env_vars.DB_PATH, "orenyl_memory.db")
+    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "orenyl_snapshots")
     db = Database(db_path)
     return DRService(db=db, db_path=db_path, snapshot_dir=snapshot_dir)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Lore disaster recovery operations.")
+    parser = argparse.ArgumentParser(description="orenyl disaster recovery operations.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     create = sub.add_parser("create", help="Create snapshot")

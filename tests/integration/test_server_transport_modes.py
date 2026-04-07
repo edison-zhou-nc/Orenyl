@@ -1,27 +1,38 @@
 import asyncio
+import os
+import subprocess
+import sys
 
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import audit, server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
+from orenyl import audit, server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
 
 
 def test_default_transport_is_streamable_http_for_prod(monkeypatch):
-    monkeypatch.delenv("LORE_TRANSPORT", raising=False)
+    monkeypatch.delenv("ORENYL_TRANSPORT", raising=False)
     assert server.get_transport_mode() == "streamable-http"
 
 
-def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.delenv("LORE_ALLOW_STDIO_DEV", raising=False)
+def test_get_transport_mode_rejects_legacy_transport_env(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_TRANSPORT", "stdio")
 
-    with pytest.raises(PermissionError, match="LORE_ALLOW_STDIO_DEV=1"):
+        with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
+            server.get_transport_mode()
+
+
+def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.delenv("ORENYL_ALLOW_STDIO_DEV", raising=False)
+
+    with pytest.raises(PermissionError, match="ORENYL_ALLOW_STDIO_DEV=1"):
         server.validate_transport_mode(server.get_transport_mode())
 
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
     server.validate_transport_mode(server.get_transport_mode())
 
 
@@ -34,16 +45,54 @@ def test_main_skips_token_bootstrap_in_dev_stdio_mode(monkeypatch):
     def _raise_if_called():
         raise AssertionError("token verifier bootstrap should be skipped in dev stdio mode")
 
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
-    monkeypatch.delenv("LORE_OIDC_ISSUER", raising=False)
-    monkeypatch.delenv("LORE_OIDC_JWKS_URL", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
+    monkeypatch.delenv("ORENYL_OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("ORENYL_OIDC_JWKS_URL", raising=False)
     monkeypatch.setattr(server, "_get_token_verifier", _raise_if_called)
     monkeypatch.setattr(server, "run_stdio_server", _fake_run_stdio_server)
 
     server.main()
 
     assert called["stdio"] is True
+
+
+def test_server_import_rejects_legacy_env_vars_before_side_effects(tmp_path):
+    env = os.environ.copy()
+    env["LORE_DB_PATH"] = "legacy.sqlite"
+    env.pop("ORENYL_DB_PATH", None)
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import orenyl.server"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    combined_output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    assert result.returncode != 0
+    assert "legacy environment variables are not supported: LORE_DB_PATH" in combined_output
+    assert not (tmp_path / "orenyl_memory.db").exists()
+
+
+def test_main_rejects_legacy_env_vars_before_startup(monkeypatch):
+    class _ForbiddenServer:
+        def run(self, *_args, **_kwargs):
+            raise AssertionError("server should fail before startup")
+
+    with monkeypatch.context() as m:
+        m.setenv("LORE_TRANSPORT", "stdio")
+        m.setenv("LORE_ALLOW_STDIO_DEV", "1")
+        m.setenv("ORENYL_OIDC_ISSUER", "https://issuer.example")
+        m.setenv("ORENYL_OIDC_ALLOWED_ALGS", "HS256")
+        m.setenv("ORENYL_OIDC_HS256_SECRET", "0123456789abcdef0123456789abcdef")
+        m.delenv("ORENYL_OIDC_JWKS_URL", raising=False)
+        m.setattr(server, "build_fastmcp_server", lambda: _ForbiddenServer())
+
+        with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
+            server.main()
 
 
 def test_streamable_http_server_registers_expected_tools():

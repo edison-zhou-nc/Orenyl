@@ -1,6 +1,6 @@
 import pytest
 
-from lore.handlers._common import (
+from orenyl.handlers._common import (
     _clamp_non_negative_int,
     _clamp_positive_int,
     _decode_cursor,

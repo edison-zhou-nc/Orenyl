@@ -1,11 +1,11 @@
 # Meeting Memory
 
-Demonstrates Lore's lineage tracking: store meeting notes, derive facts, and trace where each fact came from.
+Demonstrates Orenyl's lineage tracking: store meeting notes, derive facts, and trace where each fact came from.
 
 ## Run
 
 ```bash
-pip install lore-mcp   # or: pip install -e ../..
+pip install orenyl-mcp-server   # or: pip install -e ../..
 python meeting_memory.py
 ```
 

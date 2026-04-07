@@ -1,5 +1,5 @@
-from lore.db import Database
-from lore.models import Edge
+from orenyl.db import Database
+from orenyl.models import Edge
 
 
 def test_get_downstream_facts_uses_sql_recursive_cte(monkeypatch):

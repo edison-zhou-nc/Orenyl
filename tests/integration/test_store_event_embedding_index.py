@@ -1,10 +1,10 @@
 import asyncio
 import json
 
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
 
 
 def _reset_server(monkeypatch, db):
@@ -16,7 +16,7 @@ def _reset_server(monkeypatch, db):
 def test_store_event_indexes_event_embedding(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_EMBEDDING_PROVIDER", "hash-local")
+    monkeypatch.setenv("ORENYL_EMBEDDING_PROVIDER", "hash-local")
 
     result = asyncio.run(
         server.handle_store_event(

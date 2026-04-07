@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from lore import audit
-from lore.audit_anomaly import scan_access_anomalies
+from orenyl import audit
+from orenyl.audit_anomaly import scan_access_anomalies
 
 
 def test_anomaly_detection_flags_denied_spike():

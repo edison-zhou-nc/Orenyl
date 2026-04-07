@@ -1,10 +1,10 @@
 import json
 
-from lore.compliance import ComplianceService
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.compliance import ComplianceService
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_subject_erasure_purges_only_affected_tenant_retrieval_logs():

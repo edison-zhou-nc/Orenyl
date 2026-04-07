@@ -1,6 +1,6 @@
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_hard_delete_physically_removes_event():

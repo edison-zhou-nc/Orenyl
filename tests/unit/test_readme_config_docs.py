@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lore import env_vars
+from orenyl import env_vars
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -16,14 +16,18 @@ def test_readme_documents_correct_default_values():
     """Documented defaults must match runtime defaults in the source of truth."""
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 
-    # Each entry is (env_var_name, expected_default_cell) — the literal value shown
+    # Each entry is (env_var_name, expected_default_cell) â€” the literal value shown
     # in the README table's default column.  Update this list when runtime defaults change.
     expected_defaults = [
-        ("LORE_RATE_LIMIT_RPM", "`100`"),
-        ("LORE_COMPLIANCE_STRICT_MODE", "`1`"),
-        ("LORE_VECTOR_BACKEND", "`local`"),
-        ("LORE_EMBEDDING_TIMEOUT_SECONDS", "`10`"),
-        ("LORE_OIDC_CLOCK_SKEW_SECONDS", "`30`"),
+        ("ORENYL_DB_PATH", "`orenyl_memory.db`"),
+        ("ORENYL_AUDIT_DB_PATH", "`orenyl_audit.db`"),
+        ("ORENYL_DR_SNAPSHOT_DIR", "`orenyl_snapshots`"),
+        ("ORENYL_RATE_LIMIT_RPM", "`100`"),
+        ("ORENYL_COMPLIANCE_STRICT_MODE", "`1`"),
+        ("ORENYL_VECTOR_BACKEND", "`local`"),
+        ("ORENYL_EMBEDDING_TIMEOUT_SECONDS", "`10`"),
+        ("ORENYL_OIDC_AUDIENCE", "`orenyl`"),
+        ("ORENYL_OIDC_CLOCK_SKEW_SECONDS", "`30`"),
     ]
 
     wrong = []

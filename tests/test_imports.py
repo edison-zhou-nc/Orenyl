@@ -14,8 +14,8 @@ class ImportTests(unittest.TestCase):
         self.assertNotIn("import *", source)
         self.assertIn("__all__ =", source)
 
-    def test_lore_server_imports(self):
-        importlib.import_module("lore.server")
+    def test_orenyl_server_imports(self):
+        importlib.import_module("orenyl.server")
 
 
 if __name__ == "__main__":

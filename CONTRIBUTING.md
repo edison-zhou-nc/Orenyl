@@ -28,7 +28,7 @@ Run the launch-readiness checks before opening a PR:
 
 ```bash
 python -m ruff check . --select F,B
-python -m mypy src/lore --config-file pyproject.toml
+python -m mypy src/orenyl --config-file pyproject.toml
 python -m build
 ```
 

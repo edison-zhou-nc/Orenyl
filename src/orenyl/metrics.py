@@ -35,15 +35,15 @@ def render_prometheus() -> str:
         latencies = {name: list(values) for name, values in _LATENCIES.items()}
     lines: list[str] = []
     total = sum(counters.values())
-    lines.append(f"lore_tool_calls_total {total}")
+    lines.append(f"orenyl_tool_calls_total {total}")
     for (tool, status), value in sorted(counters.items()):
-        lines.append(f'lore_tool_calls{{tool="{tool}",status="{status}"}} {value}')
+        lines.append(f'orenyl_tool_calls{{tool="{tool}",status="{status}"}} {value}')
 
     for name, values in sorted(latencies.items()):
         count = len(values)
         total_ms = sum(values)
         avg_ms = (total_ms / count) if count else 0.0
-        lines.append(f"lore_{name}_count {count}")
-        lines.append(f"lore_{name}_sum {total_ms:.6f}")
-        lines.append(f"lore_{name}_avg {avg_ms:.6f}")
+        lines.append(f"orenyl_{name}_count {count}")
+        lines.append(f"orenyl_{name}_sum {total_ms:.6f}")
+        lines.append(f"orenyl_{name}_avg {avg_ms:.6f}")
     return "\n".join(lines) + "\n"

@@ -2,7 +2,7 @@ import contextlib
 
 import pytest
 
-from lore.tenant import (
+from orenyl.tenant import (
     TenantContext,
     get_current_tenant_context,
     reset_current_tenant_context,
@@ -31,7 +31,7 @@ def _env(name: str, value: str | None):
 
 def test_resolve_tenant_context_prefers_token_claims():
     claims = {"sub": "user-1", "tenant_id": "tenant-a"}
-    with _env("LORE_ENABLE_MULTI_TENANT", "1"):
+    with _env("ORENYL_ENABLE_MULTI_TENANT", "1"):
         ctx = resolve_tenant_context(
             claims=claims, args={"agent_id": "agent-1", "session_id": "s1"}
         )
@@ -42,20 +42,20 @@ def test_resolve_tenant_context_prefers_token_claims():
 
 
 def test_resolve_tenant_context_defaults_when_multi_tenant_disabled():
-    with _env("LORE_ENABLE_MULTI_TENANT", "0"):
+    with _env("ORENYL_ENABLE_MULTI_TENANT", "0"):
         ctx = resolve_tenant_context(claims={"sub": "user-2"}, args={})
     assert ctx.tenant_id == "default"
     assert ctx.user_id == "user-2"
 
 
 def test_resolve_tenant_context_requires_tenant_when_enabled():
-    with _env("LORE_ENABLE_MULTI_TENANT", "1"):
+    with _env("ORENYL_ENABLE_MULTI_TENANT", "1"):
         with pytest.raises(PermissionError, match="tenant_scope_violation"):
             resolve_tenant_context(claims={"sub": "user-3"}, args={})
 
 
 def test_resolve_tenant_context_rejects_request_tenant_without_claim():
-    with _env("LORE_ENABLE_MULTI_TENANT", "1"):
+    with _env("ORENYL_ENABLE_MULTI_TENANT", "1"):
         with pytest.raises(PermissionError, match="tenant_scope_violation"):
             resolve_tenant_context(claims={"sub": "user-4"}, args={"tenant_id": "tenant-a"})
 

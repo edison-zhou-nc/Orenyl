@@ -1,4 +1,4 @@
-from lore import metrics
+from orenyl import metrics
 
 
 def test_metrics_concurrent_increments_are_counted_correctly():
@@ -24,8 +24,8 @@ def test_metrics_concurrent_increments_are_counted_correctly():
 
     rendered = metrics.render_prometheus()
     expected_total = thread_count * increments_per_thread
-    assert f"lore_tool_calls_total {expected_total}" in rendered
-    assert f'lore_tool_calls{{tool="store_event",status="ok"}} {expected_total}' in rendered
+    assert f"orenyl_tool_calls_total {expected_total}" in rendered
+    assert f'orenyl_tool_calls{{tool="store_event",status="ok"}} {expected_total}' in rendered
 
 
 def test_latency_observations_are_bounded():
@@ -36,4 +36,4 @@ def test_latency_observations_are_bounded():
 
     rendered = metrics.render_prometheus()
 
-    assert "lore_store_event_latency_ms_count 10000" in rendered
+    assert "orenyl_store_event_latency_ms_count 10000" in rendered

@@ -1,5 +1,5 @@
-from lore.extraction_rule import ExtractionFact
-from lore.extraction_runtime import NullExtractionRuntime
+from orenyl.extraction_rule import ExtractionFact
+from orenyl.extraction_runtime import NullExtractionRuntime
 
 
 def test_extraction_fact_carries_confidence_and_model_id():

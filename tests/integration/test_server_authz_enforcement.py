@@ -4,11 +4,11 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import audit, server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import audit, server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 class StubVerifier:
@@ -52,7 +52,7 @@ class StubVerifier:
 
 
 def _reset_server_state(monkeypatch):
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
@@ -62,9 +62,9 @@ def _reset_server_state(monkeypatch):
 
 
 def _reset_local_dev_state(monkeypatch):
-    monkeypatch.delenv("LORE_ENABLE_MULTI_TENANT", raising=False)
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
+    monkeypatch.delenv("ORENYL_ENABLE_MULTI_TENANT", raising=False)
+    monkeypatch.setenv("ORENYL_TRANSPORT", "stdio")
+    monkeypatch.setenv("ORENYL_ALLOW_STDIO_DEV", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))

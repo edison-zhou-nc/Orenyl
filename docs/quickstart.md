@@ -1,30 +1,30 @@
-# Quickstart: Lore in 5 Minutes
+# Quickstart: Orenyl in 5 Minutes
 
-Get Lore running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
+Get Orenyl running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
 
 ## Install
 
 ```bash
-pip install lore-mcp
+pip install orenyl-mcp-server
 ```
 
 Or from source:
 
 ```bash
-git clone https://github.com/edison-zhou-nc/Lore.git
-cd Lore
+git clone https://github.com/edison-zhou-nc/Orenyl.git
+cd Orenyl
 python -m pip install -e .
 ```
 
-## Start Lore in local dev mode
+## Start Orenyl in local dev mode
 
 ```powershell
-$env:LORE_TRANSPORT = "stdio"
-$env:LORE_ALLOW_STDIO_DEV = "1"
-lore-server
+$env:ORENYL_TRANSPORT = "stdio"
+$env:ORENYL_ALLOW_STDIO_DEV = "1"
+orenyl-server
 ```
 
-This mode uses Lore's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
+This mode uses Orenyl's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
 It is for development only.
 
 ## Configure your MCP client
@@ -32,12 +32,12 @@ It is for development only.
 ```json
 {
   "mcpServers": {
-    "lore": {
-      "command": "lore-server",
+    "orenyl": {
+      "command": "orenyl-server",
       "env": {
-        "LORE_TRANSPORT": "stdio",
-        "LORE_ALLOW_STDIO_DEV": "1",
-        "LORE_DB_PATH": "./lore_memory.db"
+        "ORENYL_TRANSPORT": "stdio",
+        "ORENYL_ALLOW_STDIO_DEV": "1",
+        "ORENYL_DB_PATH": "./orenyl_memory.db"
       }
     }
   }
@@ -113,12 +113,12 @@ Production deployment uses `streamable-http` and authenticated tool calls. When 
 
 ## What just happened?
 
-1. Lore stored an immutable event.
-2. Lore derived deterministic facts from active events.
+1. Orenyl stored an immutable event.
+2. Orenyl derived deterministic facts from active events.
 3. Retrieval returned bounded context with lineage.
 4. Deletion invalidated downstream facts and verified they do not resurface.
 
-This is Lore's core guarantee: if upstream data is deleted, downstream derivations must not resurface.
+This is Orenyl's core guarantee: if upstream data is deleted, downstream derivations must not resurface.
 
 ## Next steps
 
