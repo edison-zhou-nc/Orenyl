@@ -25,6 +25,7 @@ env/
 dist/
 dist_task1/
 dist_fix/
+lore_snapshots/
 orenyl_snapshots/
 .coverage
 .coverage.*

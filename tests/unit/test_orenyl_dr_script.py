@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-def test_lore_dr_uses_orenyl_defaults(monkeypatch):
+def test_orenyl_dr_uses_orenyl_defaults(monkeypatch):
     captured: dict[str, object] = {}
 
     class _Database:
@@ -32,8 +32,8 @@ def test_lore_dr_uses_orenyl_defaults(monkeypatch):
     monkeypatch.setattr("orenyl.db.Database", _Database)
     monkeypatch.setattr("orenyl.disaster_recovery.DRService", _DRService)
 
-    script_path = Path(__file__).resolve().parents[2] / "scripts" / "lore_dr.py"
-    spec = importlib.util.spec_from_file_location("lore_dr_test_module", script_path)
+    script_path = Path(__file__).resolve().parents[2] / "scripts" / "orenyl_dr.py"
+    spec = importlib.util.spec_from_file_location("orenyl_dr_test_module", script_path)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module

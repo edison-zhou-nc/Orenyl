@@ -30,6 +30,7 @@ _CONN: sqlite3.Connection | None = None
 def _conn() -> sqlite3.Connection:
     global _CONN
     with _LOCK:
+        env_vars.require_no_legacy_env_vars()
         if _CONN is not None:
             return _CONN
         conn = sqlite3.connect(_db_path(), check_same_thread=False)

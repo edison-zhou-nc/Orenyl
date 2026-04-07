@@ -61,15 +61,9 @@ class PgvectorVectorBackend:
 
     def upsert(self, namespace: str, item_id: str, vector: list[float]) -> None:
         conn = self._get_conn()
+        self._ensure_vector_table(conn)
         try:
             with conn.cursor() as cur:
-                cur.execute(
-                    """CREATE TABLE IF NOT EXISTS orenyl_vectors (
-                           namespace TEXT NOT NULL,
-                           item_id TEXT PRIMARY KEY,
-                           embedding TEXT NOT NULL
-                       )"""
-                )
                 cur.execute(
                     """INSERT INTO orenyl_vectors (namespace, item_id, embedding)
                        VALUES (%s, %s, %s)
@@ -86,6 +80,7 @@ class PgvectorVectorBackend:
     def query(self, namespace: str, query: list[float], top_k: int) -> list[str]:
         # Fallback implementation uses client-side cosine scoring over JSON vectors.
         conn = self._get_conn()
+        self._ensure_vector_table(conn)
         try:
             with conn.cursor() as cur:
                 cur.execute(
@@ -112,6 +107,45 @@ class PgvectorVectorBackend:
                 raise RuntimeError("pgvector_backend_requires_psycopg") from exc
             self._conn = psycopg.connect(self.dsn, autocommit=False)
         return self._conn
+
+    def _table_exists(self, conn, table_name: str) -> bool:
+        with conn.cursor() as cur:
+            cur.execute(f"SELECT to_regclass('public.{table_name}')")
+            row = cur.fetchone()
+        return bool(row and row[0])
+
+    def _ensure_vector_table(self, conn) -> None:
+        new_exists = self._table_exists(conn, "orenyl_vectors")
+        old_exists = self._table_exists(conn, "lore_vectors")
+        changed = False
+        try:
+            with conn.cursor() as cur:
+                if old_exists and not new_exists:
+                    cur.execute("ALTER TABLE lore_vectors RENAME TO orenyl_vectors")
+                    changed = True
+                else:
+                    cur.execute(
+                        """CREATE TABLE IF NOT EXISTS orenyl_vectors (
+                               namespace TEXT NOT NULL,
+                               item_id TEXT PRIMARY KEY,
+                               embedding TEXT NOT NULL
+                           )"""
+                    )
+                    if old_exists:
+                        cur.execute(
+                            """INSERT INTO orenyl_vectors (namespace, item_id, embedding)
+                               SELECT namespace, item_id, embedding
+                               FROM lore_vectors
+                               ON CONFLICT (item_id) DO UPDATE SET
+                                 namespace = EXCLUDED.namespace,
+                                 embedding = EXCLUDED.embedding"""
+                        )
+                        changed = True
+            if changed:
+                conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
     def close(self) -> None:
         if self._conn is not None and not getattr(self._conn, "closed", False):
