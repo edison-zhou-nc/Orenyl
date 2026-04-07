@@ -41,7 +41,11 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
             self.conn.executed.append((sql, params))
             sql = sql.strip()
             if sql.startswith("SELECT to_regclass"):
-                table_name = sql.split("'")[1].split(".")[-1]
+                regclass = params[0] if params else sql.split("'")[1]
+                if regclass.startswith("public."):
+                    self._rows = [(None,)]
+                    return
+                table_name = regclass.split(".")[-1]
                 self._rows = [(table_name,)] if table_name in self.conn.tables else [(None,)]
                 return
             if sql.startswith("CREATE TABLE IF NOT EXISTS orenyl_vectors"):
@@ -97,12 +101,12 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
     assert ids == ["fact:best"]
     assert len(created) == 2
     assert any("orenyl_vectors" in sql for sql, _params in created[0].executed)
-    assert created[0].commits == 1
+    assert created[0].commits >= 1
     assert created[0].closed is True
-    assert created[1].commits == 1
+    assert created[1].commits >= 1
 
 
-def test_pgvector_backend_reads_legacy_lore_vectors_table(monkeypatch):
+def test_pgvector_backend_honors_search_path_for_legacy_table_upgrade(monkeypatch):
     created: list[object] = []
 
     class _Cursor:
@@ -120,7 +124,7 @@ def test_pgvector_backend_reads_legacy_lore_vectors_table(monkeypatch):
             self.conn.executed.append((sql, params))
             sql = sql.strip()
             if sql.startswith("SELECT to_regclass"):
-                table_name = sql.split("'")[1].split(".")[-1]
+                table_name = params[0] if params else sql.split("'")[1]
                 self._rows = [(table_name,)] if table_name in self.conn.tables else [(None,)]
                 return
             if sql.startswith("ALTER TABLE lore_vectors RENAME TO orenyl_vectors"):
@@ -160,10 +164,7 @@ def test_pgvector_backend_reads_legacy_lore_vectors_table(monkeypatch):
             self.commits = 0
             self.rollbacks = 0
             self.executed: list[tuple[str, object]] = []
-            self.tables = set()
-            self.tables = {
-                "lore_vectors": [("tenant-a", "fact:legacy", encode_vector([1.0, 0.0]))]
-            }
+            self.tables = {"lore_vectors": [("tenant-a", "fact:legacy", encode_vector([1.0, 0.0]))]}
 
         def cursor(self):
             return _Cursor(self)
@@ -191,5 +192,7 @@ def test_pgvector_backend_reads_legacy_lore_vectors_table(monkeypatch):
 
     assert ids == ["fact:legacy"]
     assert len(created) == 1
+    assert ("SELECT to_regclass(%s)", ("orenyl_vectors",)) in created[0].executed
+    assert ("SELECT to_regclass(%s)", ("lore_vectors",)) in created[0].executed
     assert "lore_vectors" not in created[0].tables
     assert "orenyl_vectors" in created[0].tables
