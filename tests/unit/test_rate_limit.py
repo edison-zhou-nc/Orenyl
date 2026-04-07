@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+import pytest
+
 from orenyl.rate_limit import RateLimiter
 
 
@@ -44,3 +46,11 @@ def test_rate_limiter_prunes_stale_tenant_buckets():
     assert limiter.allow("tenant-b") is True
 
     assert "tenant-a" not in limiter._buckets
+
+
+def test_rate_limiter_rejects_legacy_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_RATE_LIMIT_RPM", "25")
+
+        with pytest.raises(RuntimeError, match="LORE_RATE_LIMIT_RPM"):
+            RateLimiter()

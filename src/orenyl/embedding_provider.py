@@ -121,6 +121,7 @@ def _is_retryable_status(status_code: int) -> bool:
 
 
 def build_embedding_provider_from_env() -> EmbeddingProvider:
+    env_vars.require_no_legacy_env_vars()
     provider_name = os.environ.get(env_vars.EMBEDDING_PROVIDER, "hash-local").strip().lower()
     if provider_name == "openai":
         api_key = os.environ.get(env_vars.OPENAI_API_KEY, "")

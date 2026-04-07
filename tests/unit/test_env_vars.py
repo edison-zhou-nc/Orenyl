@@ -28,15 +28,17 @@ def test_all_prefixes_are_exposed_separately():
 
 
 def test_detect_legacy_names_returns_legacy_lore_keys(monkeypatch):
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("ORENYL_TRANSPORT", "streamable-http")
-    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+    with monkeypatch.context() as m:
+        m.setenv("LORE_TRANSPORT", "stdio")
+        m.setenv("ORENYL_TRANSPORT", "streamable-http")
+        m.setenv("LORE_READ_ONLY_MODE", "1")
 
-    assert env_vars.detect_legacy_names() == ("LORE_READ_ONLY_MODE", "LORE_TRANSPORT")
+        assert env_vars.detect_legacy_names() == ("LORE_READ_ONLY_MODE", "LORE_TRANSPORT")
 
 
 def test_require_no_legacy_env_vars_raises_for_legacy_keys(monkeypatch):
-    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+    with monkeypatch.context() as m:
+        m.setenv("LORE_READ_ONLY_MODE", "1")
 
-    with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
-        env_vars.require_no_legacy_env_vars()
+        with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
+            env_vars.require_no_legacy_env_vars()

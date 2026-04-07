@@ -81,6 +81,7 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
 
     assert ids == ["fact:best"]
     assert len(created) == 2
+    assert any("orenyl_vectors" in sql for sql, _params in created[0].executed)
     assert created[0].commits == 1
     assert created[0].closed is True
     assert created[1].commits == 1

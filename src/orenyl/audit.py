@@ -19,6 +19,7 @@ def _now_iso() -> str:
 
 
 def _db_path() -> str:
+    env_vars.require_no_legacy_env_vars()
     return os.environ.get(env_vars.AUDIT_DB_PATH, "orenyl_audit.db")
 
 
