@@ -1,11 +1,11 @@
 import asyncio
 import json
 
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def _reset_server(monkeypatch, db):
@@ -17,8 +17,8 @@ def _reset_server(monkeypatch, db):
 def test_high_sensitivity_payload_stored_encrypted_when_key_present(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase!")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "test-passphrase!")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
     out = asyncio.run(
         server.handle_store_event(
@@ -61,8 +61,8 @@ def test_restricted_not_returned_in_context_pack():
 def test_encryption_enabled_skips_sensitive_fact_derivation(monkeypatch):
     db = Database(":memory:")
     _reset_server(monkeypatch, db)
-    monkeypatch.setenv("LORE_ENCRYPTION_PASSPHRASE", "test-passphrase!")
-    monkeypatch.setenv("LORE_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_PASSPHRASE", "test-passphrase!")
+    monkeypatch.setenv("ORENYL_ENCRYPTION_SALT", "MDEyMzQ1Njc4OWFiY2RlZg==")
 
     out = asyncio.run(
         server.handle_store_event(

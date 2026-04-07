@@ -1,5 +1,5 @@
-from lore.repositories.facts import FactMixin
-from lore.repositories.lineage import LineageMixin
+from orenyl.repositories.facts import FactMixin
+from orenyl.repositories.lineage import LineageMixin
 
 
 def test_repository_mixins_preserve_key_docstrings():

@@ -1,9 +1,9 @@
 import asyncio
 import json
 
-from lore import server
-from lore.db import Database
-from lore.models import Event
+from orenyl import server
+from orenyl.db import Database
+from orenyl.models import Event
 
 
 class _DummyPack:
@@ -73,7 +73,7 @@ def test_list_events_uses_db_pagination_path(monkeypatch):
 
 
 def test_list_events_strict_mode_uses_sql_pagination_path(monkeypatch):
-    monkeypatch.setenv("LORE_COMPLIANCE_STRICT_MODE", "1")
+    monkeypatch.setenv("ORENYL_COMPLIANCE_STRICT_MODE", "1")
     fresh_db = Database(":memory:")
     monkeypatch.setattr(server, "db", fresh_db)
     monkeypatch.setattr(server, "MAX_LIST_EVENTS_LIMIT", 2)

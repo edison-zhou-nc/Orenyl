@@ -1,4 +1,4 @@
-from lore.context_pack import should_retrieve
+from orenyl.context_pack import should_retrieve
 
 
 def test_should_retrieve_skips_greetings_but_keeps_memory_queries():

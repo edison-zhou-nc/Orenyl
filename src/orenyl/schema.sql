@@ -1,4 +1,4 @@
--- Lore Governed Memory Schema
+-- Orenyl Governed Memory Schema
 -- 5 tables. That's it.
 
 CREATE TABLE IF NOT EXISTS events (

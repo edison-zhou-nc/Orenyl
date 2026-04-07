@@ -2,11 +2,11 @@ import asyncio
 import subprocess
 import sys
 
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
-from lore.server import list_tools
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
+from orenyl.server import list_tools
 
 
 def test_retrieve_context_pack_schema_includes_query():

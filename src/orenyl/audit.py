@@ -19,7 +19,8 @@ def _now_iso() -> str:
 
 
 def _db_path() -> str:
-    return os.environ.get(env_vars.AUDIT_DB_PATH, "lore_audit.db")
+    env_vars.require_no_legacy_env_vars()
+    return os.environ.get(env_vars.AUDIT_DB_PATH, "orenyl_audit.db")
 
 
 _LOCK = threading.RLock()
@@ -29,6 +30,7 @@ _CONN: sqlite3.Connection | None = None
 def _conn() -> sqlite3.Connection:
     global _CONN
     with _LOCK:
+        env_vars.require_no_legacy_env_vars()
         if _CONN is not None:
             return _CONN
         conn = sqlite3.connect(_db_path(), check_same_thread=False)

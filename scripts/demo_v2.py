@@ -1,4 +1,4 @@
-"""Two-minute Lore v2 demo script for OpenClaw/distribution walkthrough."""
+"""Two-minute orenyl v2 demo script for OpenClaw/distribution walkthrough."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def main() -> None:

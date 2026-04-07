@@ -1,7 +1,7 @@
-from lore import server
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Event
+from orenyl import server
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Event
 
 
 def test_expired_event_is_soft_deleted_by_ttl_sweep(monkeypatch):
@@ -74,7 +74,7 @@ def test_multi_tenant_ttl_sweep_processes_expired_events_without_tenant_error(mo
 
     monkeypatch.setattr(server, "db", db)
     monkeypatch.setattr(server, "engine", engine)
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
 
     out = server.run_ttl_sweep(delete_mode="soft")
 

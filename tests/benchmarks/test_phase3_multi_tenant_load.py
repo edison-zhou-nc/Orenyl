@@ -2,17 +2,17 @@ import os
 
 import pytest
 
-from lore.db import Database
-from lore.models import Event
+from orenyl.db import Database
+from orenyl.models import Event
 
 
 @pytest.mark.skipif(
-    os.environ.get("LORE_ENABLE_PHASE3_LOAD_TEST", "").strip() != "1",
+    os.environ.get("ORENYL_ENABLE_PHASE3_LOAD_TEST", "").strip() != "1",
     reason="phase3 load benchmark is opt-in",
 )
 def test_phase3_multi_tenant_load():
     db = Database(":memory:")
-    total_events = int(os.environ.get("LORE_PHASE3_LOAD_EVENTS", "1000000"))
+    total_events = int(os.environ.get("ORENYL_PHASE3_LOAD_EVENTS", "1000000"))
     tenants = [f"tenant-{idx}" for idx in range(10)]
 
     for i in range(total_events):

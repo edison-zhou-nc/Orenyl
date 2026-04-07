@@ -1,7 +1,7 @@
 import pytest
 
-from lore.db import Database
-from lore.rule_registry import RuleVersionRegistry
+from orenyl.db import Database
+from orenyl.rule_registry import RuleVersionRegistry
 
 
 def test_rule_registry_prevents_two_active_versions_for_same_family():

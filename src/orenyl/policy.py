@@ -80,10 +80,12 @@ class PolicyEngine:
 
 
 def agent_permissions_enabled() -> bool:
+    env_vars.require_no_legacy_env_vars()
     return os.environ.get(env_vars.ENABLE_AGENT_PERMISSIONS, "0").strip() == "1"
 
 
 def policy_shadow_mode_enabled() -> bool:
+    env_vars.require_no_legacy_env_vars()
     return os.environ.get(env_vars.POLICY_SHADOW_MODE, "0").strip() == "1"
 
 

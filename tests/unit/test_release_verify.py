@@ -1,4 +1,4 @@
-from lore.release_verify import _build_wheel_smoke_script, build_release_commands, run_release_commands
+from orenyl.release_verify import _build_wheel_smoke_script, build_release_commands, run_release_commands
 
 
 def test_build_release_commands_covers_current_release_gate_in_order() -> None:
@@ -7,10 +7,10 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
     assert commands == [
         ["python", "-m", "ruff", "check", ".", "--select", "F,B"],
         ["python", "-m", "ruff", "check", "src", "--select", "S105,S324,S603,S607,S608"],
-        ["python", "-m", "bandit", "-r", "src/lore", "-ll", "-q"],
+        ["python", "-m", "bandit", "-r", "src/orenyl", "-ll", "-q"],
         ["python", "-m", "pip_audit", "-r", "requirements.lock", "--disable-pip"],
         ["python", "-m", "pip_audit", "-r", "requirements-dev.lock", "--disable-pip"],
-        ["python", "-m", "mypy", "src/lore", "--config-file", "pyproject.toml"],
+        ["python", "-m", "mypy", "src/orenyl", "--config-file", "pyproject.toml"],
         [
             "python",
             "-m",
@@ -18,7 +18,7 @@ def test_build_release_commands_covers_current_release_gate_in_order() -> None:
             "tests/unit",
             "tests/integration",
             "-q",
-            "--cov=src/lore",
+            "--cov=src/orenyl",
             "--cov-report=term-missing",
             "--cov-fail-under=80",
         ],
@@ -50,7 +50,7 @@ def test_run_release_commands_stops_on_first_failure(monkeypatch) -> None:
             return Result(1)
         return Result(0)
 
-    monkeypatch.setattr("lore.release_verify.subprocess.run", fake_run)
+    monkeypatch.setattr("orenyl.release_verify.subprocess.run", fake_run)
     exit_code = run_release_commands([["one"], ["two"], ["three"]])
 
     assert exit_code == 1

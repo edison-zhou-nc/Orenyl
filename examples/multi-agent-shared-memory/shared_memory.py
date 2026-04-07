@@ -1,4 +1,4 @@
-"""Multi-agent shared memory demonstrating Lore's tenant isolation."""
+"""Multi-agent shared memory demonstrating orenyl's tenant isolation."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ import os
 import sys
 
 try:
-    from lore.context_pack import ContextPackBuilder
-    from lore.db import Database
-    from lore.models import Edge, Event, Fact
+    from orenyl.context_pack import ContextPackBuilder
+    from orenyl.db import Database
+    from orenyl.models import Edge, Event, Fact
 except ImportError as exc:  # pragma: no cover - example guard
-    raise SystemExit("Install lore first with `python -m pip install -e .`.") from exc
+    raise SystemExit("Install orenyl first with `python -m pip install -e .`.") from exc
 
 
 def _seed_tenant_memory(
@@ -52,8 +52,8 @@ def _seed_tenant_memory(
 
 
 def main() -> int:
-    previous_multi_tenant = os.environ.get("LORE_ENABLE_MULTI_TENANT")
-    os.environ["LORE_ENABLE_MULTI_TENANT"] = "1"
+    previous_multi_tenant = os.environ.get("ORENYL_ENABLE_MULTI_TENANT")
+    os.environ["ORENYL_ENABLE_MULTI_TENANT"] = "1"
     try:
         db = Database(":memory:")
         builder = ContextPackBuilder(db)
@@ -128,9 +128,9 @@ def main() -> int:
         return 1
     finally:
         if previous_multi_tenant is None:
-            os.environ.pop("LORE_ENABLE_MULTI_TENANT", None)
+            os.environ.pop("ORENYL_ENABLE_MULTI_TENANT", None)
         else:
-            os.environ["LORE_ENABLE_MULTI_TENANT"] = previous_multi_tenant
+            os.environ["ORENYL_ENABLE_MULTI_TENANT"] = previous_multi_tenant
 
 
 if __name__ == "__main__":

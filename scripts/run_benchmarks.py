@@ -1,4 +1,4 @@
-"""Run Lore benchmarks at multiple scales and print results."""
+"""Run orenyl benchmarks at multiple scales and print results."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Edge, Event, Fact
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Edge, Event, Fact
 
 DOMAINS = ["health", "career", "finance", "relationships", "preferences", "decisions"]
 

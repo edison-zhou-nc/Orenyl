@@ -5,14 +5,14 @@ import json
 
 import pytest
 
-from lore.config import compliance_strict_mode_enabled, read_only_mode_enabled
-from lore.db import Database
-from lore.handlers import compliance as compliance_handlers
-from lore.models import AuditChainRecord, ConsentRecord, DRSnapshot, SubjectRequest
+from orenyl.config import compliance_strict_mode_enabled, read_only_mode_enabled
+from orenyl.db import Database
+from orenyl.handlers import compliance as compliance_handlers
+from orenyl.models import AuditChainRecord, ConsentRecord, DRSnapshot, SubjectRequest
 
 
 def test_phase4_tables_exist(tmp_path):
-    db = Database(str(tmp_path / "lore.db"))
+    db = Database(str(tmp_path / "orenyl.db"))
     tables = {
         row[0]
         for row in db.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
@@ -30,11 +30,19 @@ def test_phase4_models_exist():
 
 
 def test_phase4_config_defaults(monkeypatch):
-    monkeypatch.delenv("LORE_COMPLIANCE_STRICT_MODE", raising=False)
-    monkeypatch.delenv("LORE_READ_ONLY_MODE", raising=False)
+    monkeypatch.delenv("ORENYL_COMPLIANCE_STRICT_MODE", raising=False)
+    monkeypatch.delenv("ORENYL_READ_ONLY_MODE", raising=False)
 
     assert compliance_strict_mode_enabled() is True
     assert read_only_mode_enabled() is False
+
+
+def test_phase4_config_rejects_legacy_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_READ_ONLY_MODE", "1")
+
+        with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
+            read_only_mode_enabled()
 
 
 def test_record_consent_rejects_invalid_status(monkeypatch):

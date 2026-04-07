@@ -2,17 +2,17 @@ import os
 
 import pytest
 
-from lore.vector_backend import PgvectorVectorBackend
+from orenyl.vector_backend import PgvectorVectorBackend
 
 
 @pytest.mark.skipif(
-    os.environ.get("LORE_VECTOR_BACKEND", "").strip().lower() != "pgvector",
+    os.environ.get("ORENYL_VECTOR_BACKEND", "").strip().lower() != "pgvector",
     reason="pgvector backend not enabled",
 )
 def test_pgvector_adapter_smoke():
-    dsn = os.environ.get("LORE_PGVECTOR_DSN", "").strip()
+    dsn = os.environ.get("ORENYL_PGVECTOR_DSN", "").strip()
     if not dsn:
-        pytest.skip("LORE_PGVECTOR_DSN is not configured")
+        pytest.skip("ORENYL_PGVECTOR_DSN is not configured")
 
     backend = PgvectorVectorBackend(dsn=dsn)
     namespace = "tenant-smoke"

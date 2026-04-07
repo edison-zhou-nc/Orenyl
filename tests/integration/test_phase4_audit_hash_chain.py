@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from lore import audit
-from lore.db import Database
+from orenyl import audit
+from orenyl.db import Database
 
 
 def test_audit_log_hash_chain_detects_tamper():

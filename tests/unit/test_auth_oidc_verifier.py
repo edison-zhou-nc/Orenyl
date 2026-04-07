@@ -7,12 +7,12 @@ import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 
-from lore.auth import OIDCTokenVerifier
+from orenyl.auth import OIDCTokenVerifier
 
 _TEST_SECRET = "0123456789abcdef0123456789abcdef"
 
 
-def _make_token(secret: str, iss: str = "https://issuer.example", aud: str = "lore", scopes=None):
+def _make_token(secret: str, iss: str = "https://issuer.example", aud: str = "orenyl", scopes=None):
     now = int(time.time())
     payload = {
         "sub": "user-1",
@@ -32,7 +32,7 @@ def _make_rsa_keypair():
 
 
 def _make_rs256_token(
-    private_key, kid: str, iss: str = "https://issuer.example", aud: str = "lore", scopes=None
+    private_key, kid: str, iss: str = "https://issuer.example", aud: str = "orenyl", scopes=None
 ):
     now = int(time.time())
     payload = {
@@ -49,7 +49,7 @@ def _make_rs256_token(
 def test_verify_token_rejects_wrong_issuer():
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret=_TEST_SECRET,
     )
     token = _make_token(_TEST_SECRET, iss="https://bad-issuer.example")
@@ -59,7 +59,7 @@ def test_verify_token_rejects_wrong_issuer():
 def test_verify_token_rejects_wrong_audience():
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret=_TEST_SECRET,
     )
     token = _make_token(_TEST_SECRET, aud="other")
@@ -69,7 +69,7 @@ def test_verify_token_rejects_wrong_audience():
 def test_verify_token_accepts_valid_token():
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret=_TEST_SECRET,
     )
     token = _make_token(_TEST_SECRET, scopes=["memory:read", "memory:delete"])
@@ -82,7 +82,7 @@ def test_verify_token_accepts_valid_token():
 def test_verify_token_extracts_tenant_into_resource():
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret=_TEST_SECRET,
     )
     now = int(time.time())
@@ -90,7 +90,7 @@ def test_verify_token_extracts_tenant_into_resource():
         {
             "sub": "user-1",
             "iss": "https://issuer.example",
-            "aud": "lore",
+            "aud": "orenyl",
             "iat": now,
             "exp": now + 300,
             "scope": "memory:read",
@@ -114,7 +114,7 @@ def test_verify_token_accepts_valid_rs256_token_with_jwks():
     jwk["use"] = "sig"
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret="",
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
@@ -139,7 +139,7 @@ def test_verify_token_rejects_rs256_token_with_unknown_kid():
     jwk["kid"] = "some-other-kid"
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret="",
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
@@ -170,7 +170,7 @@ def test_fetch_jwks_logs_warning_on_request_failure(monkeypatch, caplog):
 
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret="",
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
@@ -187,7 +187,7 @@ def test_fetch_jwks_logs_warning_on_request_failure(monkeypatch, caplog):
 def test_failed_jwks_fetch_uses_short_negative_cache(monkeypatch):
     verifier = OIDCTokenVerifier(
         issuer="https://issuer.example",
-        audience="lore",
+        audience="orenyl",
         hs256_secret="",
         jwks_url="https://issuer.example/.well-known/jwks.json",
         allowed_algorithms=("RS256",),
@@ -199,7 +199,7 @@ def test_failed_jwks_fetch_uses_short_negative_cache(monkeypatch):
 
     now = {"value": 1_000.0}
     monkeypatch.setattr(verifier, "_fetch_jwks", _empty_jwks)
-    monkeypatch.setattr("lore.auth.time.time", lambda: now["value"])
+    monkeypatch.setattr("orenyl.auth.time.time", lambda: now["value"])
 
     asyncio.run(verifier._get_jwks())
 

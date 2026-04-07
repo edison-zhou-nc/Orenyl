@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+from orenyl.db import Database
+from orenyl.models import Edge, Event, Fact
 
 
 def _make_v1_db(path: Path) -> None:

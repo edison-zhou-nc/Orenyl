@@ -1,4 +1,4 @@
-"""Authentication and authorization helpers for Lore."""
+"""Authentication and authorization helpers for orenyl."""
 
 from __future__ import annotations
 
@@ -277,6 +277,7 @@ def _validate_jwks_url(jwks_url: str) -> None:
 
 
 def build_token_verifier_from_env() -> OIDCTokenVerifier:
+    env_vars.require_no_legacy_env_vars()
     jwks_url = os.environ.get(env_vars.OIDC_JWKS_URL, "").strip()
     allowed_algorithms_raw = os.environ.get(env_vars.OIDC_ALLOWED_ALGS, "RS256")
     allowed_algorithms = tuple(
@@ -306,7 +307,7 @@ def build_token_verifier_from_env() -> OIDCTokenVerifier:
         raise RuntimeError(f"{env_vars.OIDC_ISSUER} must be set when RS256/JWKS is enabled")
     return OIDCTokenVerifier(
         issuer=issuer,
-        audience=os.environ.get(env_vars.OIDC_AUDIENCE, "lore"),
+        audience=os.environ.get(env_vars.OIDC_AUDIENCE, "orenyl"),
         hs256_secret=hs256_secret,
         jwks_url=jwks_url,
         allowed_algorithms=normalized_algorithms,

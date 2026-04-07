@@ -21,7 +21,7 @@ def test_contributing_lists_launch_validation_commands() -> None:
 
     assert "python -m pytest -q" in contributing
     assert "python -m ruff check . --select F,B" in contributing
-    assert "python -m mypy src/lore --config-file pyproject.toml" in contributing
+    assert "python -m mypy src/orenyl --config-file pyproject.toml" in contributing
     assert "python -m build" in contributing
 
 

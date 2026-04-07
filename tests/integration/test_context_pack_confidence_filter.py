@@ -1,6 +1,6 @@
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.models import Edge, Event, Fact
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.models import Edge, Event, Fact
 
 
 def test_context_pack_excludes_low_confidence_facts_by_default():

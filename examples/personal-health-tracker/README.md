@@ -1,11 +1,11 @@
 # Personal Health Tracker
 
-Demonstrates Lore's memory model with health events, single-record deletion, and deletion verification.
+Demonstrates Orenyl's memory model with health events, single-record deletion, and deletion verification.
 
 ## Run
 
 ```bash
-pip install lore-mcp   # or: pip install -e ../..
+pip install orenyl-mcp-server   # or: pip install -e ../..
 python health_tracker.py
 ```
 

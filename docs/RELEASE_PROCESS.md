@@ -17,8 +17,8 @@ Use it for every public beta / early-production release.
 2. Verify local development mode and authenticated production mode are both documented correctly.
 3. Ensure the release workflow will rerun:
    - `python -m ruff check . --select F,B`
-   - `python -m mypy src/lore --config-file pyproject.toml`
-   - `python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80`
+   - `python -m mypy src/orenyl --config-file pyproject.toml`
+   - `python -m pytest tests/unit tests/integration -q --cov=src/orenyl --cov-report=term-missing --cov-fail-under=80`
    - `python -m build`
    - built-wheel smoke import in a clean virtual environment
 4. Tag the release only after the branch is green locally and in CI.
@@ -26,7 +26,7 @@ Use it for every public beta / early-production release.
 
 ## Current release state
 
-Lore is a public Beta release on PyPI. The project is ready for self-serve local
+Orenyl is a public Beta release on PyPI. The project is ready for self-serve local
 development, evaluation, and early production deployments with authenticated
 `streamable-http` transport. External security certification, penetration testing,
 and enterprise operator packaging are pending future work.

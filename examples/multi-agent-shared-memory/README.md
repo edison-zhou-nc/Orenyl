@@ -1,11 +1,11 @@
 # Multi-Agent Shared Memory
 
-Demonstrates tenant isolation: two agents share the same Lore instance but cannot see each other's tenant-scoped memory.
+Demonstrates tenant isolation: two agents share the same Orenyl instance but cannot see each other's tenant-scoped memory.
 
 ## Run
 
 ```bash
-pip install lore-mcp   # or: pip install -e ../..
+pip install orenyl-mcp-server   # or: pip install -e ../..
 python shared_memory.py
 ```
 

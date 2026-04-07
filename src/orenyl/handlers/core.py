@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from mcp.types import TextContent
 
-from .. import __version__ as lore_version
+from .. import __version__ as orenyl_version
 from .. import audit, env_vars
 from ..auth import authorize_action
 from ..config import (
@@ -395,7 +395,7 @@ async def handle_health(args: dict) -> list[TextContent]:
     payload = {
         "status": "ok" if db_ok else "degraded",
         "db_connected": db_ok,
-        "version": lore_version,
+        "version": orenyl_version,
         "transport": get_transport_mode(),
         "multi_tenant_enabled": multi_tenant_enabled(),
         "encryption_enabled": encryption_enabled,

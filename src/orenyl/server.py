@@ -1,4 +1,4 @@
-"""Lore Governed Memory MCP Server."""
+"""orenyl Governed Memory MCP Server."""
 
 from __future__ import annotations
 
@@ -18,6 +18,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from . import audit, env_vars
+
+env_vars.require_no_legacy_env_vars()
+
 from . import context_pack as context_pack_module
 from .auth import (
     OIDCTokenVerifier,
@@ -55,7 +58,7 @@ from .tenant import (
 )
 from .runtime import get_embedding_provider
 
-DB_PATH = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+DB_PATH = os.environ.get(env_vars.DB_PATH, "orenyl_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
 MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"))
 
@@ -63,7 +66,7 @@ db = Database(DB_PATH)
 engine = LineageEngine(db)
 pack_builder = ContextPackBuilder(db)
 
-app = Server("lore-governed-memory")
+app = Server("orenyl-governed-memory")
 logger = logging.getLogger(__name__)
 _DEFAULT_SALT_WARNING_EMITTED = False
 _token_verifier: OIDCTokenVerifier | None = None
@@ -87,7 +90,7 @@ READ_ONLY_SAFE_TOOLS = {
 
 handle_store_event = core_handlers.handle_store_event
 handle_retrieve_context_pack = core_handlers.handle_retrieve_context_pack
-# Diagnostic helpers stay import-compatible on lore.server but are not MCP tools.
+# Diagnostic helpers stay import-compatible on orenyl.server but are not MCP tools.
 handle_metrics = core_handlers.handle_metrics
 handle_health = core_handlers.handle_health
 handle_audit_trace = core_handlers.handle_audit_trace
@@ -149,7 +152,7 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
     global db, engine, pack_builder
     old_db = db
     resolved_db_path = db_path if db_path is not None else os.environ.get(
-        env_vars.DB_PATH, "lore_memory.db"
+        env_vars.DB_PATH, "orenyl_memory.db"
     )
     DB_PATH = resolved_db_path
     MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
@@ -200,7 +203,7 @@ def _get_consent_service() -> ConsentService:
 
 
 def _get_dr_service() -> DRService:
-    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "lore_snapshots")
+    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "orenyl_snapshots")
     return DRService(db=db, db_path=DB_PATH, snapshot_dir=snapshot_dir)
 
 
@@ -440,6 +443,7 @@ async def _ttl_sweep_loop(
 
 
 def get_transport_mode() -> str:
+    env_vars.require_no_legacy_env_vars()
     return os.environ.get(env_vars.TRANSPORT, "streamable-http").strip().lower()
 
 
@@ -467,12 +471,13 @@ async def _invoke_tool(name: str, arguments: dict[str, Any]) -> Any:
 
 
 def build_fastmcp_server() -> FastMCP:
-    server = FastMCP("lore-governed-memory")
+    server = FastMCP("orenyl-governed-memory")
     register_fastmcp_tools(server, _invoke_tool)
     return server
 
 
 async def run_stdio_server() -> None:
+    env_vars.require_no_legacy_env_vars()
     ttl_delete_mode = os.environ.get(env_vars.TTL_DELETE_MODE, "soft")
     ttl_interval_seconds = int(os.environ.get(env_vars.TTL_SWEEP_INTERVAL_SECONDS, "3600"))
     run_ttl_sweep(delete_mode=ttl_delete_mode)
@@ -491,6 +496,7 @@ async def run_stdio_server() -> None:
 
 
 def main():
+    env_vars.require_no_legacy_env_vars()
     mode = get_transport_mode()
     validate_transport_mode(mode)
     try:

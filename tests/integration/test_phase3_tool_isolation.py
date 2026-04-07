@@ -4,11 +4,11 @@ import json
 import pytest
 from mcp.server.auth.provider import AccessToken
 
-from lore import server
-from lore.context_pack import ContextPackBuilder
-from lore.db import Database
-from lore.lineage import LineageEngine
-from lore.models import Edge, Event, Fact
+from orenyl import server
+from orenyl.context_pack import ContextPackBuilder
+from orenyl.db import Database
+from orenyl.lineage import LineageEngine
+from orenyl.models import Edge, Event, Fact
 
 
 class _Verifier:
@@ -34,9 +34,9 @@ def _reset(monkeypatch):
     monkeypatch.setattr(server, "engine", LineageEngine(fresh_db))
     monkeypatch.setattr(server, "pack_builder", ContextPackBuilder(fresh_db))
     monkeypatch.setattr(server, "_get_token_verifier", lambda: _Verifier())
-    monkeypatch.setenv("LORE_ENABLE_MULTI_TENANT", "1")
-    monkeypatch.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
-    monkeypatch.setenv("LORE_POLICY_SHADOW_MODE", "0")
+    monkeypatch.setenv("ORENYL_ENABLE_MULTI_TENANT", "1")
+    monkeypatch.setenv("ORENYL_ENABLE_AGENT_PERMISSIONS", "1")
+    monkeypatch.setenv("ORENYL_POLICY_SHADOW_MODE", "0")
 
     fresh_db.conn.execute(
         """INSERT INTO agent_permissions (tenant_id, agent_id, domain, action, effect)

@@ -1,4 +1,4 @@
-from lore.noise_filter import should_store
+from orenyl.noise_filter import should_store
 
 
 def test_rejects_secrets_and_allows_normal_content():

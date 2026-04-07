@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture
 def workspace_tmp_path():
-    path = Path(tempfile.mkdtemp(prefix=f"lore-pytest-{uuid.uuid4().hex[:8]}-"))
+    path = Path(tempfile.mkdtemp(prefix=f"orenyl-pytest-{uuid.uuid4().hex[:8]}-"))
     try:
         yield path
     finally:
@@ -17,17 +17,17 @@ def workspace_tmp_path():
 
 @pytest.fixture(autouse=True)
 def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
-    db_path = workspace_tmp_path / "lore_memory.db"
-    audit_db_path = workspace_tmp_path / "lore_audit.db"
-    snapshot_dir = workspace_tmp_path / "lore_snapshots"
+    db_path = workspace_tmp_path / "orenyl_memory.db"
+    audit_db_path = workspace_tmp_path / "orenyl_audit.db"
+    snapshot_dir = workspace_tmp_path / "orenyl_snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("LORE_DB_PATH", str(db_path))
-    monkeypatch.setenv("LORE_AUDIT_DB_PATH", str(audit_db_path))
-    monkeypatch.setenv("LORE_DR_SNAPSHOT_DIR", str(snapshot_dir))
-    monkeypatch.setenv("LORE_TESTING_MODE", "1")
+    monkeypatch.setenv("ORENYL_DB_PATH", str(db_path))
+    monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(audit_db_path))
+    monkeypatch.setenv("ORENYL_DR_SNAPSHOT_DIR", str(snapshot_dir))
+    monkeypatch.setenv("ORENYL_TESTING_MODE", "1")
 
-    server = sys.modules.get("lore.server")
-    audit = sys.modules.get("lore.audit")
+    server = sys.modules.get("orenyl.server")
+    audit = sys.modules.get("orenyl.audit")
     rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None
     reset = getattr(server, "_reset_runtime_state_for_tests", None) if server else None
     reset_audit = getattr(audit, "_reset_for_tests", None) if audit else None
@@ -40,9 +40,9 @@ def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
     try:
         yield
     finally:
-        monkeypatch.setenv("LORE_TESTING_MODE", "1")
-        server = sys.modules.get("lore.server")
-        audit = sys.modules.get("lore.audit")
+        monkeypatch.setenv("ORENYL_TESTING_MODE", "1")
+        server = sys.modules.get("orenyl.server")
+        audit = sys.modules.get("orenyl.audit")
         rebind = getattr(server, "_rebind_runtime_state_for_tests", None) if server else None
         reset = getattr(server, "_reset_runtime_state_for_tests", None) if server else None
         reset_audit = getattr(audit, "_reset_for_tests", None) if audit else None
