@@ -112,3 +112,12 @@ def test_resolve_runtime_keyring_accepts_16_char_passphrase(monkeypatch):
 
     assert keyring.active_version == "v1"
     assert keyring.keys["v1"].key
+
+
+def test_resolve_runtime_keyring_rejects_legacy_encryption_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_ENCRYPTION_PASSPHRASE", "legacy-passphrase-123")
+        m.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+
+        with pytest.raises(RuntimeError, match="legacy environment variables"):
+            resolve_runtime_keyring()

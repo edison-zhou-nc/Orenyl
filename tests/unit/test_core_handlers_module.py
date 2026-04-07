@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -31,6 +32,15 @@ def _install_core_runtime(monkeypatch) -> Database:
 
 def test_server_re_exports_core_handlers():
     assert server.handle_store_event is handle_store_event
+
+
+def test_runtime_encryption_material_rejects_legacy_encryption_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_ENCRYPTION_PASSPHRASE", "legacy-passphrase-123")
+        m.setenv("LORE_ENCRYPTION_SALT", base64.b64encode(b"0123456789abcdef").decode("ascii"))
+
+        with pytest.raises(RuntimeError, match="legacy environment variables"):
+            core._runtime_encryption_material()
 
 
 def test_store_event_rejects_non_list_domains(monkeypatch):
