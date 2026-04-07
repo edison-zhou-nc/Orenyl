@@ -13,7 +13,7 @@ Orenyl gives agents durable memory without losing control: every derived fact is
 
 **Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
 
-Orenyl is ready for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
+Orenyl is in early production / public beta. It is ready for self-serve local development and evaluation, and production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
 
 ## Why Orenyl
 
@@ -44,6 +44,7 @@ python -m pip install -r requirements-dev.txt
 - [Claude Code Integration](docs/guides/claude-code.md)
 - [OpenClaw Integration](docs/guides/openclaw.md)
 - [Examples](examples/) - health tracker, meeting memory, multi-agent isolation
+- [Production HTTP Deployment Template](docs/guides/production-http.md)
 
 ## Architecture
 
@@ -101,6 +102,8 @@ Use `streamable-http` with authenticated tool calls for real deployments.
 3. Pass a JWT per tool call using `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments.
 4. Start `orenyl-server` or `python -m orenyl.server`.
 5. Treat stdio mode as development only.
+
+For an operator-facing setup template, see [docs/guides/production-http.md](docs/guides/production-http.md) and [docs/guides/production.env.example](docs/guides/production.env.example).
 
 Orenyl does not currently read an HTTP `Authorization` header inside tool dispatch. If you need gateway-level HTTP auth, terminate that at your proxy or application edge and still pass the JWT into the tool call contract described in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 

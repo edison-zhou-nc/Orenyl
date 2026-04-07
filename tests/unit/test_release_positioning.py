@@ -30,3 +30,11 @@ def test_readme_scopes_release_honestly() -> None:
     assert "not yet" in readme.lower() or "not externally certified" in readme.lower()
     assert "enterprise-certified" not in readme.lower()
     assert "production-grade ga" not in readme.lower()
+
+
+def test_readme_describes_early_production_without_claiming_enterprise_ga() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8").lower()
+
+    assert "orenyl is in early production / public beta." in readme
+    assert "enterprise-complete" in readme
+    assert "enterprise certified" not in readme
