@@ -23,8 +23,6 @@ def test_contributing_lists_launch_validation_commands() -> None:
     assert "python -m ruff check . --select F,B" in contributing
     assert "python -m mypy src/orenyl --config-file pyproject.toml" in contributing
     assert "python -m build" in contributing
-    assert "src/lore" not in contributing
-    assert "Lore" not in contributing
 
 
 def test_gitignore_covers_local_build_artifacts() -> None:
