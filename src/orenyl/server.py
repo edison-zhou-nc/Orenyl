@@ -58,7 +58,7 @@ from .tenant import (
 )
 from .runtime import get_embedding_provider
 
-DB_PATH = os.environ.get(env_vars.DB_PATH, "lore_memory.db")
+DB_PATH = os.environ.get(env_vars.DB_PATH, "orenyl_memory.db")
 MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
 MAX_LIST_EVENTS_LIMIT = int(os.environ.get(env_vars.MAX_LIST_EVENTS_LIMIT, "200"))
 
@@ -152,7 +152,7 @@ def _rebind_runtime_state_for_tests(db_path: str | None = None) -> None:
     global db, engine, pack_builder
     old_db = db
     resolved_db_path = db_path if db_path is not None else os.environ.get(
-        env_vars.DB_PATH, "lore_memory.db"
+        env_vars.DB_PATH, "orenyl_memory.db"
     )
     DB_PATH = resolved_db_path
     MAX_CONTEXT_PACK_LIMIT = int(os.environ.get(env_vars.MAX_CONTEXT_PACK_LIMIT, "100"))
@@ -203,7 +203,7 @@ def _get_consent_service() -> ConsentService:
 
 
 def _get_dr_service() -> DRService:
-    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "lore_snapshots")
+    snapshot_dir = os.environ.get(env_vars.DR_SNAPSHOT_DIR, "orenyl_snapshots")
     return DRService(db=db, db_path=DB_PATH, snapshot_dir=snapshot_dir)
 
 

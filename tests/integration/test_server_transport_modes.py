@@ -73,7 +73,7 @@ def test_server_import_rejects_legacy_env_vars_before_side_effects(tmp_path):
     combined_output = "\n".join(part for part in (result.stdout, result.stderr) if part)
     assert result.returncode != 0
     assert "legacy environment variables are not supported: LORE_DB_PATH" in combined_output
-    assert not (tmp_path / "lore_memory.db").exists()
+    assert not (tmp_path / "orenyl_memory.db").exists()
 
 
 def test_main_rejects_legacy_env_vars_before_startup(monkeypatch):

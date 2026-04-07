@@ -2,7 +2,7 @@
 
 ## Scope
 
-Lore currently supports database-wide disaster recovery for single-tenant SQLite deployments through:
+Orenyl currently supports database-wide disaster recovery for single-tenant SQLite deployments through:
 
 - snapshot creation
 - snapshot verification
@@ -24,7 +24,7 @@ If you need tighter objectives, run snapshots more frequently and rehearse resto
 3. Verify the snapshot with `verify_snapshot`.
 4. Store the verified artifact in your backup retention workflow.
 
-`create_snapshot` does not return `storage_uri` in the API response. Lore keeps snapshot file paths in internal DR metadata instead.
+`create_snapshot` does not return `storage_uri` in the API response. Orenyl keeps snapshot file paths in internal DR metadata instead.
 
 ## Verification flow
 
@@ -48,11 +48,11 @@ Verification fails closed when:
 1. Stop live traffic.
 2. Run `verify_snapshot` for the target snapshot.
 3. Call `restore_snapshot`.
-4. Restart Lore.
+4. Restart Orenyl.
 5. Run smoke tests against the restored database.
 6. Confirm expected event counts, retrieval behavior, and audit access still work.
 
-Lore creates a `.pre_restore.bak` file beside the active database before restoring when the target database already exists.
+Orenyl creates a `.pre_restore.bak` file beside the active database before restoring when the target database already exists.
 
 ## Restore rehearsal checklist
 

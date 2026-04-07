@@ -10,7 +10,7 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Explicit local stdio development mode for self-serve onboarding and demos.
 
 ### Changed
-- Renamed the public PyPI distribution to `lore-mcp-server` to avoid conflict with an unrelated `lore-mcp` package.
+- Renamed the public PyPI distribution to `orenyl-mcp-server` to avoid conflict with an unrelated `lore-mcp` package.
 - Clarified public launch messaging to distinguish local development from authenticated production deployment.
 - Aligned the MCP contract and onboarding docs with the live runtime behavior.
 
@@ -27,14 +27,14 @@ The format is based on Keep a Changelog and this project follows semantic versio
 ## [1.0.0rc1] - 2026-03-16
 
 ### Added
-- GA decomposition gates for `src/lore/db.py` and `src/lore/server.py`.
+- GA decomposition gates for `src/orenyl/db.py` and `src/orenyl/server.py`.
 - Release metadata, package version export, and repository URLs.
 - Release, migration, integration, scaling, DR, and architecture documentation.
 
 ### Changed
-- Split database persistence into repository mixins while keeping `from lore.db import Database` stable.
-- Split MCP handler logic into `lore.handlers.*` modules while keeping `lore.server.handle_*` imports stable.
-- Trimmed `src/lore/server.py` to runtime wiring, dispatch, transport, and entrypoints.
+- Split database persistence into repository mixins while keeping `from orenyl.db import Database` stable.
+- Split MCP handler logic into `orenyl.handlers.*` modules while keeping `orenyl.server.handle_*` imports stable.
+- Trimmed `src/orenyl/server.py` to runtime wiring, dispatch, transport, and entrypoints.
 
 ### Fixed
 - Removed shadowed legacy database methods and dead legacy server handlers.

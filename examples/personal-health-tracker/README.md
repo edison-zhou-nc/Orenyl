@@ -1,6 +1,6 @@
 # Personal Health Tracker
 
-Demonstrates Lore's memory model with health events, single-record deletion, and deletion verification.
+Demonstrates Orenyl's memory model with health events, single-record deletion, and deletion verification.
 
 ## Run
 

@@ -1,6 +1,6 @@
 # Meeting Memory
 
-Demonstrates Lore's lineage tracking: store meeting notes, derive facts, and trace where each fact came from.
+Demonstrates Orenyl's lineage tracking: store meeting notes, derive facts, and trace where each fact came from.
 
 ## Run
 

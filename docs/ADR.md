@@ -2,15 +2,15 @@
 
 ## ADR 1: Preserve the `Database` import surface
 
-The GA refactor keeps `from lore.db import Database` stable. Internal persistence moved into repository mixins to reduce file size and improve reviewability without forcing constructor churn across the codebase.
+The GA refactor keeps `from orenyl.db import Database` stable. Internal persistence moved into repository mixins to reduce file size and improve reviewability without forcing constructor churn across the codebase.
 
-## ADR 2: Preserve `lore.server.handle_*` imports
+## ADR 2: Preserve `orenyl.server.handle_*` imports
 
-Handler logic moved into `lore.handlers.*`, but `lore.server` still re-exports the established handler names. This keeps tests and integrators stable while allowing `server.py` to shrink.
+Handler logic moved into `orenyl.handlers.*`, but `orenyl.server` still re-exports the established handler names. This keeps tests and integrators stable while allowing `server.py` to shrink.
 
 ## ADR 3: Use lazy dependency access for handlers
 
-Handlers access runtime singletons through `lore.handlers._deps`. This is intentionally coupled to `lore.server` and favors import compatibility over fully standalone handlers.
+Handlers access runtime singletons through `orenyl.handlers._deps`. This is intentionally coupled to `orenyl.server` and favors import compatibility over fully standalone handlers.
 
 ## ADR 4: Treat decomposition as a gated invariant
 
@@ -38,5 +38,5 @@ The core memory model (events, facts, edges, deletion, lineage, 14-tool MCP cont
 
 ## ADR 10: Embedding provider abstraction
 
-The `EmbeddingProvider` protocol allows swapping between deterministic hash-based embeddings (zero-config, offline, good for dev/test) and real embedding models (OpenAI, future: local transformers). This abstraction exists because embedding quality directly affects retrieval relevance, and different deployments have different constraints (air-gapped vs. cloud, cost vs. quality). The hash-local provider ensures Lore works with zero external dependencies out of the box.
+The `EmbeddingProvider` protocol allows swapping between deterministic hash-based embeddings (zero-config, offline, good for dev/test) and real embedding models (OpenAI, future: local transformers). This abstraction exists because embedding quality directly affects retrieval relevance, and different deployments have different constraints (air-gapped vs. cloud, cost vs. quality). The hash-local provider ensures Orenyl works with zero external dependencies out of the box.
 

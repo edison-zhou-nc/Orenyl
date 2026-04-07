@@ -19,6 +19,9 @@ def test_readme_documents_correct_default_values():
     # Each entry is (env_var_name, expected_default_cell) â€” the literal value shown
     # in the README table's default column.  Update this list when runtime defaults change.
     expected_defaults = [
+        ("ORENYL_DB_PATH", "`orenyl_memory.db`"),
+        ("ORENYL_AUDIT_DB_PATH", "`orenyl_audit.db`"),
+        ("ORENYL_DR_SNAPSHOT_DIR", "`orenyl_snapshots`"),
         ("ORENYL_RATE_LIMIT_RPM", "`100`"),
         ("ORENYL_COMPLIANCE_STRICT_MODE", "`1`"),
         ("ORENYL_VECTOR_BACKEND", "`local`"),

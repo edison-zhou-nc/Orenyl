@@ -19,7 +19,7 @@ def _now_iso() -> str:
 
 
 def _db_path() -> str:
-    return os.environ.get(env_vars.AUDIT_DB_PATH, "lore_audit.db")
+    return os.environ.get(env_vars.AUDIT_DB_PATH, "orenyl_audit.db")
 
 
 _LOCK = threading.RLock()
