@@ -403,7 +403,7 @@ git clone https://github.com/edison-zhou-nc/orenyl.git
 cd orenyl
 ```
 
-Rename product-facing asset references if needed, for example `orenyl_social_preview.png` -> `orenyl_social_preview.png`.
+Rename product-facing asset references if needed, for example `lore_social_preview.png` -> `orenyl_social_preview.png`.
 
 **Step 3: Update legal/copyright strings**
 
@@ -555,4 +555,3 @@ Only do this if the plan or design docs changed during execution.
 **Step 5: Prepare for review**
 
 Request code review, then use `@superpowers:finishing-a-development-branch` before merge or cleanup.
-
