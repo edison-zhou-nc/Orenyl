@@ -18,6 +18,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from . import audit, env_vars
+
+env_vars.require_no_legacy_env_vars()
+
 from . import context_pack as context_pack_module
 from .auth import (
     OIDCTokenVerifier,
