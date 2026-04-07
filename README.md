@@ -1,21 +1,21 @@
-# Lore
+# Orenyl
 
-[![CI](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Lore/actions/workflows/ci.yml)
+[![CI](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/orenyl-mcp-server)](https://pypi.org/project/orenyl-mcp-server/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-![Lore social preview](docs/assets/lore_social_preview.png)
+![Orenyl social preview](docs/assets/orenyl_social_preview.png)
 
 production-minded governed memory MCP server for AI agents, with deterministic deletion and auditable lineage.
 
-Lore gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification proof.
+Orenyl gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification proof.
 
 **Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
 
-Lore is ready for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Lore is not yet externally certified or enterprise-complete.
+Orenyl is ready for self-serve local development and evaluation. Production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
 
-## Why Lore
+## Why Orenyl
 
 - **Deterministic memory model** - immutable events, derived facts, lineage edges
 - **Deletion guarantees** - cascade invalidation plus recompute plus verification proof
@@ -32,22 +32,22 @@ pip install orenyl-mcp-server
 Or from source:
 
 ```bash
-git clone https://github.com/edison-zhou-nc/Lore.git
-cd Lore
+git clone https://github.com/edison-zhou-nc/Orenyl.git
+cd Orenyl
 python -m pip install -e .
 python -m pip install -r requirements-dev.txt
 ```
 
 ## Get Started
 
-- [5-Minute Quickstart](docs/quickstart.md) - try Lore locally in minutes
+- [5-Minute Quickstart](docs/quickstart.md) - try Orenyl locally in minutes
 - [Claude Code Integration](docs/guides/claude-code.md)
 - [OpenClaw Integration](docs/guides/openclaw.md)
 - [Examples](examples/) - health tracker, meeting memory, multi-agent isolation
 
 ## Architecture
 
-Lore stores:
+Orenyl stores:
 
 - `events`: immutable user memory inputs.
 - `facts`: deterministic derivations from active events.
@@ -60,7 +60,7 @@ Core invariant: if upstream data is deleted, downstream derivations must not res
 
 Use this mode for self-serve evaluation, local MCP clients, and demos. It is development only.
 
-1. Start Lore in local stdio mode:
+1. Start Orenyl in local stdio mode:
 
 ```bash
 ORENYL_TRANSPORT=stdio ORENYL_ALLOW_STDIO_DEV=1 python -m orenyl.server
@@ -77,14 +77,14 @@ ORENYL_TRANSPORT=stdio ORENYL_ALLOW_STDIO_DEV=1 python -m orenyl.server
       "env": {
         "ORENYL_TRANSPORT": "stdio",
         "ORENYL_ALLOW_STDIO_DEV": "1",
-        "ORENYL_DB_PATH": "./lore_memory.db"
+        "ORENYL_DB_PATH": "./orenyl_memory.db"
       }
     }
   }
 }
 ```
 
-This mode uses Lore's explicit local-dev auth bypass so you do not need external OIDC setup for local evaluation.
+This mode uses Orenyl's explicit local-dev auth bypass so you do not need external OIDC setup for local evaluation.
 
 3. Basic flow:
 - `store_event`
@@ -102,7 +102,7 @@ Use `streamable-http` with authenticated tool calls for real deployments.
 4. Start `orenyl-server` or `python -m orenyl.server`.
 5. Treat stdio mode as development only.
 
-Lore does not currently read an HTTP `Authorization` header inside tool dispatch. If you need gateway-level HTTP auth, terminate that at your proxy or application edge and still pass the JWT into the tool call contract described in [docs/INTEGRATION.md](docs/INTEGRATION.md).
+Orenyl does not currently read an HTTP `Authorization` header inside tool dispatch. If you need gateway-level HTTP auth, terminate that at your proxy or application edge and still pass the JWT into the tool call contract described in [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## MCP Tool Contract (v2)
 
@@ -129,9 +129,9 @@ Authenticated transports use the same 14-tool contract below. When auth is enabl
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `ORENYL_DB_PATH` | `lore_memory.db` | SQLite database path |
-| `ORENYL_AUDIT_DB_PATH` | `lore_audit.db` | SQLite audit log database path |
-| `ORENYL_DR_SNAPSHOT_DIR` | `lore_snapshots` | Directory used for disaster recovery snapshots |
+| `ORENYL_DB_PATH` | `orenyl_memory.db` | SQLite database path |
+| `ORENYL_AUDIT_DB_PATH` | `orenyl_audit.db` | SQLite audit log database path |
+| `ORENYL_DR_SNAPSHOT_DIR` | `orenyl_snapshots` | Directory used for disaster recovery snapshots |
 | `ORENYL_TRANSPORT` | `streamable-http` | Server transport mode |
 | `ORENYL_ALLOW_STDIO_DEV` | `0` | Allow stdio transport in dev |
 | `ORENYL_MAX_CONTEXT_PACK_LIMIT` | `100` | Upper bound for context retrieval |
@@ -184,7 +184,7 @@ Notes:
 
 ## Development
 
-- Code layout: `src/lore/`
+- Code layout: `src/orenyl/`
 - Tests: `tests/unit/`, `tests/integration/`
 - Linting: Ruff + Black configured in `pyproject.toml`
 

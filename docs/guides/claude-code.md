@@ -1,6 +1,6 @@
-# Lore with Claude Code
+# Orenyl with Claude Code
 
-Add Lore as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
+Add Orenyl as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
 
 ## Setup
 
@@ -14,7 +14,7 @@ Add to your project's `.mcp.json`:
       "env": {
         "ORENYL_TRANSPORT": "stdio",
         "ORENYL_ALLOW_STDIO_DEV": "1",
-        "ORENYL_DB_PATH": "./lore_memory.db"
+        "ORENYL_DB_PATH": "./orenyl_memory.db"
       }
     }
   }
@@ -23,7 +23,7 @@ Add to your project's `.mcp.json`:
 
 ## Verify
 
-Start Claude Code in your project directory. You should see `orenyl` listed as an available MCP server. Claude can now use all 14 Lore tools:
+Start Claude Code in your project directory. You should see `orenyl` listed as an available MCP server. Claude can now use all 14 Orenyl tools:
 
 This stdio setup is for local development only. Production deployment mode should use authenticated `streamable-http`.
 

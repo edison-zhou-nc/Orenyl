@@ -17,9 +17,9 @@ def workspace_tmp_path():
 
 @pytest.fixture(autouse=True)
 def _reset_server_runtime_state(workspace_tmp_path, monkeypatch):
-    db_path = workspace_tmp_path / "lore_memory.db"
-    audit_db_path = workspace_tmp_path / "lore_audit.db"
-    snapshot_dir = workspace_tmp_path / "lore_snapshots"
+    db_path = workspace_tmp_path / "orenyl_memory.db"
+    audit_db_path = workspace_tmp_path / "orenyl_audit.db"
+    snapshot_dir = workspace_tmp_path / "orenyl_snapshots"
     snapshot_dir.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("ORENYL_DB_PATH", str(db_path))
     monkeypatch.setenv("ORENYL_AUDIT_DB_PATH", str(audit_db_path))

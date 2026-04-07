@@ -6,19 +6,19 @@ This release candidate preserves public import stability while hardening the int
 
 ## Stable imports
 
-- `from lore.db import Database` is unchanged.
-- `from lore import server` is unchanged.
-- Existing `lore.server.handle_*` imports remain valid.
+- `from orenyl.db import Database` is unchanged.
+- `from orenyl import server` is unchanged.
+- Existing `orenyl.server.handle_*` imports remain valid.
 
 ## Internal refactors
 
-- `Database` now composes repository mixins from `lore.repositories`.
-- MCP handlers now live in `lore.handlers`.
-- Tool schemas and FastMCP registration are centralized in `lore.handlers.tooling`.
+- `Database` now composes repository mixins from `orenyl.repositories`.
+- MCP handlers now live in `orenyl.handlers`.
+- Tool schemas and FastMCP registration are centralized in `orenyl.handlers.tooling`.
 
 ## Schema migration
 
-- Lore still auto-migrates SQLite schema changes on startup.
+- Orenyl still auto-migrates SQLite schema changes on startup.
 - Existing databases are upgraded in place.
 - Tenant, rule-version, consent, and DR tables remain startup-managed.
 

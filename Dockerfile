@@ -12,11 +12,11 @@ COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.lock \
     && pip install --no-cache-dir --no-deps . \
-    && adduser --disabled-password --gecos "" --uid 10001 lore \
-    && chown -R lore:lore /app
+    && adduser --disabled-password --gecos "" --uid 10001 orenyl \
+    && chown -R orenyl:orenyl /app
 
-USER lore
+USER orenyl
 
 EXPOSE 8000
 
-CMD ["python", "-m", "lore.server"]
+CMD ["python", "-m", "orenyl.server"]

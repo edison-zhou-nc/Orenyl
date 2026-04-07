@@ -36,19 +36,49 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
 def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
     expectations = {
-        REPO_ROOT / "README.md": ["pip install orenyl-mcp-server", "orenyl-server", '"orenyl": {'],
-        REPO_ROOT / "docs" / "quickstart.md": ["pip install orenyl-mcp-server", "orenyl-server", '"orenyl": {'],
+        REPO_ROOT / "README.md": [
+            "# Orenyl",
+            "https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml",
+            "docs/assets/orenyl_social_preview.png",
+            "git clone https://github.com/edison-zhou-nc/Orenyl.git",
+            "cd Orenyl",
+            "pip install orenyl-mcp-server",
+            "orenyl-server",
+            '"orenyl": {',
+            "orenyl_memory.db",
+            "orenyl_audit.db",
+            "orenyl_snapshots",
+            "Code layout: `src/orenyl/`",
+        ],
+        REPO_ROOT / "docs" / "quickstart.md": [
+            "pip install orenyl-mcp-server",
+            "orenyl-server",
+            '"orenyl": {',
+            "ORENYL_DB_PATH\": \"./orenyl_memory.db\"",
+        ],
         REPO_ROOT / "docs" / "INTEGRATION.md": ["orenyl-server", "python -m orenyl.server"],
-        REPO_ROOT / "docs" / "guides" / "claude-code.md": ["orenyl-server", '"orenyl": {'],
-        REPO_ROOT / "docs" / "guides" / "openclaw.md": ["pip install orenyl-mcp-server", "orenyl-server", '"orenyl": {'],
+        REPO_ROOT / "docs" / "guides" / "claude-code.md": [
+            "orenyl-server",
+            '"orenyl": {',
+            "ORENYL_DB_PATH\": \"./orenyl_memory.db\"",
+        ],
+        REPO_ROOT / "docs" / "guides" / "openclaw.md": [
+            "pip install orenyl-mcp-server",
+            "orenyl-server",
+            '"orenyl": {',
+            "Orenyl",
+        ],
         REPO_ROOT / "examples" / "meeting-memory" / "README.md": [
             "pip install orenyl-mcp-server",
+            "Orenyl",
         ],
         REPO_ROOT / "examples" / "personal-health-tracker" / "README.md": [
             "pip install orenyl-mcp-server",
+            "Orenyl",
         ],
         REPO_ROOT / "examples" / "multi-agent-shared-memory" / "README.md": [
             "pip install orenyl-mcp-server",
+            "Orenyl",
         ],
     }
     forbidden_patterns = [

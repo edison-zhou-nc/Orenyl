@@ -28,15 +28,15 @@ jobs:
           python -m ruff check . --select F,B
           python -m ruff check src --select S105,S324,S603,S607,S608
       - name: Security scan (bandit)
-        run: python -m bandit -r src/lore -ll -q
+        run: python -m bandit -r src/orenyl -ll -q
       - name: Dependency audit - production (pip-audit)
         run: python -m pip_audit -r requirements.lock --disable-pip
       - name: Dependency audit - dev tools (pip-audit)
         run: python -m pip_audit -r requirements-dev.lock --disable-pip
       - name: Type check (mypy)
-        run: python -m mypy src/lore --config-file pyproject.toml
+        run: python -m mypy src/orenyl --config-file pyproject.toml
       - name: Run unit + integration tests with coverage
-        run: python -m pytest tests/unit tests/integration -q --cov=src/lore --cov-report=term-missing --cov-fail-under=80
+        run: python -m pytest tests/unit tests/integration -q --cov=src/orenyl --cov-report=term-missing --cov-fail-under=80
       - name: Run GA health and perf gates
         run: |
           python -m pytest \
@@ -60,4 +60,4 @@ jobs:
       - name: Smoke import from built package
         run: |
           python -m pip install --force-reinstall dist/*.whl
-          python -c "import lore, lore.server; print('ok')"
+          python -c "import orenyl, orenyl.server; print('ok')"

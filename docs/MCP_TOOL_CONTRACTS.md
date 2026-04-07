@@ -1,6 +1,6 @@
 # MCP Tool Contracts
 
-Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`ORENYL_TRANSPORT=stdio` with `ORENYL_ALLOW_STDIO_DEV=1`), tool calls run under the explicit local-dev auth bypass. In authenticated transports, tool calls require a valid auth token and server-side authorization is enforced per tool.
+Orenyl currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`ORENYL_TRANSPORT=stdio` with `ORENYL_ALLOW_STDIO_DEV=1`), tool calls run under the explicit local-dev auth bypass. In authenticated transports, tool calls require a valid auth token and server-side authorization is enforced per tool.
 
 ## Common expectations
 
@@ -109,4 +109,4 @@ Lore currently exposes 14 MCP-dispatched tools. In local dev stdio mode (`ORENYL
 
 ## Compatibility note
 
-`handle_metrics` and `handle_health` remain importable from `lore.server` for diagnostics, but they are intentionally not part of the MCP-dispatched tool surface.
+`handle_metrics` and `handle_health` remain importable from `orenyl.server` for diagnostics, but they are intentionally not part of the MCP-dispatched tool surface.

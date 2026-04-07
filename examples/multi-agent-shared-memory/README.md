@@ -1,6 +1,6 @@
 # Multi-Agent Shared Memory
 
-Demonstrates tenant isolation: two agents share the same Lore instance but cannot see each other's tenant-scoped memory.
+Demonstrates tenant isolation: two agents share the same Orenyl instance but cannot see each other's tenant-scoped memory.
 
 ## Run
 

@@ -1,4 +1,4 @@
-# Lore v2 Baseline Benchmarks
+# Orenyl v2 Baseline Benchmarks
 
 Date: 2026-03-04
 Environment: Windows, Python 3.12.10, SQLite in-memory
