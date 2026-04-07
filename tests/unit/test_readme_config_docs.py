@@ -36,3 +36,9 @@ def test_readme_documents_correct_default_values():
         if f"| `{name}` | {expected}" not in readme:
             wrong.append(f"{name}: expected default {expected}")
     assert wrong == [], "README default values disagree with runtime:\n" + "\n".join(wrong)
+
+
+def test_readme_links_to_production_http_guide() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "docs/guides/production-http.md" in readme

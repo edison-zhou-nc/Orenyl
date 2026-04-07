@@ -19,6 +19,7 @@ Orenyl supports two server transports:
 - Transport: `streamable-http`
 - Auth behavior: per-tool JWT authentication through `auth_token` or `_auth_token`
 - Intended use: protected real deployments and non-dev integrations
+- Operator template: [guides/production-http.md](guides/production-http.md) with [guides/production.env.example](guides/production.env.example)
 
 ## Production auth contract
 

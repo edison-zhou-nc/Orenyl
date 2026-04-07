@@ -22,7 +22,6 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install -r requirements-dev.lock
           python -m pip install --no-deps -e .
-          python -m pip install build pytest pytest-cov mypy bandit pip-audit
       - name: Ruff lint (correctness + security guardrails)
         run: |
           python -m ruff check . --select F,B
