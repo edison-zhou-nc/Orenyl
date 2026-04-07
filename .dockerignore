@@ -11,11 +11,12 @@ __pycache__
 .worktrees
 dist
 dist_fix
+lore_snapshots
+orenyl_snapshots
 tests
 examples
 scenarios
 scripts
-orenyl_snapshots
 docs
 LICENSE
 CODE_OF_CONDUCT.md

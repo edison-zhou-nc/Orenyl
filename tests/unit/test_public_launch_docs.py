@@ -53,13 +53,13 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
             "pip install orenyl-mcp-server",
             "orenyl-server",
             '"orenyl": {',
-            "ORENYL_DB_PATH\": \"./orenyl_memory.db\"",
+            'ORENYL_DB_PATH": "./orenyl_memory.db"',
         ],
         REPO_ROOT / "docs" / "INTEGRATION.md": ["orenyl-server", "python -m orenyl.server"],
         REPO_ROOT / "docs" / "guides" / "claude-code.md": [
             "orenyl-server",
             '"orenyl": {',
-            "ORENYL_DB_PATH\": \"./orenyl_memory.db\"",
+            'ORENYL_DB_PATH": "./orenyl_memory.db"',
         ],
         REPO_ROOT / "docs" / "guides" / "openclaw.md": [
             "pip install orenyl-mcp-server",
@@ -86,3 +86,5 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
             assert expected in content, (
                 f"missing public launch reference in {path.relative_to(REPO_ROOT)}"
             )
+
+    assert (REPO_ROOT / "docs" / "assets" / "orenyl_social_preview.png").exists()

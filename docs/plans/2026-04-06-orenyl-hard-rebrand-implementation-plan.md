@@ -68,7 +68,7 @@ git commit -m "test: freeze Orenyl public contract"
 - Rename: `src/lore` -> `src/orenyl`
 - Modify: `pyproject.toml`
 - Modify: `scripts/demo_v2.py`
-- Modify: `scripts/lore_dr.py`
+- Modify: `scripts/orenyl_dr.py`
 - Modify: `scripts/run_eval.py`
 - Modify: `examples/meeting-memory/meeting_memory.py`
 - Modify: `examples/personal-health-tracker/health_tracker.py`
@@ -307,7 +307,7 @@ git commit -m "chore: rename package metadata and release surfaces to Orenyl"
 - Modify: `examples/personal-health-tracker/health_tracker.py`
 - Modify: `examples/multi-agent-shared-memory/shared_memory.py`
 - Modify: `scripts/demo_v2.py`
-- Modify: `scripts/lore_dr.py`
+- Modify: `scripts/orenyl_dr.py`
 - Modify: `scripts/run_eval.py`
 - Modify: `docs/guides/openclaw.md`
 - Modify: `docs/guides/claude-code.md`
@@ -403,7 +403,7 @@ git clone https://github.com/edison-zhou-nc/orenyl.git
 cd orenyl
 ```
 
-Rename product-facing asset references if needed, for example `lore_social_preview.png` -> `orenyl_social_preview.png`.
+Rename product-facing asset references if needed, for example `orenyl_social_preview.png` -> `orenyl_social_preview.png`.
 
 **Step 3: Update legal/copyright strings**
 

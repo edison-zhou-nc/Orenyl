@@ -39,8 +39,22 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
 
         def execute(self, sql: str, params=None):
             self.conn.executed.append((sql, params))
-            if sql.lstrip().startswith("SELECT"):
+            sql = sql.strip()
+            if sql.startswith("SELECT to_regclass"):
+                table_name = sql.split("'")[1].split(".")[-1]
+                self._rows = [(table_name,)] if table_name in self.conn.tables else [(None,)]
+                return
+            if sql.startswith("CREATE TABLE IF NOT EXISTS orenyl_vectors"):
+                self.conn.tables.add("orenyl_vectors")
+                return
+            if sql.startswith("INSERT INTO orenyl_vectors"):
+                self.conn.tables.add("orenyl_vectors")
+                return
+            if sql.startswith("SELECT item_id, embedding"):
                 self._rows = [("fact:best", encode_vector([1.0, 0.0]))]
+
+        def fetchone(self):
+            return self._rows[0] if self._rows else None
 
         def fetchall(self):
             return list(self._rows)
@@ -51,6 +65,7 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
             self.commits = 0
             self.rollbacks = 0
             self.executed: list[tuple[str, object]] = []
+            self.tables = set()
 
         def cursor(self):
             return _Cursor(self)
@@ -85,3 +100,96 @@ def test_pgvector_backend_reuses_connection_until_closed(monkeypatch):
     assert created[0].commits == 1
     assert created[0].closed is True
     assert created[1].commits == 1
+
+
+def test_pgvector_backend_reads_legacy_lore_vectors_table(monkeypatch):
+    created: list[object] = []
+
+    class _Cursor:
+        def __init__(self, conn):
+            self.conn = conn
+            self._rows: list[tuple[str, str]] = []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def execute(self, sql: str, params=None):
+            self.conn.executed.append((sql, params))
+            sql = sql.strip()
+            if sql.startswith("SELECT to_regclass"):
+                table_name = sql.split("'")[1].split(".")[-1]
+                self._rows = [(table_name,)] if table_name in self.conn.tables else [(None,)]
+                return
+            if sql.startswith("ALTER TABLE lore_vectors RENAME TO orenyl_vectors"):
+                self.conn.tables["orenyl_vectors"] = self.conn.tables.pop("lore_vectors")
+                return
+            if sql.startswith("CREATE TABLE IF NOT EXISTS orenyl_vectors"):
+                self.conn.tables.setdefault("orenyl_vectors", [])
+                return
+            if sql.startswith("INSERT INTO orenyl_vectors") and "SELECT" in sql:
+                legacy_rows = self.conn.tables.get("lore_vectors", [])
+                target = self.conn.tables.setdefault("orenyl_vectors", [])
+                for row in legacy_rows:
+                    target.append(row)
+                return
+            if sql.startswith("INSERT INTO orenyl_vectors"):
+                namespace, item_id, embedding = params
+                table = self.conn.tables.setdefault("orenyl_vectors", [])
+                table[:] = [row for row in table if row[1] != item_id]
+                table.append((namespace, item_id, embedding))
+                return
+            if sql.startswith("SELECT item_id, embedding"):
+                namespace = params[0]
+                rows = self.conn.tables.get("orenyl_vectors", [])
+                self._rows = [
+                    (item_id, embedding) for ns, item_id, embedding in rows if ns == namespace
+                ]
+
+        def fetchone(self):
+            return self._rows[0] if self._rows else None
+
+        def fetchall(self):
+            return list(self._rows)
+
+    class _Conn:
+        def __init__(self):
+            self.closed = False
+            self.commits = 0
+            self.rollbacks = 0
+            self.executed: list[tuple[str, object]] = []
+            self.tables = set()
+            self.tables = {
+                "lore_vectors": [("tenant-a", "fact:legacy", encode_vector([1.0, 0.0]))]
+            }
+
+        def cursor(self):
+            return _Cursor(self)
+
+        def commit(self):
+            self.commits += 1
+
+        def rollback(self):
+            self.rollbacks += 1
+
+        def close(self):
+            self.closed = True
+
+    def _connect(dsn: str, autocommit: bool = False):
+        assert dsn == "postgresql://example"
+        assert autocommit is False
+        conn = _Conn()
+        created.append(conn)
+        return conn
+
+    monkeypatch.setitem(sys.modules, "psycopg", types.SimpleNamespace(connect=_connect))
+    backend = PgvectorVectorBackend(dsn="postgresql://example")
+
+    ids = backend.query(namespace="tenant-a", query=[1.0, 0.0], top_k=1)
+
+    assert ids == ["fact:legacy"]
+    assert len(created) == 1
+    assert "lore_vectors" not in created[0].tables
+    assert "orenyl_vectors" in created[0].tables
