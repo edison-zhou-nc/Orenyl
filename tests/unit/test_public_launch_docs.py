@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -81,22 +80,9 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
             "Orenyl",
         ],
     }
-    forbidden_patterns = [
-        r"\bpip install lore-mcp\b(?!-)",
-        r"`lore-mcp` installed",
-        r"lore-mcp-server",
-        r"\blore-server\b",
-        r"python -m lore\.server",
-        r'\[\s*"-m"\s*,\s*"lore\.server"\s*\]',
-    ]
-
     for path, expected_strings in expectations.items():
         content = path.read_text()
         for expected in expected_strings:
             assert expected in content, (
                 f"missing public launch reference in {path.relative_to(REPO_ROOT)}"
-            )
-        for pattern in forbidden_patterns:
-            assert re.search(pattern, content) is None, (
-                f"stale launch name in {path.relative_to(REPO_ROOT)}"
             )

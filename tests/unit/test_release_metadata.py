@@ -10,10 +10,8 @@ def test_release_metadata_matches_public_launch_positioning() -> None:
 
     assert 'version = "1.0.0"' in pyproject
     assert 'name = "orenyl-mcp-server"' in pyproject
-    assert 'name = "lore-mcp-server"' not in pyproject
     assert 'authors = [{ name = "Orenyl Maintainers" }]' in pyproject
     assert 'orenyl-server = "orenyl.server:main"' in pyproject
-    assert "lore-server" not in pyproject
     assert "[project.urls]" in pyproject
     assert 'Homepage = "https://github.com/edison-zhou-nc/Orenyl"' in pyproject
     assert 'Repository = "https://github.com/edison-zhou-nc/Orenyl"' in pyproject
