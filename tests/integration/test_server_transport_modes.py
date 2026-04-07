@@ -1,4 +1,7 @@
 import asyncio
+import os
+import subprocess
+import sys
 
 import pytest
 from mcp.server.auth.provider import AccessToken
@@ -51,6 +54,26 @@ def test_main_skips_token_bootstrap_in_dev_stdio_mode(monkeypatch):
     server.main()
 
     assert called["stdio"] is True
+
+
+def test_server_import_rejects_legacy_env_vars_before_side_effects(tmp_path):
+    env = os.environ.copy()
+    env["LORE_DB_PATH"] = "legacy.sqlite"
+    env.pop("ORENYL_DB_PATH", None)
+
+    result = subprocess.run(
+        [sys.executable, "-c", "import orenyl.server"],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    combined_output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    assert result.returncode != 0
+    assert "legacy environment variables are not supported: LORE_DB_PATH" in combined_output
+    assert not (tmp_path / "lore_memory.db").exists()
 
 
 def test_main_rejects_legacy_env_vars_before_startup(monkeypatch):
