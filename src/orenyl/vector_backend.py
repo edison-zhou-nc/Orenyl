@@ -64,14 +64,14 @@ class PgvectorVectorBackend:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    """CREATE TABLE IF NOT EXISTS lore_vectors (
+                    """CREATE TABLE IF NOT EXISTS orenyl_vectors (
                            namespace TEXT NOT NULL,
                            item_id TEXT PRIMARY KEY,
                            embedding TEXT NOT NULL
                        )"""
                 )
                 cur.execute(
-                    """INSERT INTO lore_vectors (namespace, item_id, embedding)
+                    """INSERT INTO orenyl_vectors (namespace, item_id, embedding)
                        VALUES (%s, %s, %s)
                        ON CONFLICT (item_id) DO UPDATE SET
                          namespace = EXCLUDED.namespace,
@@ -90,7 +90,7 @@ class PgvectorVectorBackend:
             with conn.cursor() as cur:
                 cur.execute(
                     """SELECT item_id, embedding
-                       FROM lore_vectors
+                       FROM orenyl_vectors
                        WHERE namespace = %s""",
                     (namespace,),
                 )

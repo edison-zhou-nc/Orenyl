@@ -38,10 +38,11 @@ def test_phase4_config_defaults(monkeypatch):
 
 
 def test_phase4_config_rejects_legacy_env_vars(monkeypatch):
-    monkeypatch.setenv("LORE_READ_ONLY_MODE", "1")
+    with monkeypatch.context() as m:
+        m.setenv("LORE_READ_ONLY_MODE", "1")
 
-    with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
-        read_only_mode_enabled()
+        with pytest.raises(RuntimeError, match="LORE_READ_ONLY_MODE"):
+            read_only_mode_enabled()
 
 
 def test_record_consent_rejects_invalid_status(monkeypatch):

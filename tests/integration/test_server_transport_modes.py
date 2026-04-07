@@ -18,10 +18,11 @@ def test_default_transport_is_streamable_http_for_prod(monkeypatch):
 
 
 def test_get_transport_mode_rejects_legacy_transport_env(monkeypatch):
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
+    with monkeypatch.context() as m:
+        m.setenv("LORE_TRANSPORT", "stdio")
 
-    with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
-        server.get_transport_mode()
+        with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
+            server.get_transport_mode()
 
 
 def test_stdio_mode_allowed_only_with_explicit_dev_flag(monkeypatch):
@@ -81,16 +82,17 @@ def test_main_rejects_legacy_env_vars_before_startup(monkeypatch):
         def run(self, *_args, **_kwargs):
             raise AssertionError("server should fail before startup")
 
-    monkeypatch.setenv("LORE_TRANSPORT", "stdio")
-    monkeypatch.setenv("LORE_ALLOW_STDIO_DEV", "1")
-    monkeypatch.setenv("ORENYL_OIDC_ISSUER", "https://issuer.example")
-    monkeypatch.setenv("ORENYL_OIDC_ALLOWED_ALGS", "HS256")
-    monkeypatch.setenv("ORENYL_OIDC_HS256_SECRET", "0123456789abcdef0123456789abcdef")
-    monkeypatch.delenv("ORENYL_OIDC_JWKS_URL", raising=False)
-    monkeypatch.setattr(server, "build_fastmcp_server", lambda: _ForbiddenServer())
+    with monkeypatch.context() as m:
+        m.setenv("LORE_TRANSPORT", "stdio")
+        m.setenv("LORE_ALLOW_STDIO_DEV", "1")
+        m.setenv("ORENYL_OIDC_ISSUER", "https://issuer.example")
+        m.setenv("ORENYL_OIDC_ALLOWED_ALGS", "HS256")
+        m.setenv("ORENYL_OIDC_HS256_SECRET", "0123456789abcdef0123456789abcdef")
+        m.delenv("ORENYL_OIDC_JWKS_URL", raising=False)
+        m.setattr(server, "build_fastmcp_server", lambda: _ForbiddenServer())
 
-    with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
-        server.main()
+        with pytest.raises(RuntimeError, match="LORE_TRANSPORT"):
+            server.main()
 
 
 def test_streamable_http_server_registers_expected_tools():

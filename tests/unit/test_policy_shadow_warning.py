@@ -2,7 +2,11 @@ import logging
 
 import pytest
 
-from orenyl.policy import validate_policy_configuration
+from orenyl.policy import (
+    agent_permissions_enabled,
+    policy_shadow_mode_enabled,
+    validate_policy_configuration,
+)
 
 
 def test_shadow_mode_alone_emits_startup_warning(monkeypatch, caplog):
@@ -50,3 +54,19 @@ def test_shadow_mode_with_multi_tenant_and_agent_perms_raises(monkeypatch):
 
     with pytest.raises(RuntimeError, match="cannot be enabled"):
         validate_policy_configuration()
+
+
+def test_agent_permissions_enabled_rejects_legacy_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_ENABLE_AGENT_PERMISSIONS", "1")
+
+        with pytest.raises(RuntimeError, match="LORE_ENABLE_AGENT_PERMISSIONS"):
+            agent_permissions_enabled()
+
+
+def test_policy_shadow_mode_enabled_rejects_legacy_env_vars(monkeypatch):
+    with monkeypatch.context() as m:
+        m.setenv("LORE_POLICY_SHADOW_MODE", "1")
+
+        with pytest.raises(RuntimeError, match="LORE_POLICY_SHADOW_MODE"):
+            policy_shadow_mode_enabled()

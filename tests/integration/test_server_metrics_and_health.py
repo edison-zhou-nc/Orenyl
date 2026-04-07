@@ -30,8 +30,8 @@ def test_metrics_and_health_handlers(monkeypatch):
     asyncio.run(server.handle_retrieve_context_pack({"domain": "health", "query": "med"}))
 
     metrics_out = asyncio.run(server.handle_metrics({}))
-    assert "lore_tool_calls_total" in metrics_out[0].text
-    assert "lore_context_pack_latency_ms_count" in metrics_out[0].text
+    assert "orenyl_tool_calls_total" in metrics_out[0].text
+    assert "orenyl_context_pack_latency_ms_count" in metrics_out[0].text
 
     health_out = asyncio.run(server.handle_health({}))
     health = json.loads(health_out[0].text)
