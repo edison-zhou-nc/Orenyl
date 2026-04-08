@@ -39,3 +39,4 @@ Thumbs.db
 .claude/worktrees/
 .worktrees/
 tests/.tmp/
+docs/plans/*-implementation-plan.md
