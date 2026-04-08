@@ -109,7 +109,7 @@ def main() -> None:
         print(f"  retrieve:     {result['retrieve_context_pack_ms']}ms")
         print(f"  delete:       {result['delete_and_recompute_ms']}ms")
 
-    print("\n## Results (copy to docs/benchmarks/results.md)\n")
+    print("\n## Results (copy to docs/benchmarks/v2-baseline.md)\n")
     print("| Operation | 1K events | 10K events | 100K events |")
     print("|-----------|-----------|------------|-------------|")
     print(

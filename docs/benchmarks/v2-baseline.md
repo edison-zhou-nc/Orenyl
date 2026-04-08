@@ -1,24 +1,26 @@
 # Orenyl v2 Baseline Benchmarks
 
-Date: 2026-03-04
+Date: 2026-04-08
 Environment: Windows, Python 3.12.10, SQLite in-memory
 
-## Scale Benchmark (1,000 events / 6 domains)
+## Verified Artifact Snapshot (1,000 events / 6 domains)
 
-- store + derive (1000 events): `7.647s`
-- retrieve context pack (health, query=benchmark): `0.070s`
-- delete_and_recompute (single event): `0.027s`
+- store + derive (single event at 1K corpus): `17.8ms`
+- retrieve context pack (health, query=benchmark): `23.5ms`
+- delete_and_recompute (single event): `28.4ms`
+- context pack items returned: `50`
 - deletion verified: `true`
 - artifact: `tests/benchmark_results.json`
 
-## Verification Timings
+## Verification
 
-- `py -m pytest tests/unit tests/integration -q`: 0.663s
-- `py scripts/run_eval.py`: 0.079s
+- `python scripts/run_benchmarks.py`
+- `python -m pytest tests/benchmarks/test_phase1_retrieval_quality.py tests/benchmarks/test_phase1_vector_signal_quality.py tests/integration/test_scale_benchmark.py -q`
+- `python scripts/run_eval.py`
 
 ## Functional Baseline
 
-- Unit + integration: evolving with branch task execution
+- Unit + integration benchmark gates: verified on 2026-04-08
 - Eval scenarios: 12/12 steps passed
 - Deletion compliance: 2/2
 - Resurface incidents: 0
@@ -50,7 +52,7 @@ Environment: Windows, Python 3.12.10, SQLite in-memory
 - Configurable event count:
   `ORENYL_PHASE3_LOAD_EVENTS` (default `1000000`)
 
-## Published Benchmarks (2026-03-18)
+## Published Benchmarks (2026-04-08)
 
 Environment: Windows, Python 3.12.10, SQLite in-memory
 
@@ -62,11 +64,12 @@ Methodology:
 
 | Operation | 1K events | 10K events | 100K events |
 |-----------|-----------|------------|-------------|
-| insert + derive (single event) | `17.4ms` | `183.8ms` | `2967.5ms` |
-| retrieve_context_pack | `24.0ms` | `168.8ms` | `2390.3ms` |
-| delete_and_recompute | `27.4ms` | `337.6ms` | `5184.6ms` |
+| insert + derive (single event) | `17.1ms` | `170.0ms` | `2068.8ms` |
+| retrieve_context_pack | `24.2ms` | `149.2ms` | `1526.1ms` |
+| delete_and_recompute | `27.7ms` | `294.0ms` | `3615.7ms` |
 | deletion_verified | `True` | `True` | `True` |
 
 Notes:
+- These values were re-run on 2026-04-08. Expect small run-to-run variation on the same machine.
 - The 100K retrieval and deletion numbers are materially slower than 10K and should be treated as honest current-state measurements, not aspirational targets.
 - These timings reflect the lineage engine's current O(n) scan behavior for operations at corpus size `N`, which is acceptable for now but a reasonable target for future scaling work.

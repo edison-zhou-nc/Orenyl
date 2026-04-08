@@ -1,8 +1,8 @@
 {
   "event_count": 1000,
-  "store_seconds": 7.78378449997399,
-  "retrieve_seconds": 0.012540699972305447,
-  "delete_seconds": 0.02664940000977367,
-  "health_fact_count": 2,
+  "store_seconds": 0.0178,
+  "retrieve_seconds": 0.0235,
+  "delete_seconds": 0.0284,
+  "health_fact_count": 50,
   "deletion_verified": true
 }
