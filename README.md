@@ -23,6 +23,22 @@ Orenyl is in early production / public beta. It is ready for self-serve local de
 - **MCP-native** - stable 14-tool contract for agent integration
 - **Local-first onboarding** - explicit stdio development mode for self-serve setup and demos
 
+## See It Work
+
+Run the proof-first demo:
+
+```bash
+python scripts/demo_health_marketing.py
+```
+
+It stores two medication events, derives `Active medications: metformin, penicillin`, deletes the penicillin source memory, and recomputes to `Active medications: metformin` so the removed value does not resurface.
+
+![Orenyl proof before deletion](docs/assets/orenyl_health_before.png)
+
+![Orenyl proof after deletion](docs/assets/orenyl_health_after.png)
+
+Use [capture guide](docs/assets/demo-script.md) for the capture sequence and [launch FAQ](docs/launch-faq.md) for what this demo proves.
+
 ## Install
 
 ```bash
