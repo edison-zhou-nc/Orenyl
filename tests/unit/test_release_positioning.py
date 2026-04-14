@@ -24,6 +24,22 @@ def test_release_process_does_not_claim_ga() -> None:
     assert "treat tags as release candidates" not in doc.lower()
 
 
+def test_release_process_tracks_the_planned_public_beta_version() -> None:
+    doc = (REPO_ROOT / "docs" / "RELEASE_PROCESS.md").read_text(encoding="utf-8").lower()
+
+    assert "not yet published on pypi" in doc
+    assert "planned public package version is `0.5.0`" in doc
+
+
+def test_release_process_uses_release_wording_for_packaging_gates() -> None:
+    doc = (REPO_ROOT / "docs" / "RELEASE_PROCESS.md").read_text(encoding="utf-8").lower()
+
+    assert "release-readiness regression set" in doc
+    assert "public beta release" in doc
+    assert "launch-readiness" not in doc
+    assert "public launch release" not in doc
+
+
 def test_readme_scopes_release_honestly() -> None:
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
 

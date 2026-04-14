@@ -6,6 +6,13 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
+while str(SRC_ROOT) in sys.path:
+    sys.path.remove(str(SRC_ROOT))
+sys.path.insert(0, str(SRC_ROOT))
+
+
 @pytest.fixture
 def workspace_tmp_path():
     path = Path(tempfile.mkdtemp(prefix=f"orenyl-pytest-{uuid.uuid4().hex[:8]}-"))

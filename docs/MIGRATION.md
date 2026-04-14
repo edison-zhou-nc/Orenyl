@@ -2,7 +2,7 @@
 
 ## Scope
 
-This release candidate preserves public import stability while hardening the internal structure for GA.
+This release candidate preserves public import stability while hardening the internal structure toward 1.0.
 
 ## Stable imports
 

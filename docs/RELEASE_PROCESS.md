@@ -6,14 +6,14 @@ Use it for every public beta / early-production release.
 ## Release candidate
 
 1. Bump package metadata to the next RC tag.
-2. Run the focused launch-readiness regression set.
+2. Run the focused release-readiness regression set.
 3. Run the full unit and integration suite with coverage.
 4. Run Ruff, mypy, package build, and built-wheel smoke import.
 5. Publish only after the release workflow reruns the same verification on the tag.
 
-## Public launch release
+## Public beta release
 
-1. Confirm launch docs are current and product claims match the shipped onboarding path.
+1. Confirm public docs are current and product claims match the shipped onboarding path.
 2. Verify local development mode and authenticated production mode are both documented correctly.
 3. Ensure the release workflow will rerun:
    - `python -m ruff check . --select F,B`
@@ -26,8 +26,9 @@ Use it for every public beta / early-production release.
 
 ## Current release state
 
-Orenyl is a public Beta release on PyPI. The project is ready for self-serve local
-development, evaluation, and early production deployments with authenticated
+Orenyl is not yet published on PyPI. The planned public package version is `0.5.0`,
+positioned as public beta / early production. The project is ready for self-serve
+local development, evaluation, and early production deployments with authenticated
 `streamable-http` transport. External security certification, penetration testing,
 and enterprise operator packaging are pending future work.
 
