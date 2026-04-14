@@ -5,8 +5,8 @@ import orenyl
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_ga_readiness() -> None:
-    assert orenyl.__version__ == "1.0.0"
+def test_release_readiness() -> None:
+    assert orenyl.__version__ == "0.5.0"
     assert len((REPO_ROOT / "src" / "orenyl" / "db.py").read_text().splitlines()) < 300
     assert len((REPO_ROOT / "src" / "orenyl" / "server.py").read_text().splitlines()) < 600
     readme = (REPO_ROOT / "README.md").read_text()

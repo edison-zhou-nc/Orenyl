@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog and this project follows semantic versioning.
 
-## [1.0.1] - Unreleased
+## [0.5.0] - Unreleased
 
 ### Added
 - Explicit local stdio development mode for self-serve onboarding and demos.
@@ -14,20 +14,20 @@ The format is based on Keep a Changelog and this project follows semantic versio
 - Clarified public launch messaging to distinguish local development from authenticated production deployment.
 - Aligned the MCP contract and onboarding docs with the live runtime behavior.
 
-## [1.0.0] - 2026-03-16
+## [0.4.0] - 2026-03-16
 
 ### Added
-- Final GA readiness, security, compliance, release, and documentation gates.
+- Final release readiness, security, compliance, and documentation gates.
 - CI-backed health and performance release checks.
 
 ### Changed
-- Promoted package metadata from `1.0.0rc1` to `1.0.0`.
+- Promoted package metadata from `0.4.0rc1` to `0.4.0`.
 - Updated project metadata and repository URLs for public launch.
 
-## [1.0.0rc1] - 2026-03-16
+## [0.4.0rc1] - 2026-03-16
 
 ### Added
-- GA decomposition gates for `src/orenyl/db.py` and `src/orenyl/server.py`.
+- Release decomposition gates for `src/orenyl/db.py` and `src/orenyl/server.py`.
 - Release metadata, package version export, and repository URLs.
 - Release, migration, integration, scaling, DR, and architecture documentation.
 

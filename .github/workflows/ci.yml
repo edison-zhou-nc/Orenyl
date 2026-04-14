@@ -37,12 +37,13 @@ jobs:
         run: python -m mypy src/orenyl --config-file pyproject.toml
       - name: Run unit + integration tests with coverage
         run: python -m pytest tests/unit tests/integration -q --cov=src/orenyl --cov-report=term-missing --cov-fail-under=80
-      - name: Run GA health and perf gates
+      - name: Run release-readiness health and perf gates
         run: |
           python -m pytest \
             tests/unit/test_health_structured.py \
             tests/integration/test_perf_regression.py \
-            tests/integration/test_server_metrics_and_health.py -q
+            tests/integration/test_server_metrics_and_health.py \
+            tests/unit/test_release_readiness.py -q
       - name: Run Phase 3 isolation + federation gates
         run: |
           python -m pytest \

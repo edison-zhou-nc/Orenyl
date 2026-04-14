@@ -11,7 +11,9 @@ __pycache__
 .worktrees
 dist
 dist_fix
+# Legacy Lore snapshot directory kept ignored for older local checkouts.
 lore_snapshots
+# Current Orenyl snapshot directory.
 orenyl_snapshots
 tests
 examples

@@ -24,7 +24,7 @@ python -m pytest -q
 
 ## Validation Commands
 
-Run the launch-readiness checks before opening a PR:
+Run the release-readiness checks before opening a PR:
 
 ```bash
 python -m ruff check . --select F,B

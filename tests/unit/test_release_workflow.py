@@ -24,6 +24,8 @@ def test_release_workflow_runs_verification_before_publish() -> None:
 def test_dev_requirements_include_release_verification_tools() -> None:
     requirements_dev = (REPO_ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
 
+    assert "pytest==9.0.3" in requirements_dev
+    assert "pytest==8.3.5" not in requirements_dev
     assert "mypy==" in requirements_dev
     assert "build==" in requirements_dev
     assert "bandit==" in requirements_dev
@@ -34,6 +36,8 @@ def test_dev_requirements_include_release_verification_tools() -> None:
 def test_dev_lockfile_includes_release_verification_tools() -> None:
     requirements_dev_lock = (REPO_ROOT / "requirements-dev.lock").read_text(encoding="utf-8")
 
+    assert "pytest==9.0.3" in requirements_dev_lock
+    assert "pytest==8.3.5" not in requirements_dev_lock
     assert "mypy==" in requirements_dev_lock
     assert "build==" in requirements_dev_lock
     assert "bandit==" in requirements_dev_lock

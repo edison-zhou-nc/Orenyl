@@ -2,7 +2,7 @@
 
 ## ADR 1: Preserve the `Database` import surface
 
-The GA refactor keeps `from orenyl.db import Database` stable. Internal persistence moved into repository mixins to reduce file size and improve reviewability without forcing constructor churn across the codebase.
+The release-stability refactor keeps `from orenyl.db import Database` stable. Internal persistence moved into repository mixins to reduce file size and improve reviewability without forcing constructor churn across the codebase.
 
 ## ADR 2: Preserve `orenyl.server.handle_*` imports
 

@@ -15,11 +15,10 @@ Please do not open public GitHub issues for suspected security vulnerabilities.
 
 To report a vulnerability privately:
 
-1. Email the maintainer at `security@loremcp.com`.
-2. Include the affected version, environment, reproduction steps, and any proof-of-concept details.
-3. Share whether the issue is already public or known to downstream users.
-
-If email is not available, use a private GitHub security advisory if enabled for the repository.
+1. Open a private GitHub security advisory for this repository if the feature is enabled.
+2. If GitHub advisories are unavailable, contact the maintainer directly through the repository owner's GitHub profile: `https://github.com/edison-zhou-nc`.
+3. Include the affected version, environment, reproduction steps, and any proof-of-concept details.
+4. Share whether the issue is already public or known to downstream users.
 
 ## What to Expect
 
