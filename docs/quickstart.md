@@ -2,18 +2,30 @@
 
 Get Orenyl running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
 
+## 30-Second Primer
+
+### What is MCP?
+
+MCP stands for Model Context Protocol. It is the standard way an AI client discovers tools from a server and calls them over stdio or HTTP.
+
+### Why should I care?
+
+With Orenyl over MCP, a client such as Claude Code can remember events, retrieve relevant context, verify deletions, and inspect lineage without a custom integration layer.
+
 ## Install
 
-```bash
-pip install orenyl-mcp-server
-```
-
-Or from source:
+As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Use a source checkout for now:
 
 ```bash
 git clone https://github.com/edison-zhou-nc/Orenyl.git
 cd Orenyl
 python -m pip install -e .
+```
+
+Once the public package is live, the install becomes:
+
+```bash
+pip install orenyl-mcp-server
 ```
 
 ## Start Orenyl in local dev mode
@@ -111,6 +123,8 @@ Expected result: a full lineage trace showing upstream and downstream relationsh
 
 Production deployment uses `streamable-http` and authenticated tool calls. When auth is enabled, pass `auth_token` on FastMCP-registered tools or `_auth_token` in raw tool arguments. This path replaces the development-only stdio flow. See [INTEGRATION.md](INTEGRATION.md) for the exact contract.
 
+If you want the same flow exercised by an automated end-to-end client, run `python -m pytest tests/integration/test_stdio_mcp_client_smoke.py -q` from the repo root.
+
 ## What just happened?
 
 1. Orenyl stored an immutable event.
@@ -125,4 +139,5 @@ This is Orenyl's core guarantee: if upstream data is deleted, downstream derivat
 - [INTEGRATION.md](INTEGRATION.md)
 - [guides/claude-code.md](guides/claude-code.md)
 - [guides/openclaw.md](guides/openclaw.md)
+- [../examples/README.md](../examples/README.md)
 - [MCP_TOOL_CONTRACTS.md](MCP_TOOL_CONTRACTS.md)

@@ -1,7 +1,7 @@
 # Orenyl
 
 [![CI](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/orenyl-mcp-server)](https://pypi.org/project/orenyl-mcp-server/)
+[![Release Status](https://img.shields.io/badge/release-v0.5.0%20pending-orange.svg)](docs/RELEASE_PROCESS.md)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -15,6 +15,10 @@ Orenyl gives agents durable memory without losing control: every derived fact is
 
 Orenyl is in early production / public beta. It is ready for self-serve local development and evaluation, and production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
 
+As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Use the source checkout instructions below today; once the tagged release is published, `pip install orenyl-mcp-server` becomes the default install path.
+
+Orenyl was previously named Lore. The current package name is `orenyl-mcp-server`, and legacy `LORE_*` environment variables are rejected on startup so old configs fail loudly instead of half-working.
+
 ## Why Orenyl
 
 - **Deterministic memory model** - immutable events, derived facts, lineage edges
@@ -22,6 +26,16 @@ Orenyl is in early production / public beta. It is ready for self-serve local de
 - **Compliance-oriented** - GDPR Article 17/20/30, audit traces, sensitivity controls
 - **MCP-native** - stable 14-tool contract for agent integration
 - **Local-first onboarding** - explicit stdio development mode for self-serve setup and demos
+
+## 30-Second Primer
+
+### What is MCP?
+
+MCP stands for Model Context Protocol. It is the standard way clients like Claude Code and other MCP SDKs discover tools from a server and call them over stdio or HTTP.
+
+### Why should I care?
+
+It means you can plug Orenyl into an MCP client without custom glue code and immediately give an agent memory tools for storing events, retrieving bounded context, deleting sensitive records with proof, and tracing lineage.
 
 ## See It Work
 
@@ -41,11 +55,7 @@ Use [capture guide](docs/assets/demo-script.md) for the capture sequence and [la
 
 ## Install
 
-```bash
-pip install orenyl-mcp-server
-```
-
-Or from source:
+Source install works today:
 
 ```bash
 git clone https://github.com/edison-zhou-nc/Orenyl.git
@@ -54,12 +64,18 @@ python -m pip install -e .
 python -m pip install -r requirements-dev.txt
 ```
 
+Once `0.5.0` is published on PyPI, the package install becomes:
+
+```bash
+pip install orenyl-mcp-server
+```
+
 ## Get Started
 
 - [5-Minute Quickstart](docs/quickstart.md) - try Orenyl locally in minutes
 - [Claude Code Integration](docs/guides/claude-code.md)
 - [OpenClaw Integration](docs/guides/openclaw.md)
-- [Examples](examples/) - health tracker, meeting memory, multi-agent isolation
+- [Examples](examples/README.md) - copy-paste-run health tracker, meeting memory, and multi-agent isolation demos
 - [Production HTTP Deployment Template](docs/guides/production-http.md)
 
 ## Architecture
@@ -211,6 +227,12 @@ Run tests:
 
 ```bash
 python -m pytest -q
+```
+
+Run the end-to-end stdio MCP client smoke test:
+
+```bash
+python -m pytest tests/integration/test_stdio_mcp_client_smoke.py -q
 ```
 
 Run eval harness:

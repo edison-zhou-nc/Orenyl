@@ -6,6 +6,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def test_release_workflow_runs_verification_before_publish() -> None:
     workflow = (REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
+    assert "contents: write" in workflow
     assert "python -m ruff check" in workflow
     assert "python -m bandit -r src/orenyl -ll -q" in workflow
     assert "python -m mypy src/orenyl --config-file pyproject.toml" in workflow
@@ -17,6 +18,8 @@ def test_release_workflow_runs_verification_before_publish() -> None:
     assert "python -m pip install dist/*.whl" in workflow
     assert ".venv-smoke/bin/activate" in workflow
     assert "name: orenyl-dist" in workflow
+    assert "softprops/action-gh-release@v2" in workflow
+    assert "generate_release_notes: true" in workflow
     assert "python -m orenyl.server" not in workflow
     assert "python -m pip install build pytest pytest-cov mypy bandit pip-audit" not in workflow
 
