@@ -19,6 +19,26 @@ def test_quickstart_calls_out_dev_only_stdio_and_production_http() -> None:
     assert "streamable-http" in doc
 
 
+def test_readme_and_quickstart_explain_mcp_for_new_users() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")
+
+    assert "Model Context Protocol" in readme
+    assert "what is mcp" in readme.lower()
+    assert "why should i care" in readme.lower()
+    assert "Model Context Protocol" in quickstart
+    assert "what is mcp" in quickstart.lower()
+    assert "why should i care" in quickstart.lower()
+
+
+def test_public_install_docs_note_current_pypi_status() -> None:
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8").lower()
+    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
+
+    assert "not yet published on pypi" in readme
+    assert "not yet published on pypi" in quickstart
+
+
 def test_integration_guide_distinguishes_local_dev_from_production() -> None:
     doc = (REPO_ROOT / "docs" / "INTEGRATION.md").read_text(encoding="utf-8")
 
@@ -50,6 +70,12 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
             "orenyl_snapshots",
             "Code layout: `src/orenyl/`",
         ],
+        REPO_ROOT / "examples" / "README.md": [
+            "python examples/personal-health-tracker/health_tracker.py",
+            "python examples/meeting-memory/meeting_memory.py",
+            "python examples/multi-agent-shared-memory/shared_memory.py",
+            "copy-paste-run",
+        ],
         REPO_ROOT / "docs" / "quickstart.md": [
             "pip install orenyl-mcp-server",
             "orenyl-server",
@@ -71,14 +97,23 @@ def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
         REPO_ROOT / "examples" / "meeting-memory" / "README.md": [
             "pip install orenyl-mcp-server",
             "Orenyl",
+            "From the repo root",
+            "Expected output",
+            "python examples/meeting-memory/meeting_memory.py",
         ],
         REPO_ROOT / "examples" / "personal-health-tracker" / "README.md": [
             "pip install orenyl-mcp-server",
             "Orenyl",
+            "From the repo root",
+            "Expected output",
+            "python examples/personal-health-tracker/health_tracker.py",
         ],
         REPO_ROOT / "examples" / "multi-agent-shared-memory" / "README.md": [
             "pip install orenyl-mcp-server",
             "Orenyl",
+            "From the repo root",
+            "Expected output",
+            "python examples/multi-agent-shared-memory/shared_memory.py",
         ],
     }
     for path, expected_strings in expectations.items():

@@ -2,6 +2,8 @@
 
 Add Orenyl as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
 
+As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Install from a source checkout today; after the public package ships, `pip install orenyl-mcp-server` will be the shorter path.
+
 ## Setup
 
 Add to your project's `.mcp.json`:
@@ -31,6 +33,18 @@ This stdio setup is for local development only. Production deployment mode shoul
 - `retrieve_context_pack` - recall relevant memory
 - `delete_and_recompute` - forget with verification
 - `audit_trace` - trace where a fact came from
+
+## Smoke test prompts
+
+Use this short sequence in Claude Code after the server appears:
+
+```text
+Remember that I started metformin.
+What do you remember about my health?
+Forget the metformin memory and show me the deletion proof.
+```
+
+If you want a scripted end-to-end check outside Claude Code, run `python -m pytest tests/integration/test_stdio_mcp_client_smoke.py -q` from the repo root.
 
 ## Example Interaction
 
