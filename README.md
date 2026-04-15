@@ -1,7 +1,7 @@
 # Orenyl
 
 [![CI](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml/badge.svg)](https://github.com/edison-zhou-nc/Orenyl/actions/workflows/ci.yml)
-[![Release Status](https://img.shields.io/badge/release-v0.5.0%20pending-orange.svg)](docs/RELEASE_PROCESS.md)
+[![PyPI](https://img.shields.io/pypi/v/orenyl-mcp-server)](https://pypi.org/project/orenyl-mcp-server/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -15,7 +15,7 @@ Orenyl gives agents durable memory without losing control: every derived fact is
 
 Orenyl is in early production / public beta. It is ready for self-serve local development and evaluation, and production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
 
-As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Use the source checkout instructions below today; once the tagged release is published, `pip install orenyl-mcp-server` becomes the default install path.
+Orenyl `0.5.0` is published on PyPI. `pip install orenyl-mcp-server` is the standard install path, and the source checkout remains the best option when you want an editable local development environment.
 
 Orenyl was previously named Lore. The current package name is `orenyl-mcp-server`, and legacy `LORE_*` environment variables are rejected on startup so old configs fail loudly instead of half-working.
 
@@ -55,19 +55,19 @@ Use [capture guide](docs/assets/demo-script.md) for the capture sequence and [la
 
 ## Install
 
-Source install works today:
+Install from PyPI:
+
+```bash
+pip install orenyl-mcp-server
+```
+
+Use a source checkout for local development:
 
 ```bash
 git clone https://github.com/edison-zhou-nc/Orenyl.git
 cd Orenyl
 python -m pip install -e .
 python -m pip install -r requirements-dev.txt
-```
-
-Once `0.5.0` is published on PyPI, the package install becomes:
-
-```bash
-pip install orenyl-mcp-server
 ```
 
 ## Get Started

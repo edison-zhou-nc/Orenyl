@@ -32,11 +32,15 @@ def test_readme_and_quickstart_explain_mcp_for_new_users() -> None:
 
 
 def test_public_install_docs_note_current_pypi_status() -> None:
-    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8").lower()
-    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")
+    claude = (REPO_ROOT / "docs" / "guides" / "claude-code.md").read_text(encoding="utf-8")
 
-    assert "not yet published on pypi" in readme
-    assert "not yet published on pypi" in quickstart
+    assert "https://img.shields.io/pypi/v/orenyl-mcp-server" in readme
+    assert "https://pypi.org/project/orenyl-mcp-server/" in readme
+    assert "not yet published on pypi" not in readme.lower()
+    assert "not yet published on pypi" not in quickstart.lower()
+    assert "not yet published on pypi" not in claude.lower()
 
 
 def test_integration_guide_distinguishes_local_dev_from_production() -> None:
