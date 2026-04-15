@@ -5,13 +5,13 @@ Demonstrates Orenyl's lineage tracking: store meeting notes, derive facts, and t
 ## Prerequisites
 
 ```bash
-python -m pip install -e .
+pip install orenyl-mcp-server
 ```
 
-Once `0.5.0` is published on PyPI, you can swap that install step for:
+For local development from this repo, you can use:
 
 ```bash
-pip install orenyl-mcp-server
+python -m pip install -e .
 ```
 
 ## From the repo root

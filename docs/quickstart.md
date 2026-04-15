@@ -14,18 +14,18 @@ With Orenyl over MCP, a client such as Claude Code can remember events, retrieve
 
 ## Install
 
-As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Use a source checkout for now:
+Install the published package:
+
+```bash
+pip install orenyl-mcp-server
+```
+
+If you are working from a local checkout instead, use:
 
 ```bash
 git clone https://github.com/edison-zhou-nc/Orenyl.git
 cd Orenyl
 python -m pip install -e .
-```
-
-Once the public package is live, the install becomes:
-
-```bash
-pip install orenyl-mcp-server
 ```
 
 ## Start Orenyl in local dev mode

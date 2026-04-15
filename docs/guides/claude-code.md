@@ -2,7 +2,7 @@
 
 Add Orenyl as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
 
-As of April 14, 2026, Orenyl `0.5.0` is not yet published on PyPI. Install from a source checkout today; after the public package ships, `pip install orenyl-mcp-server` will be the shorter path.
+Orenyl `0.5.0` is published on PyPI. For the shortest setup path, install `pip install orenyl-mcp-server`; use an editable source checkout only if you are actively developing Orenyl itself.
 
 ## Setup
 

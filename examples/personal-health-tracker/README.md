@@ -5,13 +5,13 @@ Demonstrates Orenyl's memory model with health events, single-record deletion, a
 ## Prerequisites
 
 ```bash
-python -m pip install -e .
+pip install orenyl-mcp-server
 ```
 
-Once `0.5.0` is published on PyPI, you can swap that install step for:
+For local development from this repo, you can use:
 
 ```bash
-pip install orenyl-mcp-server
+python -m pip install -e .
 ```
 
 ## From the repo root

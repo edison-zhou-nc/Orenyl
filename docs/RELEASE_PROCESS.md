@@ -27,11 +27,11 @@ Use it for every public beta / early-production release.
 
 ## Current release state
 
-Orenyl is not yet published on PyPI. The planned public package version is `0.5.0`,
-positioned as public beta / early production. The project is ready for self-serve
-local development, evaluation, and early production deployments with authenticated
-`streamable-http` transport. External security certification, penetration testing,
-and enterprise operator packaging are pending future work.
+The latest published package version is `0.5.0`, positioned as public beta / early
+production. The project is ready for self-serve local development, evaluation, and
+early production deployments with authenticated `streamable-http` transport.
+External security certification, penetration testing, and enterprise operator
+packaging are pending future work.
 
 ## Hotfix flow
 

@@ -27,8 +27,8 @@ def test_release_process_does_not_claim_ga() -> None:
 def test_release_process_tracks_the_planned_public_beta_version() -> None:
     doc = (REPO_ROOT / "docs" / "RELEASE_PROCESS.md").read_text(encoding="utf-8").lower()
 
-    assert "not yet published on pypi" in doc
-    assert "planned public package version is `0.5.0`" in doc
+    assert "not yet published on pypi" not in doc
+    assert "latest published package version is `0.5.0`" in doc
 
 
 def test_release_process_uses_release_wording_for_packaging_gates() -> None:

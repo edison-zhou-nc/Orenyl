@@ -4,16 +4,18 @@ These are copy-paste-run demos for Orenyl's core public-beta flows. They all run
 
 ## Install once
 
+Install from PyPI:
+
+```bash
+pip install orenyl-mcp-server
+```
+
+For local development from this repo, use:
+
 ```bash
 git clone https://github.com/edison-zhou-nc/Orenyl.git
 cd Orenyl
 python -m pip install -e .
-```
-
-When `0.5.0` is published, the package install will be:
-
-```bash
-pip install orenyl-mcp-server
 ```
 
 ## Copy-paste-run demos
