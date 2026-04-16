@@ -1,6 +1,10 @@
 # Orenyl with Claude Code
 
-Orenyl gives Claude three immediate memory moves during local development: remember new user context, recall relevant facts, and forget a source memory while showing the deletion proof.
+Orenyl gives Claude three immediate memory moves during local development:
+
+- remember new user context
+- recall relevant facts
+- forget a source memory while showing the deletion proof
 
 The first smoke-test sequence proves the loop end to end: store a memory, ask for it back, then delete it and confirm the derived context no longer resurfaces.
 

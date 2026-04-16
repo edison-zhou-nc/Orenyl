@@ -93,7 +93,15 @@ def test_client_guides_teach_remember_recall_forget_first() -> None:
         assert "remember" in intro
         assert "recall" in intro
         assert "forget" in intro
-        assert "deletion proof" in doc
+        assert "\n- remember" in intro
+        assert "\n- recall" in intro
+        assert "\n- forget" in intro
+
+    claude_intro = claude[:claude.index("\n## ")]
+    assert "first smoke-test sequence" in claude_intro
+    assert "deletion proof" in claude_intro
+    assert "store a memory" in claude_intro
+    assert "delete it and confirm the derived context no longer resurfaces" in claude_intro
 
 
 def test_public_install_surfaces_use_the_unique_distribution_name() -> None:

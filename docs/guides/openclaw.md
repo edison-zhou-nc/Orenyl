@@ -1,6 +1,10 @@
 # Orenyl with OpenClaw
 
-Orenyl gives your AI agent three immediate memory moves: remember new context, recall relevant facts, and forget a source memory while inspecting the deletion proof.
+Orenyl gives your AI agent three immediate memory moves:
+
+- remember new context
+- recall relevant facts
+- forget a source memory while inspecting the deletion proof
 
 ## Prerequisites
 
