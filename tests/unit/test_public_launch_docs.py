@@ -19,6 +19,14 @@ def test_quickstart_calls_out_dev_only_stdio_and_production_http() -> None:
     assert "streamable-http" in doc
 
 
+def test_quickstart_and_faq_explain_proof_first_value() -> None:
+    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
+    faq = (REPO_ROOT / "docs" / "launch-faq.md").read_text(encoding="utf-8").lower()
+
+    assert "proof" in quickstart
+    assert "naive deletion" in faq or "delete the row" in faq
+
+
 def test_readme_and_quickstart_explain_mcp_for_new_users() -> None:
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")

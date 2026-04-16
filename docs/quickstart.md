@@ -1,6 +1,13 @@
 # Quickstart: Orenyl in 5 Minutes
 
-Get Orenyl running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
+Try the proof-first flow:
+
+1. Remember a health event
+2. Recall the derived context
+3. Forget the source event
+4. Verify the deleted detail does not resurface
+
+That is the fastest way to see what Orenyl proves: when source data is removed, downstream derivations are traced, invalidated, and recomputed so deleted information does not come back.
 
 ## 30-Second Primer
 
@@ -38,6 +45,13 @@ orenyl-server
 
 This mode uses Orenyl's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
 It is for development only.
+
+## Try the proof flow
+
+1. Store a health event.
+2. Retrieve the derived context pack.
+3. Delete the source event.
+4. Confirm the deleted detail does not resurface and the proof returns `deletion_verified: true`.
 
 ## Configure your MCP client
 

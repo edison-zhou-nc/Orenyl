@@ -14,7 +14,7 @@ The best first-fit users are teams who care about:
 
 Vector stores remember. Orenyl governs.
 
-A generic memory layer can store rows or embeddings, but it does not automatically prove where derived facts came from or guarantee that deletion triggers recomputation with non-resurfacing verification.
+A generic memory layer can store rows or embeddings, but naive deletion only deletes the row and is not enough when other derived facts still exist. It does not automatically prove where derived facts came from or guarantee that deletion triggers recomputation with non-resurfacing verification.
 
 Orenyl is built around that governed-memory contract.
 
@@ -40,6 +40,8 @@ The key proof is:
 - confirm the deleted content does not resurface
 
 That is the fastest way to understand what makes Orenyl different.
+
+`deletion_verified` means the server has checked the downstream state after deletion and confirmed the deleted detail is not still showing up in derived context or audit-visible results.
 
 ## Is this local dev only or production-ready?
 
@@ -70,6 +72,7 @@ It does not mean:
 Sensitive health-style memory makes the value of deletion, lineage, and auditability immediately obvious.
 
 The demo is there to show the governed-memory behavior in a high-trust setting, not to imply medical certification.
+It gives evaluators a concrete failure mode to compare against the proof-first flow in the quickstart.
 
 ## How does multi-agent support fit in?
 
