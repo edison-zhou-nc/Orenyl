@@ -1,6 +1,8 @@
 # Quickstart: Orenyl in 5 Minutes
 
-Get Orenyl running locally in documented self-serve development mode, then exercise the MCP tool interface directly.
+Try the proof-first flow.
+
+When source data is removed, downstream derivations should not resurface. That non-resurfacing guarantee is the fastest way to see what Orenyl proves.
 
 ## 30-Second Primer
 
@@ -38,6 +40,13 @@ orenyl-server
 
 This mode uses Orenyl's explicit local-dev auth bypass, so you do not need `_auth_token` or OIDC setup.
 It is for development only.
+
+## Try the proof flow
+
+1. Store a health event.
+2. Retrieve the derived context pack.
+3. Delete the source event.
+4. Confirm the deleted detail does not resurface and the proof returns `deletion_verified: true`.
 
 ## Configure your MCP client
 
@@ -127,10 +136,7 @@ If you want the same flow exercised by an automated end-to-end client, run `pyth
 
 ## What just happened?
 
-1. Orenyl stored an immutable event.
-2. Orenyl derived deterministic facts from active events.
-3. Retrieval returned bounded context with lineage.
-4. Deletion invalidated downstream facts and verified they do not resurface.
+Orenyl stored an immutable event, derived deterministic facts from active events, returned bounded context with lineage, and then verified that deleted upstream data does not reappear downstream.
 
 This is Orenyl's core guarantee: if upstream data is deleted, downstream derivations must not resurface.
 

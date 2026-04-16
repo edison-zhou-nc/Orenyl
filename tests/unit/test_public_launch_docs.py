@@ -19,6 +19,32 @@ def test_quickstart_calls_out_dev_only_stdio_and_production_http() -> None:
     assert "streamable-http" in doc
 
 
+def test_quickstart_and_faq_explain_proof_first_value() -> None:
+    quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
+    faq = (REPO_ROOT / "docs" / "launch-faq.md").read_text(encoding="utf-8").lower()
+
+    primer_index = quickstart.index("## 30-second primer")
+    proof_flow_index = quickstart.index("## try the proof flow")
+
+    assert "proof-first flow" in quickstart[:primer_index]
+    assert "what is mcp" not in quickstart[:primer_index]
+    assert "\n1. remember a health event" not in quickstart[:primer_index]
+    assert proof_flow_index > primer_index
+
+    proof_section = quickstart[proof_flow_index:quickstart.index("## configure your mcp client")]
+    assert "store a health event" in proof_section
+    assert "retrieve the derived context pack" in proof_section
+    assert "delete the source event" in proof_section
+    assert "deletion_verified: true" in proof_section
+    assert "non-resurfacing" in quickstart
+
+    assert "naive deletion" in faq or "delete the row" in faq
+    assert "deletion_verified" in faq
+    assert "audit-visible results" not in faq
+    assert "downstream state after deletion" in faq or "downstream facts after deletion" in faq
+    assert "health-style demo" in faq or "why use a health-style demo?" in faq.lower()
+
+
 def test_readme_and_quickstart_explain_mcp_for_new_users() -> None:
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")
@@ -56,6 +82,28 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
 
     assert "development only" in claude.lower()
     assert "development only" in openclaw.lower()
+
+
+def test_client_guides_teach_remember_recall_forget_first() -> None:
+    claude = (REPO_ROOT / "docs" / "guides" / "claude-code.md").read_text(encoding="utf-8").lower()
+    openclaw = (REPO_ROOT / "docs" / "guides" / "openclaw.md").read_text(encoding="utf-8").lower()
+
+    for doc in (claude, openclaw):
+        first_heading = doc.index("\n## ")
+        intro = doc[:first_heading]
+
+        assert "remember" in intro
+        assert "recall" in intro
+        assert "forget" in intro
+        assert "\n- remember" in intro
+        assert "\n- recall" in intro
+        assert "\n- forget" in intro
+
+    claude_intro = claude[:claude.index("\n## ")]
+    assert "first smoke-test sequence" in claude_intro
+    assert "deletion proof" in claude_intro
+    assert "store a memory" in claude_intro
+    assert "delete it and confirm the derived context no longer resurfaces" in claude_intro
 
 
 def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
