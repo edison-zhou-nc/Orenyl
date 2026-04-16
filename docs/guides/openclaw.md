@@ -1,6 +1,6 @@
 # Orenyl with OpenClaw
 
-Add Orenyl as an MCP server in OpenClaw to give your AI agent persistent, production-minded governed memory.
+Orenyl gives your AI agent three immediate memory moves: remember new context, recall relevant facts, and forget a source memory while inspecting the deletion proof.
 
 ## Prerequisites
 

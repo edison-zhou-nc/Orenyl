@@ -82,6 +82,20 @@ def test_client_guides_treat_stdio_as_local_dev_mode() -> None:
     assert "development only" in openclaw.lower()
 
 
+def test_client_guides_teach_remember_recall_forget_first() -> None:
+    claude = (REPO_ROOT / "docs" / "guides" / "claude-code.md").read_text(encoding="utf-8").lower()
+    openclaw = (REPO_ROOT / "docs" / "guides" / "openclaw.md").read_text(encoding="utf-8").lower()
+
+    for doc in (claude, openclaw):
+        first_heading = doc.index("\n## ")
+        intro = doc[:first_heading]
+
+        assert "remember" in intro
+        assert "recall" in intro
+        assert "forget" in intro
+        assert "deletion proof" in doc
+
+
 def test_public_install_surfaces_use_the_unique_distribution_name() -> None:
     expectations = {
         REPO_ROOT / "README.md": [

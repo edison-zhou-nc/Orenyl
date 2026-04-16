@@ -1,6 +1,8 @@
 # Orenyl with Claude Code
 
-Add Orenyl as an MCP server in Claude Code to give Claude persistent, production-minded governed memory during local development.
+Orenyl gives Claude three immediate memory moves during local development: remember new user context, recall relevant facts, and forget a source memory while showing the deletion proof.
+
+The first smoke-test sequence proves the loop end to end: store a memory, ask for it back, then delete it and confirm the derived context no longer resurfaces.
 
 Orenyl `0.5.0` is published on PyPI. For the shortest setup path, install `pip install orenyl-mcp-server`; use an editable source checkout only if you are actively developing Orenyl itself.
 
