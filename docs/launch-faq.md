@@ -41,7 +41,7 @@ The key proof is:
 
 That is the fastest way to understand what makes Orenyl different.
 
-`deletion_verified` means the server has checked the downstream state after deletion and confirmed the deleted detail is not still showing up in derived context or audit-visible results.
+`deletion_verified` means the server has rechecked the recomputed downstream facts after deletion and confirmed the deleted detail is not resurfacing in that derived context.
 
 ## Is this local dev only or production-ready?
 

@@ -40,6 +40,8 @@ def test_quickstart_and_faq_explain_proof_first_value() -> None:
 
     assert "naive deletion" in faq or "delete the row" in faq
     assert "deletion_verified" in faq
+    assert "audit-visible results" not in faq
+    assert "downstream state after deletion" in faq or "downstream facts after deletion" in faq
     assert "health-style demo" in faq or "why use a health-style demo?" in faq.lower()
 
 
