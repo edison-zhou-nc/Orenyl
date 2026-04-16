@@ -5,8 +5,6 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-![Orenyl social preview](docs/assets/orenyl_social_preview.png)
-
 Your AI agent remembers everything. Can you prove it forgot?
 
 Orenyl is agent memory with deletion guarantees.
@@ -18,6 +16,8 @@ Orenyl is in early production / public beta. It is production-minded and ready f
 Orenyl `0.5.0` is published on PyPI. `pip install orenyl-mcp-server` is the standard install path, and the source checkout remains the best option when you want an editable local development environment.
 
 Orenyl was previously named Lore. The current package name is `orenyl-mcp-server`, and legacy `LORE_*` environment variables are rejected on startup so old configs fail loudly instead of half-working.
+
+![Orenyl social preview](docs/assets/orenyl_social_preview.png)
 
 ## Why Orenyl
 
