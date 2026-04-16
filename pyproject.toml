@@ -21,6 +21,7 @@ classifiers = [
 ]
 dependencies = [
   "mcp==1.26.0",
+  "python-multipart>=0.0.26",
   "cryptography>=46.0.7,<47",
   "argon2-cffi==25.1.0",
   "PyJWT[crypto]==2.12.0",
