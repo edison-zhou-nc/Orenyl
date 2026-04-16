@@ -1,13 +1,8 @@
 # Quickstart: Orenyl in 5 Minutes
 
-Try the proof-first flow:
+Try the proof-first flow.
 
-1. Remember a health event
-2. Recall the derived context
-3. Forget the source event
-4. Verify the deleted detail does not resurface
-
-That is the fastest way to see what Orenyl proves: when source data is removed, downstream derivations are traced, invalidated, and recomputed so deleted information does not come back.
+When source data is removed, downstream derivations should not resurface. That non-resurfacing guarantee is the fastest way to see what Orenyl proves.
 
 ## 30-Second Primer
 
@@ -141,10 +136,7 @@ If you want the same flow exercised by an automated end-to-end client, run `pyth
 
 ## What just happened?
 
-1. Orenyl stored an immutable event.
-2. Orenyl derived deterministic facts from active events.
-3. Retrieval returned bounded context with lineage.
-4. Deletion invalidated downstream facts and verified they do not resurface.
+Orenyl stored an immutable event, derived deterministic facts from active events, returned bounded context with lineage, and then verified that deleted upstream data does not reappear downstream.
 
 This is Orenyl's core guarantee: if upstream data is deleted, downstream derivations must not resurface.
 

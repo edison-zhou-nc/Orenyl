@@ -23,8 +23,24 @@ def test_quickstart_and_faq_explain_proof_first_value() -> None:
     quickstart = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
     faq = (REPO_ROOT / "docs" / "launch-faq.md").read_text(encoding="utf-8").lower()
 
-    assert "proof" in quickstart
+    primer_index = quickstart.index("## 30-second primer")
+    proof_flow_index = quickstart.index("## try the proof flow")
+
+    assert "proof-first flow" in quickstart[:primer_index]
+    assert "what is mcp" not in quickstart[:primer_index]
+    assert "\n1. remember a health event" not in quickstart[:primer_index]
+    assert proof_flow_index > primer_index
+
+    proof_section = quickstart[proof_flow_index:quickstart.index("## configure your mcp client")]
+    assert "store a health event" in proof_section
+    assert "retrieve the derived context pack" in proof_section
+    assert "delete the source event" in proof_section
+    assert "deletion_verified: true" in proof_section
+    assert "non-resurfacing" in quickstart
+
     assert "naive deletion" in faq or "delete the row" in faq
+    assert "deletion_verified" in faq
+    assert "health-style demo" in faq or "why use a health-style demo?" in faq.lower()
 
 
 def test_readme_and_quickstart_explain_mcp_for_new_users() -> None:
