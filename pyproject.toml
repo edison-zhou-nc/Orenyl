@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "orenyl-mcp-server"
 version = "0.5.0"
-description = "Production-minded governed memory MCP server for AI agents with deterministic deletion and auditable lineage"
+description = "Agent memory with deletion guarantees"
 readme = "README.md"
 license = "Apache-2.0"
 authors = [{ name = "Orenyl Maintainers" }]

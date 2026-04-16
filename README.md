@@ -7,13 +7,13 @@
 
 ![Orenyl social preview](docs/assets/orenyl_social_preview.png)
 
-production-minded governed memory MCP server for AI agents, with deterministic deletion and auditable lineage.
+Your AI agent remembers everything. Can you prove it forgot?
 
-Orenyl gives agents durable memory without losing control: every derived fact is traceable to source events, and deletion triggers recomputation with verification proof.
+Orenyl is agent memory with deletion guarantees.
 
-**Core guarantee:** if upstream data is deleted, downstream derivations must not resurface.
+When data is removed, every derived insight is traced, invalidated, and recomputed so deleted information does not resurface.
 
-Orenyl is in early production / public beta. It is ready for self-serve local development and evaluation, and production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
+Orenyl is in early production / public beta. It is production-minded and ready for self-serve local development and evaluation, and production deployments should use authenticated `streamable-http`; Orenyl is not yet externally certified or enterprise-complete.
 
 Orenyl `0.5.0` is published on PyPI. `pip install orenyl-mcp-server` is the standard install path, and the source checkout remains the best option when you want an editable local development environment.
 
